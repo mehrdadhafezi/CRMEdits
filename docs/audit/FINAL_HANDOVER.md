@@ -47,7 +47,8 @@ preserved. Every new file and disposition is listed in
 | Initial branches / commits | None; main exists only as default-branch metadata |
 | Proposed main bootstrap | BOOTSTRAP.md only; awaiting distinct explicit owner approval |
 | Development branch | `docs/crm-engineering-standard-r1` local preparation |
-| Local commit / remote push / PR | Local source commit prepared separately; remote main/bootstrap and PR await explicit approval |
+| Source import commit | `e19e1965ce38177e2adac5ce6ac97032dffb063c` (local task branch only) |
+| Remote push / PR | NOT_PUSHED / NOT_CREATED; main bootstrap awaits explicit owner approval |
 | Merge | Not performed; excluded |
 | CI | Workflow prepared; remote execution not yet run |
 | Branch protection | Not configured/verified; manual exact steps supplied |
@@ -59,7 +60,7 @@ preserved. Every new file and disposition is listed in
 77 PHP and 32 JavaScript parsers passed. Imported runtime bytes are identical.
 Gitleaks worktree scan passed with a single narrowly scoped reviewed false-positive
 exception. All 2,412 relative Markdown links and 20 module section sets passed.
-History/package checks depend on the approved bootstrap and clean commit. Database, provider, WordPress UI and production runtime
+Complete local Git history Secret scan passed. A plugin ZIP was generated from the clean local source import commit; no install or deployment occurred. Database, provider, WordPress UI and production runtime
 tests were not executed.
 
 Owner decisions still needed: minimal main bootstrap; employee GitHub usernames;
@@ -69,3 +70,22 @@ confidential security reporting channel; company licensing policy. Source approv
 is already granted and must not be requested again.
 
 Source import and developer governance do not authorize a main merge or site update.
+
+
+## Local artifacts
+
+Developer review bundle: `/workspace/CRMEdits-developer-package-R1.zip` (source and
+all engineering documents, without .git, tools or operational data). This is a
+review/distribution copy; GitHub remains the intended canonical source once the
+approved import is pushed and reviewed.
+
+Installable artifact from source commit `e19e1965ce38177e2adac5ce6ac97032dffb063c`:
+`dist/sales-network-v4-2.0.235-e19e1965ce38.zip`.
+SHA256: `02ed369be3b7d5a0820ad7e5e210da5aa8fdf149bd8c088cecebe4a9c668f9d7`.
+Package layout and every included byte were compared with the accepted baseline.
+This artifact was built locally and never installed.
+
+Remote refs were checked again after preparation and remained empty. No main ref,
+collaborator invitation, ruleset mutation, push, PR, merge or deployment was made.
+The pending main confirmation is required by the owner's supplied mission standard,
+not by a failed automatic approval review.

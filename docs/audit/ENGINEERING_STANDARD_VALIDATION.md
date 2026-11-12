@@ -14,7 +14,7 @@ Date: 2026-11-12. Results are from this session, not historical release reports.
 | JavaScript syntax | PASS | `node --check`, all 32 JS files; no failures |
 | Worktree secret scan | PASS | Gitleaks 8.24.3 with default rules and one exact localStorage false-positive exception |
 | Customer-data review | PASS | Bounded manual review of phone/card matches, XLSX XML, CSV and test/log contexts; no actual customer export identified |
-| Complete Git history secret scan | NOT_RUN | Will be executed after the local source commit, before any remote push |
+| Complete Git history secret scan | PASS | Gitleaks 8.24.3 scanned all local commit history; no leaks. No remote push occurred |
 | Markdown relative links and module sections | PASS | scripts/check.py all: 2,412 relative links valid; all 20 contracts have sections 1..11 |
 | API/DB/role runtime edits | PASS | None; source bytes unchanged |
 | Static inventory | PASS | 20 module contracts, 2,794 symbols, 507 literal hook registrations, 119 DDL declarations; lexical limits documented |
@@ -24,7 +24,7 @@ Date: 2026-11-12. Results are from this session, not historical release reports.
 | Unit runner / PHPCS / PHPStan | NOT_RUN | NOT_IMPLEMENTED infrastructure; no fabricated green checks |
 | UI/browser/RTL/responsive | NOT_RUN | No running WordPress site and portable browser fixture in source |
 | CI workflow remote execution | NOT_RUN | Workflow and Issue template YAML parse passed locally; remote execution requires published branch/PR and enabled Actions |
-| Package tool validation | PASS | Isolated Git fixture checked install-folder layout, file allowlist and deterministic output; actual source artifact awaits clean approved commit |
+| Package tool validation | PASS | Isolated fixture checked layout/exclusion/determinism; actual plugin package generated from clean source commit e19e1965ce38177e2adac5ce6ac97032dffb063c |
 | Main bootstrap | BLOCKED | Distinct explicit owner approval still needed; local source commit on task branch does not create main |
 | Collaborator invitations | BLOCKED | Employee GitHub identities not yet known |
 | GitHub branch/rules enforcement | BLOCKED | Exact configuration documented; owner authorization/tool support and private-plan enforcement unverified |
