@@ -64,6 +64,31 @@ UNASSIGNED است. پس از شناسایی کارمندان، افراد واج
 
 وضعیت واقعی bootstrap، push، PR، CI و protection در
 [FINAL_HANDOVER.md](audit/FINAL_HANDOVER.md) ثبت می‌شود. این سند تنظیمات پیشنهادی
-را با تنظیمات اعمال‌شده یکی نمی‌داند. Connector فعلی عملیات collaborator/ruleset
-را عرضه نمی‌کند و CLI GitHub احراز معتبر API را در این محیط گزارش نکرده است؛ مسیر
-دقیق دستی بالا برای مالک آماده شده است. credential را در chat نفرستید.
+را با تنظیمات اعمال‌شده یکی نمی‌داند. Connector فعلی عملیات collaborator/ruleset را عرضه نمی‌کند. پس از اجازه مالک،
+مرورگر مشترک با خطای `Browser Use could not read requirements` و مسیر کنترل بومی
+با خطای AT-SPI متوقف شد؛ درخواست CLI به API محافظت main نیز `Forbidden` برگرداند.
+بنابراین در این مأموریت هیچ rule روی GitHub اعمال یا enforce شدن آن تأیید نشد؛
+پشتیبانی پلن Private هنوز UNVERIFIED است. credential را در chat نفرستید.
+
+
+## Ready-to-apply ruleset
+
+مالک صریحاً ساخت main و اعمال محافظت در صورت پشتیبانی را مجاز کرده است. bootstrap و
+PR ساخته شده‌اند؛ برای محافظت نیازی به درخواست مجدد مجوز از مالک نیست. فایل
+[main-ruleset.json](../.github/main-ruleset.json) تنظیمات کامل پیشنهادی بدون bypass را
+آماده می‌کند، اما وجود این فایل به معنی اعمال تنظیمات نیست.
+
+در GitHub Settings → Rules → Rulesets از Import a ruleset، همین JSON را وارد و
+شرایط/approval/checkها را بررسی کنید. اگر CLI با دسترسی API معتبر در محیط مجاز دارید:
+
+```bash
+gh api --method POST repos/mehrdadhafezi/CRMEdits/rulesets --input .github/main-ruleset.json
+gh api repos/mehrdadhafezi/CRMEdits/rulesets
+```
+
+دستور POST را فقط یک‌بار پس از بررسی نبود ruleset هم‌نام اجرا کنید؛ در retry ابتدا
+وضعیت موجود را بخوانید تا rule تکراری نسازید. پس از ایجاد، detail همان ruleset را با
+ID برگشتی بخوانید و active/enforced بودن، bypass خالی و contextها را بررسی کنید.
+در صورت نمایش GitHub Actions به‌عنوان منبع check در UI آن را انتخاب کنید. JSON
+عمداً integration ID حدسی ندارد. اگر plan اجازه نداد، نتیجه را ثبت کنید و Private
+بودن مخزن را حفظ کنید؛ upgrade پولی نیازمند تصمیم جداگانه مالک است.

@@ -458,4 +458,5 @@ Complete file disposition relative to the owner-approved upload. Historical sour
 | [tests/mis/ux-and-reporting.php](../../tests/mis/ux-and-reporting.php) | UNCHANGED from upload |
 | [tests/payments/gateway-inquiry.php](../../tests/payments/gateway-inquiry.php) | UNCHANGED from upload |
 | [tests/payments/receipt-last4.php](../../tests/payments/receipt-last4.php) | UNCHANGED from upload |
+| [.github/main-ruleset.json](../../.github/main-ruleset.json) | CREATED |
 | [docs/audit/DELIVERABLES.md](DELIVERABLES.md) | CREATED |

@@ -3,8 +3,8 @@
 | ID | Risk / evidence | Likelihood / impact | Mitigation | Status / owner |
 |---|---|---|---|---|
 | R01 | Production parity unavailable; source audit | Unknown / high | Owner approved ZIP; later read-only deployed hash comparison | UNVERIFIED parity / owner |
-| R02 | Empty main; no PR base | Certain / blocks handover | Explicitly approve minimal bootstrap before direct main creation | PENDING approval / owner |
-| R03 | Main enforcement may require plan support | Unknown / high | Inspect plan, apply supported rules and record actual state | NOT_VERIFIED / owner |
+| R02 | Empty main; no PR base | Resolved | Owner-approved minimal main pushed; PR #1 created | CLOSED / owner |
+| R03 | Main enforcement unverified; settings access blocked | Unknown / high | Apply prepared JSON through working UI/API, verify plan and enforcement | BLOCKED tool/API access / owner |
 | R04 | Developer GitHub handles absent | Certain / blocks invitations and independent review | Owner provides real accounts; invite through settings | BLOCKED identities / owner |
 | R05 | Large shared core and general assets | High / high | Narrow changes, trace callers, module review, avoid formatting churn | OPEN / module owner unassigned |
 | R06 | Init/activation schema, role and normalization side effects | Observed / high | Isolated synthetic environment and explicit release/migration approval | CONTROLLED: no execution here |
