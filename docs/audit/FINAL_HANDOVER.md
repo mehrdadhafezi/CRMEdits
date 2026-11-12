@@ -1,5 +1,8 @@
 # Final handover — CRM engineering standard R1
 
+> سابقه ممیزی R1: وضعیت‌ها مربوط به زمان تهیه این گزارش و پیش از ادغام اولیه‌اند.
+> مالک سپس ادغام سورس و مستندات را صریحاً مجاز کرد؛ مرجع فعلی کار تیمی [Handbook](../DEVELOPER_HANDBOOK.md) و شاخه main است.
+
 ## Architecture and source
 
 Owner-approved Sales Network **2.0.235**, build

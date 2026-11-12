@@ -1,0 +1,100 @@
+{
+  "reviewed_baseline": "d037fe8bde4aadbb189c055114683fccf22bb0dc",
+  "repository": {
+    "name": "mehrdadhafezi/CRMEdits",
+    "visibility": "private",
+    "default_branch": "main",
+    "observed_permissions": {
+      "admin": true,
+      "maintain": true,
+      "pull": true,
+      "push": true,
+      "triage": true
+    },
+    "auto_merge_enabled": false
+  },
+  "pull_request": {
+    "url": "https://github.com/mehrdadhafezi/CRMEdits/pull/1",
+    "state": "open",
+    "draft": false,
+    "merged": false,
+    "mergeable": true,
+    "author": "mehrdadhafezi",
+    "base": "main",
+    "base_sha": "534cbf4ae550cbf278ae3997dc8fe0df6106ad4e",
+    "head": "docs/crm-engineering-standard-r1",
+    "head_sha": "d037fe8bde4aadbb189c055114683fccf22bb0dc",
+    "review_count": 0,
+    "review_thread_count": 0,
+    "requested_reviewers": null
+  },
+  "ci": {
+    "id": 43208523758,
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": [
+      {
+        "name": "Secret scan",
+        "status": "completed",
+        "conclusion": "success",
+        "id": 131149765249
+      },
+      {
+        "name": "Documentation and repository hygiene",
+        "status": "completed",
+        "conclusion": "success",
+        "id": 131149765562
+      },
+      {
+        "name": "PHP and JavaScript syntax",
+        "status": "completed",
+        "conclusion": "success",
+        "id": 131149765573
+      }
+    ]
+  },
+  "settings_read": {
+    "status": "BLOCKED",
+    "api_host_in_environment_allowlist": false,
+    "browser_attempt": "Browser Use could not read requirements",
+    "account_plan": "UNVERIFIED",
+    "effective_main_rules": "UNVERIFIED",
+    "cli_get_results": [
+      {
+        "method": "GET",
+        "endpoint": "repos/mehrdadhafezi/CRMEdits/rulesets?includes_parents=true",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "Get \"https://api.github.com/repos/mehrdadhafezi/CRMEdits/rulesets?includes_parents=true\": Forbidden\n"
+      },
+      {
+        "method": "GET",
+        "endpoint": "repos/mehrdadhafezi/CRMEdits/rules/branches/main",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "Get \"https://api.github.com/repos/mehrdadhafezi/CRMEdits/rules/branches/main\": Forbidden\n"
+      },
+      {
+        "method": "GET",
+        "endpoint": "repos/mehrdadhafezi/CRMEdits/branches/main/protection",
+        "exit_code": 1,
+        "stdout": "",
+        "stderr": "Get \"https://api.github.com/repos/mehrdadhafezi/CRMEdits/branches/main/protection\": Forbidden\n"
+      }
+    ]
+  },
+  "constraints": {
+    "production_connected": false,
+    "security_settings_changed": false,
+    "employees_invited": false,
+    "pr1_mutated": false
+  },
+  "observed_at": "2026-11-12T15:09:38+03:30",
+  "rechecked_before_commit_at": "2026-11-12T15:22:22+03:30",
+  "recheck": {
+    "pr1_head_unchanged": true,
+    "pr1_open_not_merged": true,
+    "reviews_still_zero": true,
+    "repository_still_private": true
+  }
+}

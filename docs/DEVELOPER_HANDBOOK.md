@@ -1,9 +1,14 @@
 # CRM Engineering Handbook — Codex & GitHub Development Standard
 
-نسخه R1، 2026-11-12. این سند برای تمام توسعه‌دهندگان انسانی، Codex و Claude مشترک
+راهنمای اصلی توسعه تیمی، 2026-11-12. این سند برای تمام توسعه‌دهندگان انسانی، Codex و Claude مشترک
 است. مخزن رسمی [mehrdadhafezi/CRMEdits](https://github.com/mehrdadhafezi/CRMEdits)
 Private است. افزونه موجود «شبکه فروش» با مبنای ZIP تأییدشده مالک نسخه 2.0.235 توسعه
 می‌یابد. مقایسه مستقیم با Production در این مأموریت انجام نشده است.
+
+مرجع مشترک سورس و مستندات، شاخه **main** همین مخزن است. هر توسعه‌دهنده برای
+هر تسک روی Branch خودش کار می‌کند؛ تغییر مستقیم روی main و Force Push شاخه مشترک
+مجاز نیست. اسناد ممیزی R1 و R2 وضعیت زمان تهیه خود را ثبت کرده‌اند؛ راهنمای روزمره
+تیم همین فایل است. دریافت یا Merge کد در GitHub، سایت و دیتابیس عملیاتی را تغییر نمی‌دهد.
 
 ## 1. پروژه و هدف
 
@@ -11,17 +16,29 @@ Private است. افزونه موجود «شبکه فروش» با مبنای ZI
 تحویل می‌شود. هدف حفظ فرآیند و داده فعلی CRM است. کپی شخصی و ZIP ارسالی جایگزین
 سورس مشترک نیست. Merge کد روی GitHub به‌خودی‌خود افزونه نصب‌شده سایت را آپدیت نمی‌کند.
 
+فرآیند ساده هر تسک:
+
+**دریافت تسک → ساخت Branch → توسعه با Codex یا Claude → تست → Commit → Push → Pull Request → بررسی → Merge**
+
+توسعه‌دهنده تغییرات مرتبط را روی Branch خودش تحویل می‌دهد. مالک مخزن یا فرد مجاز
+پس از بررسی PR و نتیجه تست‌ها، تغییر را Merge می‌کند؛ سپس همه برای تسک بعدی main
+را به‌روز می‌کنند. Merge یا انتشار خودکار از prompt ثابت Agent برداشت نشود.
+
 ## 2. پیش‌نیازها
 
 حساب GitHub شخصی با دعوت پذیرفته‌شده، Git، Python 3.10+، PHP CLI، Node.js و دسترسی
 به Codex یا Claude Code لازم است. برای تست runtime، WordPress و DB مستقل ساختگی
 با نسخه‌های مصوب و provider خاموش لازم است. هیچ credential مشترکی از مالک نگیرید.
 
+برای دعوت بعدی، مالک در GitHub به Settings → Collaborators → Add people می‌رود،
+حساب GitHub واقعی فرد را انتخاب و دعوت می‌کند. فرد پس از پذیرش دعوت، با حساب و
+credential شخصی خودش clone و push می‌کند. نام حساب یا رمز مشترک بین افراد استفاده نشود.
+
 ## 3. دریافت سورس و محیط
 
 [LOCAL_SETUP.md](LOCAL_SETUP.md) را کامل بخوانید. ریشه repo خود پوشه افزونه است؛
 فایل اصلی `sales-network.php` و مسیر نصب `wp-content/plugins/sales-network-v4/` است.
-بعد از وجود main و Merge ورود اولیه:
+برای دریافت نسخه مشترک فعلی از main، در پوشه جدید:
 
 ```bash
 git clone https://github.com/mehrdadhafezi/CRMEdits.git
@@ -31,9 +48,16 @@ git pull --ff-only origin main
 python3 scripts/check.py all
 ```
 
-پیش از Merge اولیه، سورس تحویلی روی `docs/crm-engineering-standard-r1` است؛ وضعیت
-انتشار را در [گزارش تحویل](audit/FINAL_HANDOVER.md) بررسی کنید. در محیط توسعه، داده
-مشتری، سایت عملیاتی و SMS/درگاه واقعی استفاده نشود. activation/init بی‌اثر نیست.
+قبل از تغییر، نسخه و آخرین commit را بررسی کنید:
+
+```bash
+git log -1 --oneline
+git status --short --branch
+```
+
+نسخه مبنای افزونه **2.0.235** است. محیط توسعه باید داده ساختگی داشته باشد؛ activation
+و init افزونه می‌توانند جدول، Role یا داده ایجاد/اصلاح کنند. سایت عملیاتی، دیتابیس
+مشتری، SMS یا درگاه واقعی را برای توسعه و تست استفاده نکنید.
 
 ## 4. استفاده از Codex و Claude
 
@@ -54,8 +78,8 @@ python3 scripts/check.py all
 از [فهرست ۲۰ قرارداد](modules/README.md) وارد ماژول شوید. بخش ۲ مسیر/متد، بخش ۷ داده،
 بخش ۸ تست و بخش ۹ interface را نشان می‌دهد. [معماری](ARCHITECTURE.md)،
 [فهرست hookها](audit/HOOK_API_INDEX.md) و [نمادهای سورس](audit/SOURCE_SYMBOLS.json)
-برای جستجو هستند؛ function body و caller را خودتان بخوانید. مالک انسانی تخصصی
-فعلاً UNASSIGNED است؛ مالک مخزن @mehrdadhafezi است.
+برای جستجو هستند؛ function body و caller را خودتان بخوانید. اگر محدوده یا مسئول
+بررسی روشن نیست، آن را در همان تسک با مالک مخزن مشخص کنید.
 
 ## 7. دریافت تسک
 
@@ -131,6 +155,11 @@ gh pr create --base main --head docs/123-clarify-handbook --title "docs(handbook
 
  reviewer واقعی تعیین شود؛ دست‌کم یک approval مستقل و review مالک نقاط حساس لازم
 است. نویسنده نمی‌تواند خودش approve کند. درخواست review خودکار را برای حساب فرضی نفرستید.
+
+PR باید خلاصه تغییر، نتیجه تست، فایل‌های متأثر و ریسک را روشن کند. مالک مخزن یا
+reviewer مجاز آن را بررسی می‌کند و پس از تأیید، فرد مجاز Merge می‌کند. وجود
+CODEOWNERS به‌تنهایی نشانه اعمال Branch Protection نیست؛ هیچ تنظیم امنیتی تازه‌ای
+برای این نهایی‌سازی ایجاد نشده است.
 
 ## 16. پاسخ به Code Review
 
@@ -221,7 +250,7 @@ git push -u origin HEAD
 ```text
 روی همین checkout از mehrdadhafezi/CRMEdits تسک زیر را انجام بده.
 ابتدا AGENTS.md و docs/DEVELOPER_HANDBOOK.md و قرارداد ماژول مرتبط را بخوان.
-Git status، remote، branch، تغییرات ثبت‌نشده و آخرین main مصوب را بررسی کن.
+Git status، remote، branch، تغییرات ثبت‌نشده و مبنای صریح تسک یا آخرین main مصوب را بررسی کن.
 تسک، معیار پذیرش، مسیرهای مجاز/ممنوع و API/DB/Role/security impact را تحلیل کن.
 اگر کار مستقل و مجاز است ادامه بده؛ ابهام حساس را با شاهد گزارش کن.
 برای همین Issue branch اختصاصی بساز؛ تغییرات دیگران را حفظ کن.
@@ -231,7 +260,8 @@ Git status، remote، branch، تغییرات ثبت‌نشده و آخرین ma
 Syntax، docs، hygiene، Secret scan و تست معنادار رفتار را اجرا کن.
 PASS فقط برای تست اجراشده؛ موارد دیگر را NOT_RUN/BLOCKED با دلیل گزارش کن.
 Diff و staged files را بازبینی و اسناد مرتبط را به‌روز کن.
-Commit روشن بساز، فقط branch خودت را push و PR به main با قالب استاندارد ایجاد کن.
+Commit روشن بساز، فقط branch خودت را push و PR به base مصوب تسک (معمولاً main)
+با قالب استاندارد ایجاد کن؛ وابستگی به PR دیگر را روشن بنویس و شاخه آن را تغییر نده.
 در گزارش نهایی تغییر، دلیل، تست، ریسک، rollback، branch/commit/PR و مانع‌ها را بده.
 این prompt مجوز merge، direct main push، force push مشترک یا deployment نمی‌دهد.
 

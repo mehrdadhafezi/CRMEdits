@@ -1,0 +1,64 @@
+{
+  "local_runtime_manifest": {
+    "status": "PASS",
+    "file_count": 116,
+    "baseline": "d037fe8bde4aadbb189c055114683fccf22bb0dc"
+  },
+  "documented_offline_example": {
+    "status": "PASS",
+    "fixture": "local source-only copy, no Production connection or PHP execution",
+    "scenarios": [
+      "matching runtime: exit 0",
+      "missing bootstrap: nonzero",
+      "unexpected executable: nonzero",
+      "changed bootstrap: nonzero"
+    ]
+  },
+  "production_parity": {
+    "status": "NOT_RUN",
+    "reason": "explicit mission prohibition; no production access"
+  },
+  "checks": {
+    "php_syntax": {
+      "status": "PASS",
+      "files": 77,
+      "runtime": "PHP 8.4.24 -n -l"
+    },
+    "javascript_syntax": {
+      "status": "PASS",
+      "files": 32,
+      "runtime": "node --check"
+    },
+    "documentation": {
+      "status": "PASS",
+      "relative_links": 2471,
+      "contract_sections": "1..11 in existing 20 contracts; semantic gaps documented"
+    },
+    "hygiene": {
+      "status": "PASS",
+      "command": "python3 scripts/check.py hygiene"
+    },
+    "secret_worktree": {
+      "status": "PASS",
+      "tool": "Gitleaks 8.24.3",
+      "scope": "R2 worktree with .gitleaks.toml"
+    },
+    "secret_history_before_r2_commit": {
+      "status": "PASS",
+      "tool": "Gitleaks 8.24.3 git --log-opts=--all",
+      "scope": "all refs locally available before the R2 commit"
+    },
+    "whitespace": {
+      "status": "PASS",
+      "command": "git diff --check, R2 delta only"
+    }
+  },
+  "not_run": [
+    "WordPress runtime",
+    "MIS/database destructive fixtures",
+    "payment runtime",
+    "browser UI CRM",
+    "production parity",
+    "dependency vulnerability audit"
+  ]
+}
