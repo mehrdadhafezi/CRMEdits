@@ -1,0 +1,12 @@
+title = "CRMEdits secret scanning"
+[extend]
+useDefault = true
+
+# Reviewed non-secret: a browser localStorage key, not a credential.
+# Both the exact path and exact line must match. Other keys remain scanned.
+[allowlist]
+description = "Public campaign localStorage identifier"
+condition = "AND"
+regexTarget = "line"
+paths = ['''(^|/)assets/js/campaign-tracking\.js$''']
+regexes = ['''^\s*var storageKey = 'sn_campaign_utm_v1';\s*$''']

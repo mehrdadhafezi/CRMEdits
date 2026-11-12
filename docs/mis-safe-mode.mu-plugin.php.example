@@ -1,0 +1,10 @@
+<?php
+/** Optional MIS write freeze during a reviewed rollback. Copy to mu-plugins only when needed. */
+if (!defined('ABSPATH')) { exit; }
+add_action('init',static function(): void {
+    $raw=$_REQUEST['action']??'';
+    $action=is_scalar($raw)?sanitize_key((string)$raw):'';
+    if (strpos($action,'sn_mis_')===0 || in_array($action,['sn_repair_mis_schema','sn_distribution_deliver_pool'],true)) {
+        wp_die('عملیات نوشتنی MIS موقتاً برای بررسی نسخه متوقف شده است.','MIS',['response'=>503]);
+    }
+},-100);

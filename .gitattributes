@@ -1,0 +1,5 @@
+# Preserve imported source bytes; do not normalize the accepted baseline.
+* -text
+*.xlsx binary
+*.woff2 binary
+*.zip binary

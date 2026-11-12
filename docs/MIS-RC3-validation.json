@@ -1,0 +1,203 @@
+{
+  "release": "2.0.193-mis-unified-rc3",
+  "date": "2026-11-01",
+  "functional_checks": 218,
+  "cli": {
+    "exit_code": 0,
+    "passed_assertions": 113,
+    "elapsed_seconds": 22.691,
+    "php": "8.3.6",
+    "wordpress": "6.8.3",
+    "database": "embedded MariaDB 10.11.7 / InnoDB"
+  },
+  "cgi": [
+    {
+      "script": "test_endpoints.py",
+      "exit_code": 0,
+      "passed_assertions": 8,
+      "elapsed_seconds": 15.304
+    },
+    {
+      "script": "test_chain.py",
+      "exit_code": 0,
+      "passed_assertions": 4,
+      "elapsed_seconds": 7.109
+    },
+    {
+      "script": "test_approval_failure.py",
+      "exit_code": 0,
+      "passed_assertions": 2,
+      "elapsed_seconds": 4.675
+    },
+    {
+      "script": "test_uploaded_xlsx.py",
+      "exit_code": 0,
+      "passed_assertions": 1,
+      "elapsed_seconds": 0.612
+    },
+    {
+      "script": "test_export_endpoint.py",
+      "exit_code": 0,
+      "passed_assertions": 1,
+      "elapsed_seconds": 0.827
+    },
+    {
+      "script": "test_job_endpoints.py",
+      "exit_code": 0,
+      "passed_assertions": 4,
+      "elapsed_seconds": 4.074
+    }
+  ],
+  "wordpress_dispatcher": {
+    "passed": 23,
+    "checks": [
+      "actual WordPress AJAX dispatcher rejects an invalid setup nonce",
+      "actual WordPress AJAX dispatcher denies setup to an ordinary MIS operator",
+      "actual plugin bootstrap completes already-prepared setup below five seconds",
+      "actual web setup executes no ALTER TABLE on operational data",
+      "setup request skips unrelated CRM bootstrap and runtime installers",
+      "actual AJAX navigation renders dashboard below five seconds",
+      "actual AJAX navigation renders upload below five seconds",
+      "actual AJAX navigation renders return below five seconds",
+      "actual AJAX navigation renders reports below five seconds",
+      "actual AJAX navigation renders tools below five seconds",
+      "actual AJAX navigation renders cases below five seconds",
+      "actual AJAX navigation renders plans below five seconds",
+      "actual AJAX navigation renders rules below five seconds",
+      "actual AJAX navigation renders branches below five seconds",
+      "actual AJAX navigation renders health below five seconds",
+      "actual old advanced URL renders the new management shell",
+      "actual interrupted web setup resumes one safe phase 1",
+      "actual interrupted web setup resumes one safe phase 2",
+      "actual interrupted web setup resumes one safe phase 3",
+      "actual interrupted web setup resumes one safe phase 4",
+      "actual staged web setup retains all operational table checksums",
+      "actual repeated setup stays ready and idempotent",
+      "view transport requires a valid nonce"
+    ]
+  },
+  "browser": {
+    "passed": 37,
+    "checks": [
+      "dashboard uses content navigation without a document reload at 1440",
+      "dashboard has no page overflow at 1440",
+      "upload uses content navigation without a document reload at 1440",
+      "upload has no page overflow at 1440",
+      "return uses content navigation without a document reload at 1440",
+      "return has no page overflow at 1440",
+      "reports uses content navigation without a document reload at 1440",
+      "reports has no page overflow at 1440",
+      "tools uses content navigation without a document reload at 1440",
+      "tools has no page overflow at 1440",
+      "cases uses content navigation without a document reload at 1440",
+      "cases has no page overflow at 1440",
+      "advanced management stays in the redesigned shell at 1440",
+      "a 504 response preserves navigation and displays a retry message at 1440",
+      "retry restores a usable page after 504 at 1440",
+      "search filters the real data without a full reload at 1440",
+      "browser Back restores the prior MIS view at 1440",
+      "setup completes in place and returns to tools at 1440",
+      "dashboard uses content navigation without a document reload at 390",
+      "dashboard has no page overflow at 390",
+      "upload uses content navigation without a document reload at 390",
+      "upload has no page overflow at 390",
+      "return uses content navigation without a document reload at 390",
+      "return has no page overflow at 390",
+      "reports uses content navigation without a document reload at 390",
+      "reports has no page overflow at 390",
+      "tools uses content navigation without a document reload at 390",
+      "tools has no page overflow at 390",
+      "cases uses content navigation without a document reload at 390",
+      "cases has no page overflow at 390",
+      "advanced management stays in the redesigned shell at 390",
+      "a 504 response preserves navigation and displays a retry message at 390",
+      "retry restores a usable page after 504 at 390",
+      "search filters the real data without a full reload at 390",
+      "browser Back restores the prior MIS view at 390",
+      "setup completes in place and returns to tools at 390",
+      "all browser interactions complete without JavaScript exceptions"
+    ],
+    "errors": []
+  },
+  "volume": {
+    "fixture": {
+      "rows": 100000,
+      "distribution_items": 100000,
+      "item_logs": 100000,
+      "events": 50000,
+      "leads": 10000,
+      "invoices": 120000,
+      "creation_seconds": 4.869
+    },
+    "timings": {
+      "before_index": {
+        "dashboard": 0.6529,
+        "upload": 0.0842,
+        "return": 0.1196,
+        "reports": 0.0399,
+        "tools": 0.0023,
+        "cases": 0.0012,
+        "plans": 0.0016,
+        "rules": 0.0013,
+        "branches": 0.001,
+        "health": 0.0013
+      },
+      "index": {
+        "seconds": 33.212,
+        "steps": 1000,
+        "max_step_seconds": 0.3054,
+        "pending": 0
+      },
+      "after_index": {
+        "dashboard": 1.1082,
+        "upload": 0.1746,
+        "return": 0.3023,
+        "reports": 0.1357,
+        "tools": 0.0019,
+        "cases": 0.0012,
+        "plans": 0.0016,
+        "rules": 0.0013,
+        "branches": 0.0034,
+        "health": 0.0015
+      },
+      "async_export": {
+        "seconds": 4.003,
+        "rows": 11111,
+        "steps": 112,
+        "max_step_seconds": 0.0693
+      }
+    },
+    "stats": {
+      "RAW": 40000,
+      "MANAGER_HELD": 30000,
+      "CONSUMED": 30000,
+      "LOCKED": 0,
+      "INVALID": 0,
+      "DUPLICATE": 0,
+      "PENDING": 0
+    },
+    "source_checksums_unchanged": true,
+    "peak_memory_bytes": 62013440
+  },
+  "volume_assertions": 25,
+  "volume_operational_lookup_indexes_removed": true,
+  "volume_full_request_seconds": {
+    "dashboard": 2.2232634199999666,
+    "upload": 0.9803049700003612,
+    "return": 0.8513757689997874,
+    "reports": 0.8630193460003284,
+    "tools": 0.5634585469997546,
+    "cases": 0.5428362669999842,
+    "plans": 0.560213804000341,
+    "rules": 0.5316693320000923,
+    "branches": 0.5341752089998408,
+    "health": 0.5462854299994433
+  },
+  "php_lint": {
+    "files": 61,
+    "failures": []
+  },
+  "javascript_syntax": "passed",
+  "live_customer_site_verified": false,
+  "screenshots_not_distributed": true
+}

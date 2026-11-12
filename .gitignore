@@ -1,0 +1,32 @@
+# Local WordPress installations, secrets and operational data
+.env
+.env.*
+!.env.example
+wp-config.php
+wp-content/
+wordpress/
+uploads/
+backups/
+*.sql
+*.sql.gz
+*.sqlite
+*.sqlite3
+*.pem
+*.key
+*.p12
+*.pfx
+*.log
+!docs/MIS-QA-2.0.191.log
+# Dependency trees, tooling and generated artifacts
+/vendor/
+/node_modules/
+/.tools/
+/build/
+/dist/
+/test-results/
+/coverage/
+__pycache__/
+*.pyc
+.DS_Store
+.idea/
+.vscode/

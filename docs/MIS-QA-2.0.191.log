@@ -1,0 +1,64 @@
+WordPress 6.8.3 embedded 10.11.7-MariaDB
+PASS preview has no operational writes
+PASS 500 import commit
+PASS TC-01 initial assignment is not consumption
+PASS reimport preserves ids manager and distribution
+PASS TC-02 partial consumption
+PASS TC-03 only 300 unused records returned
+PASS TC-04 reassignment
+PASS TC-10 800 assignment events 500 unique numbers
+PASS TC-05 historical branch snapshot
+PASS TC-06 operational status blocks return without invoice
+PASS TC-09 virtual invoice blocks even when cancelled
+PASS TC-09 real lead locks row
+PASS failed event insert raises error
+PASS SQL failure rolls back ownership and history
+PASS identity edit blocked on held data
+PASS controlled edit appends before/after history
+PASS unknown historical assignment is fail-closed
+PASS pool plus direct item blocks ambiguous return
+PASS TC-07 competing connection cannot acquire assignment lock
+PASS immutable consumed event survives a reset of legacy fields and logs
+PASS duplicate old identities advertise only one assignable canonical record
+PASS a duplicate historical row cannot create another owner
+PASS orphan legacy rows remain visible in reports and locked
+PASS a missing batch header cannot be bypassed by posting a row id
+WordPress 6.8.3 embedded 10.11.7-MariaDB
+PASS CSV mapping preserves source code names datetime and Persian phone
+PASS legacy CSV template remains readable
+PASS inactive profile with legacy MIS role is denied
+PASS active MIS profile permitted
+PASS inactive user meta overrides active profile
+PASS render dashboard without runtime error
+PASS render upload without runtime error
+PASS render return without runtime error
+PASS render reports without runtime error
+PASS streamed XLSX written
+PASS source row ids do not accidentally exclude a distribution item
+DONE
+WordPress 6.8.3 embedded 10.11.7-MariaDB
+PASS 5101-row import completes without the old 5000-row truncation
+PASS SQL manager filter finds a row after the first 1200
+PASS TC-07 full assign operation is rejected while the other connection holds the lock
+PASS TC-07 same preview cannot assign to two managers
+PASS TC-08 consumption after return preview wins; consumed row never becomes RAW
+PASS all 5101 filtered rows exported across pages
+PASS additive setup is idempotent and preserves old row bytes
+PASS unsafe storage engine is rejected without mutation
+WordPress 6.8.3 embedded 10.11.7-MariaDB
+PASS virtual invoices counted once per invoice, conversion counts one row and remains 100%
+PASS archival preserves all row/item/event/plan bytes
+WordPress 6.8.3 embedded 10.11.7-MariaDB
+PASS export snapshot initial count
+PASS export snapshot stays consistent while a writer commits on another connection
+PASS writer is visible after the read snapshot ends
+PASS unused invalid identity can be corrected with immutable before/after history
+PASS archived free records cannot be allocated
+WordPress 6.8.3 embedded 10.11.7-MariaDB
+PASS legacy hold-only assignment is preserved without creating a second delivery path
+PASS unreserved legacy pool can still enter a distribution plan
+PASS active plan reservation cannot be allocated to a second plan
+PASS reserved plan source cannot also be delivered through the pool
+PASS authorized old approved plan remains executable
+PASS legacy plan creates one lead and records irreversible consumption
+PASS lead created by the advanced plan cannot be returned

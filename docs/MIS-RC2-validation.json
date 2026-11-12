@@ -1,0 +1,112 @@
+{
+  "release": "2.0.192-mis-performance-rc2",
+  "date": "2026-11-01",
+  "cli": {
+    "exit_code": 0,
+    "passed_assertions": 76,
+    "elapsed_seconds": 32.475,
+    "php": "8.3.6",
+    "wordpress": "6.8.3",
+    "database": "embedded MariaDB 10.11.7 / InnoDB"
+  },
+  "http": [
+    {
+      "script": "test_endpoints.py",
+      "exit_code": 0,
+      "passed_assertions": 8,
+      "elapsed_seconds": 15.387
+    },
+    {
+      "script": "test_chain.py",
+      "exit_code": 0,
+      "passed_assertions": 4,
+      "elapsed_seconds": 7.284
+    },
+    {
+      "script": "test_approval_failure.py",
+      "exit_code": 0,
+      "passed_assertions": 2,
+      "elapsed_seconds": 4.948
+    },
+    {
+      "script": "test_uploaded_xlsx.py",
+      "exit_code": 0,
+      "passed_assertions": 1,
+      "elapsed_seconds": 0.636
+    },
+    {
+      "script": "test_export_endpoint.py",
+      "exit_code": 0,
+      "passed_assertions": 1,
+      "elapsed_seconds": 0.716
+    },
+    {
+      "script": "test_job_endpoints.py",
+      "exit_code": 0,
+      "passed_assertions": 4,
+      "elapsed_seconds": 4.16
+    }
+  ],
+  "volume": {
+    "fixture": {
+      "rows": 100000,
+      "distribution_items": 100000,
+      "item_logs": 100000,
+      "events": 50000,
+      "leads": 10000,
+      "invoices": 120000,
+      "creation_seconds": 4.816
+    },
+    "timings": {
+      "before_index": {
+        "dashboard": 0.6708,
+        "upload": 0.1113,
+        "return": 0.1836,
+        "reports": 0.0915,
+        "tools": 0.0211
+      },
+      "index": {
+        "seconds": 19.285,
+        "steps": 1000,
+        "max_step_seconds": 0.3162,
+        "pending": 0
+      },
+      "after_index": {
+        "dashboard": 1.0764,
+        "upload": 0.3133,
+        "return": 0.4991,
+        "reports": 0.4007,
+        "tools": 0.47
+      },
+      "async_export": {
+        "seconds": 1.981,
+        "rows": 11111,
+        "steps": 112,
+        "max_step_seconds": 0.0476
+      }
+    },
+    "stats": {
+      "RAW": 40000,
+      "MANAGER_HELD": 30000,
+      "CONSUMED": 30000,
+      "LOCKED": 0,
+      "INVALID": 0,
+      "DUPLICATE": 0,
+      "PENDING": 0
+    },
+    "source_checksums_unchanged": true,
+    "peak_memory_bytes": 64110592
+  },
+  "php_lint": {
+    "files": 56,
+    "failures": []
+  },
+  "javascript_syntax": "passed",
+  "rc1_statistics_probe": {
+    "exit_code": 124,
+    "external_timeout_seconds": 5,
+    "completed": false
+  },
+  "live_site_verified": false,
+  "browser_layout_verified": false
+}

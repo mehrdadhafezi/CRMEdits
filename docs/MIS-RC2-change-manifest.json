@@ -1,0 +1,113 @@
+{
+  "release": "2.0.192-mis-performance-rc2",
+  "baseline": "2.0.191-mis-redesign-rc1",
+  "baseline_package_sha256": "4ea9bcf0ec6abd21fde6a120159b861fcd1b55716acdf34aa889d8f1a8a8d7aa",
+  "changes": [
+    {
+      "path": "CHANGELOG-2.0.192.md",
+      "change": "added",
+      "sha256": "6420c583b4b633d83f10f7ee8281aa2b230f9dcf1e023371a9bae24f2dab5404"
+    },
+    {
+      "path": "assets/css/mis-portal.css",
+      "change": "modified",
+      "before_sha256": "d4f77ae52e255287d3e3e32b27018ee66c8cbf8919a464258248994f872cfa4e",
+      "sha256": "ef9cf1eb63ba4cbc60cc68dee15ae6782edeaa898e840d93dc88945ee2b7af16"
+    },
+    {
+      "path": "assets/js/mis-portal.js",
+      "change": "modified",
+      "before_sha256": "44a59b1eaf81c984f4d669d5dfef2a074f5cca7ce5d954fec97dba48a812da57",
+      "sha256": "c7112dd1d1c132c71d1f23485ec5dc451d11fed07f3180f3658450d8b24ef267"
+    },
+    {
+      "path": "docs/MIS-RC2-guide-fa.md",
+      "change": "added",
+      "sha256": "25fadad7ea885c06dbe20af993d38f3682ff23f8838ca63f4432bc25b37bee9a"
+    },
+    {
+      "path": "docs/MIS-RC2-validation.json",
+      "change": "added",
+      "sha256": "de435387a0d79f69b5b33d2d16f6f8fffe6ca489083cf675b94dec55d1bfe24d"
+    },
+    {
+      "path": "includes/class-sn-mis-jobs.php",
+      "change": "added",
+      "sha256": "af54c183d22f15076c6602f668423c1b30c5275c58f8eaf4f39f046ba451fd11"
+    },
+    {
+      "path": "includes/class-sn-mis-read-model.php",
+      "change": "added",
+      "sha256": "c756fbea21a06a073ec881720591d43aee5341c3dd4782e2627bb28f40790751"
+    },
+    {
+      "path": "includes/class-sn-mis-service.php",
+      "change": "modified",
+      "before_sha256": "d5cbe4c237546b8fb73cb22966e792968ba1d777dc479c0802fa7c32ce98e010",
+      "sha256": "eb7c5f424f2c6ac6013e11207b4590d61f7e964a07717726ef7e8ba98eed8b85"
+    },
+    {
+      "path": "includes/class-sn-mis-xlsx.php",
+      "change": "modified",
+      "before_sha256": "1db4f50a3200d4af58f48be23e606fb3bf06f6f0e8b9c2eb8c8c1383ec269b7b",
+      "sha256": "f4d3c69f25e4ad879ad27033e2b1bc1505d2f3dc3e2bb46b53dd4ba55f690478"
+    },
+    {
+      "path": "includes/trait-sn-mis-extras.php",
+      "change": "added",
+      "sha256": "9e07669779d11d8cdcddd959c81377c34fe7579507099ec6ac2ecbdfdc55c2bf"
+    },
+    {
+      "path": "includes/trait-sn-mis-portal.php",
+      "change": "modified",
+      "before_sha256": "8b0f539b678a447ca2d2b2231bc91b904d39347408f794bf50de60b81f74751c",
+      "sha256": "8efec550499e590a9f115d775022cfd2b285235eeb484b92d8236350c0145edd"
+    },
+    {
+      "path": "sales-network.php",
+      "change": "modified",
+      "before_sha256": "c83b5e4c59194b32a028d197174a9c13b85f0b9286e2032f1df7e3ffd4926805",
+      "sha256": "006dfe26c3dd21c184af0e08e5ffba78eba0555dbe50b2ad2cd3362a476a59cf"
+    },
+    {
+      "path": "tests/mis/README.md",
+      "change": "modified",
+      "before_sha256": "263a876ce3af98a819eefef50903e1a66507e95128e633177d9eb1a51458a90d",
+      "sha256": "1fcc4778f281c856930538e6f3e8bcac2a04e3f335c667575aecb9265055a076"
+    },
+    {
+      "path": "tests/mis/bootstrap.php",
+      "change": "modified",
+      "before_sha256": "60e02355e082936a83cf057556972518c14f99cdf690f21b08d4596410f755ea",
+      "sha256": "cacc78a968f4cf04fff63c074d58d75199f42ea06f7997f008c477b4488e78f5"
+    },
+    {
+      "path": "tests/mis/core.php",
+      "change": "modified",
+      "before_sha256": "2f5a7d599b58763c44f14e029cdbfca6d41935ba1b63612830f0e81b37fdf72b",
+      "sha256": "06dcfba4e91635d065debc69e089cc13fbd0535bb64253af404a8d1c2ea33a0d"
+    },
+    {
+      "path": "tests/mis/jobs-and-cache.php",
+      "change": "added",
+      "sha256": "cad13b12c70b208549ed6d2adfade8f8adc211d89d56cc17d2ffbd6ecbc135ff"
+    },
+    {
+      "path": "tests/mis/performance-volume.php",
+      "change": "added",
+      "sha256": "d859097dbf7209672baf02dde7b8e58d9ed33fff4081dec85224a47a0d991458"
+    },
+    {
+      "path": "tests/mis/phone-invoice-and-indexes.php",
+      "change": "added",
+      "sha256": "5df0e81641a6b2086b863e1edf428a6cf2f11eb6ea6f9d3386061c2f3b743676"
+    },
+    {
+      "path": "tests/mis/run-all.php",
+      "change": "modified",
+      "before_sha256": "b7eafebb3b62e12056c7aac1b11b97b0a15670d48268831ddefe4817b6d71ae2",
+      "sha256": "ad75959b8fe34c71f6747ce6ef5421f397f99a81d78f1b073c9d68c67a922e73"
+    }
+  ],
+  "removed": []
+}

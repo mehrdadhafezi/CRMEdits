@@ -1,0 +1,119 @@
+{
+  "baseline": "2.0.190.1-after-sales-log-fix-dev",
+  "release": "2.0.191-mis-redesign-rc1",
+  "files": [
+    {
+      "file": "assets/css/mis-portal.css",
+      "change": "added"
+    },
+    {
+      "file": "assets/js/mis-portal.js",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-AUDIT-2.0.190.1-fa.md",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-CHANGES-2.0.191.json",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-IMPLEMENTATION-2.0.191-fa.md",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-INSTALL-ROLLBACK-2.0.191.md",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-QA-2.0.191.json",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-QA-2.0.191.log",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-SOURCE-SHA256SUMS-2.0.191.txt",
+      "change": "added"
+    },
+    {
+      "file": "docs/MIS-STATE-MAP-2.0.191.md",
+      "change": "added"
+    },
+    {
+      "file": "docs/mis-safe-mode.mu-plugin.php.example",
+      "change": "added"
+    },
+    {
+      "file": "includes/class-sn-mis-service.php",
+      "change": "added"
+    },
+    {
+      "file": "includes/class-sn-mis-xlsx.php",
+      "change": "added"
+    },
+    {
+      "file": "includes/class-sn-plugin.php",
+      "change": "modified"
+    },
+    {
+      "file": "includes/trait-sn-mis-portal.php",
+      "change": "added"
+    },
+    {
+      "file": "sales-network.php",
+      "change": "modified"
+    },
+    {
+      "file": "tests/mis/README.md",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/advanced-plans.php",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/bootstrap.php",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/conversion-and-history.php",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/core.php",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/fixtures/blank-cell.xlsx",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/fixtures/legacy.csv",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/fixtures/new.csv",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/large-and-races.php",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/roles-and-render.php",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/run-all.php",
+      "change": "added"
+    },
+    {
+      "file": "tests/mis/snapshots-and-edit.php",
+      "change": "added"
+    }
+  ],
+  "removed": []
+}
