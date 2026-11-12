@@ -1,5 +1,8 @@
 # CRM Engineering Governance — R2 Readiness Report
 
+> سابقه ممیزی R2: وضعیت‌ها مربوط به زمان تهیه این گزارش و پیش از ادغام اولیه‌اند.
+> مالک سپس ادغام سورس و مستندات را صریحاً مجاز کرد؛ مرجع فعلی کار تیمی [Handbook](docs/DEVELOPER_HANDBOOK.md) و شاخه main است.
+
 تاریخ بررسی: 2026-11-12، منطقه زمانی Asia/Tehran؛ زمان دقیق مشاهده در
 [شواهد GitHub](docs/audit/r2/GITHUB_REVIEW_EVIDENCE.json) ثبت شده است.
 

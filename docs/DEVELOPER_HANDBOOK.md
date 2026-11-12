@@ -1,13 +1,14 @@
 # CRM Engineering Handbook — Codex & GitHub Development Standard
 
-نسخه R1، 2026-11-12. این سند برای تمام توسعه‌دهندگان انسانی، Codex و Claude مشترک
+راهنمای اصلی توسعه تیمی، 2026-11-12. این سند برای تمام توسعه‌دهندگان انسانی، Codex و Claude مشترک
 است. مخزن رسمی [mehrdadhafezi/CRMEdits](https://github.com/mehrdadhafezi/CRMEdits)
 Private است. افزونه موجود «شبکه فروش» با مبنای ZIP تأییدشده مالک نسخه 2.0.235 توسعه
 می‌یابد. مقایسه مستقیم با Production در این مأموریت انجام نشده است.
 
-یادداشت محدود R2: در مبنای `d037fe8…`، PR شماره ۱ هنوز Merge نشده و main فقط
-BOOTSTRAP.md دارد. شروع کار تیمی منوط به رفع موانع review و بررسی محافظت در
-[گزارش آمادگی R2](../R2_READINESS_REPORT.md) است؛ CI سبز به‌تنهایی این آمادگی را ثابت نمی‌کند.
+مرجع مشترک سورس و مستندات، شاخه **main** همین مخزن است. هر توسعه‌دهنده برای
+هر تسک روی Branch خودش کار می‌کند؛ تغییر مستقیم روی main و Force Push شاخه مشترک
+مجاز نیست. اسناد ممیزی R1 و R2 وضعیت زمان تهیه خود را ثبت کرده‌اند؛ راهنمای روزمره
+تیم همین فایل است. دریافت یا Merge کد در GitHub، سایت و دیتابیس عملیاتی را تغییر نمی‌دهد.
 
 ## 1. پروژه و هدف
 
@@ -15,17 +16,29 @@ BOOTSTRAP.md دارد. شروع کار تیمی منوط به رفع موانع 
 تحویل می‌شود. هدف حفظ فرآیند و داده فعلی CRM است. کپی شخصی و ZIP ارسالی جایگزین
 سورس مشترک نیست. Merge کد روی GitHub به‌خودی‌خود افزونه نصب‌شده سایت را آپدیت نمی‌کند.
 
+فرآیند ساده هر تسک:
+
+**دریافت تسک → ساخت Branch → توسعه با Codex یا Claude → تست → Commit → Push → Pull Request → بررسی → Merge**
+
+توسعه‌دهنده تغییرات مرتبط را روی Branch خودش تحویل می‌دهد. مالک مخزن یا فرد مجاز
+پس از بررسی PR و نتیجه تست‌ها، تغییر را Merge می‌کند؛ سپس همه برای تسک بعدی main
+را به‌روز می‌کنند. Merge یا انتشار خودکار از prompt ثابت Agent برداشت نشود.
+
 ## 2. پیش‌نیازها
 
 حساب GitHub شخصی با دعوت پذیرفته‌شده، Git، Python 3.10+، PHP CLI، Node.js و دسترسی
 به Codex یا Claude Code لازم است. برای تست runtime، WordPress و DB مستقل ساختگی
 با نسخه‌های مصوب و provider خاموش لازم است. هیچ credential مشترکی از مالک نگیرید.
 
+برای دعوت بعدی، مالک در GitHub به Settings → Collaborators → Add people می‌رود،
+حساب GitHub واقعی فرد را انتخاب و دعوت می‌کند. فرد پس از پذیرش دعوت، با حساب و
+credential شخصی خودش clone و push می‌کند. نام حساب یا رمز مشترک بین افراد استفاده نشود.
+
 ## 3. دریافت سورس و محیط
 
 [LOCAL_SETUP.md](LOCAL_SETUP.md) را کامل بخوانید. ریشه repo خود پوشه افزونه است؛
 فایل اصلی `sales-network.php` و مسیر نصب `wp-content/plugins/sales-network-v4/` است.
-بعد از وجود main و Merge ورود اولیه:
+برای دریافت نسخه مشترک فعلی از main، در پوشه جدید:
 
 ```bash
 git clone https://github.com/mehrdadhafezi/CRMEdits.git
@@ -35,25 +48,16 @@ git pull --ff-only origin main
 python3 scripts/check.py all
 ```
 
-برای دریافت سورس صرفاً جهت بررسی **پیش از Merge اولیه**، به‌جای clone پیش‌فرض main،
-در یک پوشه جدید و با همان پیش‌نیازهای ابزار اجرا کنید:
+قبل از تغییر، نسخه و آخرین commit را بررسی کنید:
 
 ```bash
-git clone --branch docs/crm-engineering-standard-r1 --single-branch https://github.com/mehrdadhafezi/CRMEdits.git
-cd CRMEdits
-git rev-parse HEAD
-python3 scripts/check.py all
+git log -1 --oneline
+git status --short --branch
 ```
 
-SHA مبنای بررسی R2 برابر `d037fe8bde4aadbb189c055114683fccf22bb0dc` است؛ branch ممکن
-است در آینده تغییر کند و SHA جدید باید با مبنای مصوب همان تسک تطبیق داده شود.
-تا Merge ورود اولیه و رفع موانع آمادگی، مثال‌های main در بخش‌های ۸، ۱۵ و ۲۴ را
-برای شروع تغییر عملیاتی به کار نبرید. تسک بررسی با مبنای صریح مالک می‌تواند شاخه
-مستقل از همان SHA داشته باشد؛ base وابسته و استثنای آن باید در PR روشن ثبت شود.
-
-پیش از Merge اولیه، سورس تحویلی روی `docs/crm-engineering-standard-r1` است؛ وضعیت
-تاریخی R1 در [گزارش تحویل](audit/FINAL_HANDOVER.md) و بررسی تازه در گزارش R2 است. در محیط توسعه، داده
-مشتری، سایت عملیاتی و SMS/درگاه واقعی استفاده نشود. activation/init بی‌اثر نیست.
+نسخه مبنای افزونه **2.0.235** است. محیط توسعه باید داده ساختگی داشته باشد؛ activation
+و init افزونه می‌توانند جدول، Role یا داده ایجاد/اصلاح کنند. سایت عملیاتی، دیتابیس
+مشتری، SMS یا درگاه واقعی را برای توسعه و تست استفاده نکنید.
 
 ## 4. استفاده از Codex و Claude
 
@@ -74,8 +78,8 @@ SHA مبنای بررسی R2 برابر `d037fe8bde4aadbb189c055114683fccf22bb0d
 از [فهرست ۲۰ قرارداد](modules/README.md) وارد ماژول شوید. بخش ۲ مسیر/متد، بخش ۷ داده،
 بخش ۸ تست و بخش ۹ interface را نشان می‌دهد. [معماری](ARCHITECTURE.md)،
 [فهرست hookها](audit/HOOK_API_INDEX.md) و [نمادهای سورس](audit/SOURCE_SYMBOLS.json)
-برای جستجو هستند؛ function body و caller را خودتان بخوانید. مالک انسانی تخصصی
-فعلاً UNASSIGNED است؛ مالک مخزن @mehrdadhafezi است.
+برای جستجو هستند؛ function body و caller را خودتان بخوانید. اگر محدوده یا مسئول
+بررسی روشن نیست، آن را در همان تسک با مالک مخزن مشخص کنید.
 
 ## 7. دریافت تسک
 
@@ -152,10 +156,10 @@ gh pr create --base main --head docs/123-clarify-handbook --title "docs(handbook
  reviewer واقعی تعیین شود؛ دست‌کم یک approval مستقل و review مالک نقاط حساس لازم
 است. نویسنده نمی‌تواند خودش approve کند. درخواست review خودکار را برای حساب فرضی نفرستید.
 
-در CODEOWNERS فعلی تنها مالک مخزن ثبت شده است؛ PR نویسنده مالک با خودتأییدی
-یا صرف معرفی یک reviewer غیر-Code-Owner این الزام را حل نمی‌کند. همچنین CODEOWNERS
-از base خوانده می‌شود و main اولیه هنوز آن را ندارد. قبل از ادعای الزام فنی review،
-[مالک و جانشین مستقل](readiness/R2_REVIEW_OWNERSHIP.md) و تنظیمات واقعی تعیین/بررسی شوند.
+PR باید خلاصه تغییر، نتیجه تست، فایل‌های متأثر و ریسک را روشن کند. مالک مخزن یا
+reviewer مجاز آن را بررسی می‌کند و پس از تأیید، فرد مجاز Merge می‌کند. وجود
+CODEOWNERS به‌تنهایی نشانه اعمال Branch Protection نیست؛ هیچ تنظیم امنیتی تازه‌ای
+برای این نهایی‌سازی ایجاد نشده است.
 
 ## 16. پاسخ به Code Review
 
