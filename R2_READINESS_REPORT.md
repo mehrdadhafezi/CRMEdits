@@ -186,7 +186,11 @@ force-push/deletion/bypass، Actions permission و مدل CODEOWNERS را برر
 | [Local validation](docs/audit/r2/LOCAL_VALIDATION.json) | PASS | نتایج واقعی کنترل محلی؛ تست Production ندارد |
 | [Runtime manifest](docs/audit/r2/RUNTIME_SHA256SUMS-2.0.235.txt) | PASS | hash از Git ثابت و همه 116 فایل زمان اجرا |
 
-PR مستقل R2 با base شاخه R1 فقط برای diff محدود review باز می‌شود؛ **نباید بدون
+تحویل مستقل: [PR شماره ۲](https://github.com/mehrdadhafezi/CRMEdits/pull/2)، Draft،
+base=`docs/crm-engineering-standard-r1` و head=`docs/crm-r2-readiness-review`.
+این PR فقط 12 فایل R2 را پوشش می‌دهد؛ فایل‌ها/شاخه PR #1 و main تغییر نکرده‌اند.
+
+PR مستقل R2 با base شاخه R1 فقط برای diff محدود review باز شده است؛ **نباید بدون
 هماهنگی در شاخه PR #1 Merge شود**. پس از Merge مجاز PR #1، اگر ancestry حفظ شده
 باشد می‌توان base را به main تغییر داد و diff/CI را دوباره بررسی کرد. اگر squash یا
 rebase ancestry را عوض کرد، branch جدید از main و انتقال فقط commitهای R2 با review
@@ -197,6 +201,13 @@ workflow فعلی PR-trigger برای base غیرmain ندارد؛ push شاخه
 نتیجه validation محلی R2 از نتیجه CI مبنای PR #1 جدا ثبت می‌شود. در همین R2،
 parser همه 77 PHP و 32 JS، بررسی 2,471 لینک نسبی/تیترهای قرارداد، hygiene، اسکن
 Secret و نمونه offline SHA256 موفق بودند؛ هیچ runtime suite وردپرس اجرا نشد.
+
+| کنترل تحویل R2 | وضعیت | شاهد و محدودیت |
+|---|---|---|
+| commit/push شاخه مستقل و PR جدا | PASS | PR #2 باز و Draft؛ PR #1 Head همان SHA مبنا مانده است |
+| validation محلی R2 | PASS | خروجی واقعی در LOCAL_VALIDATION.json و اسکن history پیش از push |
+| مشاهده نتیجه push-run شاخه R2 | BLOCKED | connector فقط PR-run را فیلتر می‌کند و legacy statuses=[] بود؛ CLI/API و مرورگر قابل استفاده نیستند؛ نتیجه اجرا از خروجی خالی استنباط نشده |
+| runtime/Production و اقدامات امنیتی | NOT_RUN | ممنوعیت صریح مأموریت؛ این ردیف به معنی تست موفق نیست |
 
 ## 10. پاسخ نهایی آمادگی
 
