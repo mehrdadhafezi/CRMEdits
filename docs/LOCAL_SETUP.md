@@ -24,7 +24,7 @@ Header حداقل WordPress 6.0 و PHP 8.0 را اعلام می‌کند. نسخ
 Production از این سند استنباط نشود. برای تست قابل تکرار بعدی، provisioner محلی با
 نسخه‌های مصوب به‌عنوان تسک مستقل اضافه شود (PROPOSED).
 
-دریافت سورس، با main موجود و منتشرشده:
+دریافت سورس، فقط **پس از Merge ورود اولیه به main**؛ وجود main با BOOTSTRAP.md کافی نیست:
 
 ```bash
 git clone https://github.com/mehrdadhafezi/CRMEdits.git
@@ -35,7 +35,9 @@ python3 scripts/check.py all
 ```
 
 پیش از Merge ورود اولیه، branch `docs/crm-engineering-standard-r1` را به‌طور صریح
-checkout کنید. این branch نسخه رسمی main تا قبل از approval/merge نیست.
+checkout کنید؛ دستور clone همین branch در [Handbook](DEVELOPER_HANDBOOK.md) آمده است.
+این branch نسخه رسمی main تا قبل از approval/merge نیست و امکان review آن مجوز
+شروع تغییر عملیاتی پیش از رفع موانع [R2](../R2_READINESS_REPORT.md) نیست.
 
 بسته محلی از checkout تمیز و commitشده:
 

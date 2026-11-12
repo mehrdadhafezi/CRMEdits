@@ -5,6 +5,10 @@
 Private است. افزونه موجود «شبکه فروش» با مبنای ZIP تأییدشده مالک نسخه 2.0.235 توسعه
 می‌یابد. مقایسه مستقیم با Production در این مأموریت انجام نشده است.
 
+یادداشت محدود R2: در مبنای `d037fe8…`، PR شماره ۱ هنوز Merge نشده و main فقط
+BOOTSTRAP.md دارد. شروع کار تیمی منوط به رفع موانع review و بررسی محافظت در
+[گزارش آمادگی R2](../R2_READINESS_REPORT.md) است؛ CI سبز به‌تنهایی این آمادگی را ثابت نمی‌کند.
+
 ## 1. پروژه و هدف
 
 همه از یک Git history و main مصوب کار می‌کنند؛ هر تغییر با Issue، branch، تست و PR
@@ -31,8 +35,24 @@ git pull --ff-only origin main
 python3 scripts/check.py all
 ```
 
+برای دریافت سورس صرفاً جهت بررسی **پیش از Merge اولیه**، به‌جای clone پیش‌فرض main،
+در یک پوشه جدید و با همان پیش‌نیازهای ابزار اجرا کنید:
+
+```bash
+git clone --branch docs/crm-engineering-standard-r1 --single-branch https://github.com/mehrdadhafezi/CRMEdits.git
+cd CRMEdits
+git rev-parse HEAD
+python3 scripts/check.py all
+```
+
+SHA مبنای بررسی R2 برابر `d037fe8bde4aadbb189c055114683fccf22bb0dc` است؛ branch ممکن
+است در آینده تغییر کند و SHA جدید باید با مبنای مصوب همان تسک تطبیق داده شود.
+تا Merge ورود اولیه و رفع موانع آمادگی، مثال‌های main در بخش‌های ۸، ۱۵ و ۲۴ را
+برای شروع تغییر عملیاتی به کار نبرید. تسک بررسی با مبنای صریح مالک می‌تواند شاخه
+مستقل از همان SHA داشته باشد؛ base وابسته و استثنای آن باید در PR روشن ثبت شود.
+
 پیش از Merge اولیه، سورس تحویلی روی `docs/crm-engineering-standard-r1` است؛ وضعیت
-انتشار را در [گزارش تحویل](audit/FINAL_HANDOVER.md) بررسی کنید. در محیط توسعه، داده
+تاریخی R1 در [گزارش تحویل](audit/FINAL_HANDOVER.md) و بررسی تازه در گزارش R2 است. در محیط توسعه، داده
 مشتری، سایت عملیاتی و SMS/درگاه واقعی استفاده نشود. activation/init بی‌اثر نیست.
 
 ## 4. استفاده از Codex و Claude
@@ -132,6 +152,11 @@ gh pr create --base main --head docs/123-clarify-handbook --title "docs(handbook
  reviewer واقعی تعیین شود؛ دست‌کم یک approval مستقل و review مالک نقاط حساس لازم
 است. نویسنده نمی‌تواند خودش approve کند. درخواست review خودکار را برای حساب فرضی نفرستید.
 
+در CODEOWNERS فعلی تنها مالک مخزن ثبت شده است؛ PR نویسنده مالک با خودتأییدی
+یا صرف معرفی یک reviewer غیر-Code-Owner این الزام را حل نمی‌کند. همچنین CODEOWNERS
+از base خوانده می‌شود و main اولیه هنوز آن را ندارد. قبل از ادعای الزام فنی review،
+[مالک و جانشین مستقل](readiness/R2_REVIEW_OWNERSHIP.md) و تنظیمات واقعی تعیین/بررسی شوند.
+
 ## 16. پاسخ به Code Review
 
 هر نکته را با تغییر یا دلیل فنی پاسخ دهید. commit جدید روی همان branch push شود؛
@@ -221,7 +246,7 @@ git push -u origin HEAD
 ```text
 روی همین checkout از mehrdadhafezi/CRMEdits تسک زیر را انجام بده.
 ابتدا AGENTS.md و docs/DEVELOPER_HANDBOOK.md و قرارداد ماژول مرتبط را بخوان.
-Git status، remote، branch، تغییرات ثبت‌نشده و آخرین main مصوب را بررسی کن.
+Git status، remote، branch، تغییرات ثبت‌نشده و مبنای صریح تسک یا آخرین main مصوب را بررسی کن.
 تسک، معیار پذیرش، مسیرهای مجاز/ممنوع و API/DB/Role/security impact را تحلیل کن.
 اگر کار مستقل و مجاز است ادامه بده؛ ابهام حساس را با شاهد گزارش کن.
 برای همین Issue branch اختصاصی بساز؛ تغییرات دیگران را حفظ کن.
@@ -231,7 +256,8 @@ Git status، remote، branch، تغییرات ثبت‌نشده و آخرین ma
 Syntax، docs، hygiene، Secret scan و تست معنادار رفتار را اجرا کن.
 PASS فقط برای تست اجراشده؛ موارد دیگر را NOT_RUN/BLOCKED با دلیل گزارش کن.
 Diff و staged files را بازبینی و اسناد مرتبط را به‌روز کن.
-Commit روشن بساز، فقط branch خودت را push و PR به main با قالب استاندارد ایجاد کن.
+Commit روشن بساز، فقط branch خودت را push و PR به base مصوب تسک (معمولاً main)
+با قالب استاندارد ایجاد کن؛ وابستگی به PR دیگر را روشن بنویس و شاخه آن را تغییر نده.
 در گزارش نهایی تغییر، دلیل، تست، ریسک، rollback، branch/commit/PR و مانع‌ها را بده.
 این prompt مجوز merge، direct main push، force push مشترک یا deployment نمی‌دهد.
 
