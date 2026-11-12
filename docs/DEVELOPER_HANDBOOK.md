@@ -127,8 +127,35 @@ DDL کد، schema واقعی سرور نیست. PK/index با relation منطق�
 
 `python3 scripts/check.py all` و تست معنادار رفتار تغییرکرده اجرا شود؛ Secret scan
 worktree و history نیز طبق [TESTING_STANDARDS.md](TESTING_STANDARDS.md) لازم است.
-MIS/payment fixtures نیازمند WordPress ایزوله‌اند. PASS فقط برای تست اجراشده است؛
-NOT_RUN/BLOCKED و دلیل را بنویسید. CI عمومی تست مالی/DB/UI را تضمین نمی‌کند.
+پس از هر تغییر کد، اصلاح Review یا حل conflict، تست امنیتی، عملکردی و رگرسیون
+مرتبط دوباره اجرا شود. فقط مسیر جدید کافی نیست؛ callerها، helper مشترک و ماژول‌های
+وابسته و متأثر، از دسترسی/MIS تا فاکتور/پرداخت/کیف پول/پورسانت/HR/گزارش/API بررسی شوند.
+برای رفتار جدید یا باگ اصلاح‌شده، در صورت امکان regression دارای assertion اضافه کنید.
+
+MIS/payment fixtures نیازمند WordPress/DB کاملاً ایزوله، disposable و داده ساختگی‌اند.
+هیچ تست مخرب یا تغییر داده روی Production مجاز نیست. PASS فقط برای بررسی اجراشده
+است؛ N/A به دلیل نامرتبط‌بودن همان کنترل با همین تغییر نیاز دارد. نبود زیرساخت تست
+ضروری BLOCKED/NOT_RUN است، نه N/A. CI عمومی سلامت کل CRM یا تست مالی/DB/UI را تضمین نمی‌کند.
+
+### Pre-PR — قبل از ایجاد PR و هر Push اصلاحی
+
+1. همه فایل‌های تغییرکرده و Diff کامل نسبت به base مصوب، staged/unstaged و فایل‌های
+   جدید را با تسک مقایسه کنید؛ formatting، حذف و تغییر تصادفی را شناسایی کنید.
+2. تغییر خارج از scope خودتان را اصلاح کنید؛ کار دیگران را خودسرانه حذف/reset نکنید.
+   اثر بر API، DB، Roles، Permissions و Business Logic را ثبت کنید.
+3. Syntax و کنترل docs/repository hygiene را با `python3 scripts/check.py all` اجرا کنید.
+4. Gitleaks را برای worktree و history طبق Security Policy اجرا کنید.
+5. برای هر کنترل امنیتی مرتبط در ماتریس Testing Standards، سناریوی مثبت/منفی اجرا
+   و شاهد ثبت کنید؛ برای هر کنترل نامرتبط دلیل N/A بنویسید.
+6. عملکرد قابلیت و regression مسیرهای وابسته را با تست‌های موجود/جدید اجرا کنید؛
+   شکاف زیرساخت یا coverage را با دلیل صریح ثبت کنید.
+7. Diff نهایی و staged files را دوباره بخوانید؛ قرارداد بدون مجوز تغییر نکند و
+   تغییر جدیدی پس از آخرین تست مرتبط بدون آزمون باقی نماند.
+8. جدول `Test | Status | Evidence` را طبق قالب PR تکمیل و وضعیت آمادگی را اعلام کنید.
+
+تست ضروری FAIL، BLOCKED یا NOT_RUN مانع READY FOR REVIEW است. اگر برای بررسی مانع
+PR لازم است، فقط Draft با توضیح روشنِ کامل‌نبودن تست‌ها بسازید؛ با ادعای اطمینان
+یا سبز بودن lint آن را Ready نکنید.
 
 ## 13. Commit
 
@@ -161,6 +188,31 @@ reviewer مجاز آن را بررسی می‌کند و پس از تأیید، �
 CODEOWNERS به‌تنهایی نشانه اعمال Branch Protection نیست؛ هیچ تنظیم امنیتی تازه‌ای
 برای این نهایی‌سازی ایجاد نشده است.
 
+### Pre-Merge — پس از Push و GitHub Actions
+
+این مرحله را فقط فرد دارای مجوز Merge و در checkout همان PR انجام می‌دهد؛ داشتن
+prompt ثابت Codex/Claude مجوز Merge نیست.
+
+- آخرین Head SHA و base واقعی PR و Diff نهایی را بررسی کنید؛ برای نمونه main:
+
+  ```bash
+  git fetch origin
+  git rev-parse HEAD
+  git diff origin/main...HEAD
+  git diff
+  git diff --cached
+  ```
+
+- تأیید کنید required CI به **همان Head فعلی** مربوط و موفق است؛ لینک run/job و
+  SHA را ثبت کنید. اگر job روی merge ref اجرا شده، parentهای head/base آزموده‌شده
+  را نیز با PR فعلی تطبیق دهید. صرف دیدن badge سبز قدیمی کافی نیست.
+- بعد از آخرین تست، commit جدید، حل conflict یا تغییر base مؤثر بر نتیجه نباید
+  بدون تکرار تست مرتبط باقی مانده باشد. نتیجه و جدول شواهد را به‌روز کنید.
+- Review مستقل، approval معتبر و گفتگوهای باز را بررسی کنید؛ تغییر خارج از Scope،
+  تست ضروری ناموفق/اجرا‌نشده یا خطر امنیتی مانع Merge است.
+- READY FOR REVIEW فقط آمادگی برای Review است. تأیید و اختیار Merge جداگانه‌اند؛
+  هیچ نتیجه بررسی، سلامت کل CRM یا مجوز Deploy را خودکار صادر نمی‌کند.
+
 ## 16. پاسخ به Code Review
 
 هر نکته را با تغییر یا دلیل فنی پاسخ دهید. commit جدید روی همان branch push شود؛
@@ -184,7 +236,11 @@ PII و Secret، backend permission/scope، nonce، prepared SQL، escaping و ک
 
 Issue/branch/commit/PR، نتیجه رفتار، فایل‌های تغییرکرده، API/DB/Role impact، دستور و
 نتیجه تست، شواهد، ریسک، rollback و موارد BLOCKED را تحویل دهید. قرارداد ماژول و اسناد
-متأثر به‌روز شوند. صرف push پایان review و release نیست.
+متأثر به‌روز شوند. در **انتهای هر تسک و داخل PR** جدول استاندارد Test/Status/Evidence
+برای Syntax، Secret Scan، Security، Functional، Regression، Scope/Diff و
+API/DB/Role Compatibility ارائه کنید؛ docs/hygiene و CI مرتبط با SHA را هم ثبت کنید.
+قالب کامل در [TESTING_STANDARDS.md](TESTING_STANDARDS.md) و
+[قالب PR](../.github/PULL_REQUEST_TEMPLATE.md) است. صرف push پایان review و release نیست.
 
 ## 20. ممنوعیت Merge
 
@@ -192,6 +248,17 @@ CI ناموفق، review مستقل غایب، discussion باز، source نام
 خارج از scope، migration/Role/API بدون مجوز یا تست ضروری اجرا‌نشده مانع merge است.
 Agent با prompt ثابت اختیار merge ندارد. وضعیت واقعی protection در
 [GITHUB_GOVERNANCE.md](GITHUB_GOVERNANCE.md) و گزارش تحویل مشخص می‌شود.
+
+وضعیت نهایی هر تسک یکی از موارد زیر است؛ اگر چند مانع وجود دارد همه را شرح دهید:
+
+- `READY FOR REVIEW`
+- `BLOCKED — TEST FAILURE`
+- `BLOCKED — MISSING REQUIRED TEST`
+- `BLOCKED — UNRELATED CHANGES`
+- `BLOCKED — SECURITY RISK`
+
+**No verified tests, no approval. No approval, no merge.** تست ضروری اجرا‌نشده یا
+ناموفق با اعتماد شخصی یا یک CI سبز نادیده گرفته نمی‌شود.
 
 ## 21. گزارش باگ
 
@@ -242,7 +309,10 @@ git push -u origin HEAD
 - هیچ Secret/PII یا فایل عملیاتی وارد history نشده است.
 - API/DB/Role/مالی بدون مجوز تغییر نکرده‌اند.
 - تست‌های لازم با نتیجه واقعی و محدودیت ثبت شده‌اند.
+- امنیت، عملکرد و regression مسیرهای وابسته بررسی و تست‌های ضروری واقعاً اجرا شده‌اند.
+- جدول استاندارد شواهد و یکی از پنج وضعیت آمادگی در گزارش و PR وجود دارد.
 - اسناد و PR کامل و reviewer مستقل تعیین شده است.
+- پیش از Merge، آخرین Head/base/Diff، CI همان revision و approval/گفتگوهای باز دوباره بررسی می‌شوند.
 - هیچ merge، migration یا deployment از اختیار تسک فراتر نرفته است.
 
 ## Standard Task Execution Prompt
@@ -255,15 +325,27 @@ Git status، remote، branch، تغییرات ثبت‌نشده و مبنای ص
 اگر کار مستقل و مجاز است ادامه بده؛ ابهام حساس را با شاهد گزارش کن.
 برای همین Issue branch اختصاصی بساز؛ تغییرات دیگران را حفظ کن.
 فقط تغییر مرتبط انجام بده؛ caller و auth/nonce/capability/scope را بررسی کن.
+پس از هر تغییر کد، تمام فایل‌ها و Diff نسبت به base و staged/unstaged/new را با تسک
+مقایسه کن؛ اثر API/DB/roles/permissions/business logic و ماژول‌های وابسته را ثبت کن.
+تغییر خارج از scope خودت را اصلاح کن و تغییرات دیگران را خودسرانه حذف نکن.
 هیچ دسترسی Production، ارسال واقعی، migration، permission grant یا اصلاح داده
 بدون مجوز صریح همین تسک انجام نده؛ تست MIS فقط روی DB disposable ساختگی مجاز است.
-Syntax، docs، hygiene، Secret scan و تست معنادار رفتار را اجرا کن.
-PASS فقط برای تست اجراشده؛ موارد دیگر را NOT_RUN/BLOCKED با دلیل گزارش کن.
+Syntax، docs، hygiene، Secret scan و تست‌های امنیتی، عملکردی و regression مرتبط و
+مسیرهای وابسته را قبل از PR/Push اصلاحی اجرا کن؛ تست‌های موجود را شناسایی کن و
+برای رفتار جدید/باگ در صورت امکان تست regression اضافه کن.
+PASS فقط برای تست اجراشده؛ هر N/A دلیل نامرتبط‌بودن لازم دارد. نبود زیرساخت تست
+ضروری BLOCKED/NOT_RUN است. با تست ضروری FAIL/BLOCKED/NOT_RUN، PR را Ready معرفی نکن؛
+در صورت نیاز Draft با توضیح نقص تست بساز.
 Diff و staged files را بازبینی و اسناد مرتبط را به‌روز کن.
 Commit روشن بساز، فقط branch خودت را push و PR به base مصوب تسک (معمولاً main)
 با قالب استاندارد ایجاد کن؛ وابستگی به PR دیگر را روشن بنویس و شاخه آن را تغییر نده.
 در گزارش نهایی تغییر، دلیل، تست، ریسک، rollback، branch/commit/PR و مانع‌ها را بده.
+جدول Test/Status/Evidence استاندارد و یکی از پنج وضعیت آمادگی Testing Standards را
+در گزارش و PR ثبت کن. پس از Push، آخرین Head/base/Diff و CI همان commit را دوباره
+بررسی کن؛ اگر کد عوض شد تست مرتبط را تکرار کن. Review مستقل و بحث‌های باز باید
+پیش از هر Merge جداگانه مجاز بررسی شوند؛ CI سبز تضمین سلامت کل CRM نیست.
 این prompt مجوز merge، direct main push، force push مشترک یا deployment نمی‌دهد.
+No verified tests, no approval. No approval, no merge.
 
 Task: [قالب تکمیل‌شده docs/TASK_TEMPLATE.md با Issue و reviewer واقعی]
 ```

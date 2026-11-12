@@ -1,8 +1,131 @@
-# Testing standards — R1
+# Testing standards — mandatory security and regression validation
 
-گزارش هر کنترل فقط PASS، FAIL، BLOCKED، NOT_RUN یا NOT_APPLICABLE است؛ ابزار
+**No verified tests, no approval. No approval, no merge.**
+
+این الزامات برای انسان، Codex و Claude یکسان‌اند. پس از هر تغییر کد، از جمله اصلاح
+Review یا حل conflict، تست‌های مرتبط دوباره اجرا شوند؛ برای تغییرات جدید به نتیجه
+قدیمی اتکا نشود. قبل از PR و قبل از Merge دو مرحله مستقل بررسی وجود دارد.
+
+گزارش هر کنترل فقط PASS، FAIL، BLOCKED، NOT_RUN یا NOT_APPLICABLE (N/A) است؛ ابزار
 فاقد زیرساخت با NOT_IMPLEMENTED مشخص می‌شود. خروجی تست‌های نسخه‌های قدیمی تحت
 `docs/TEST_REPORT_*` شواهد تاریخی‌اند و در این جلسه دوباره اجرا نشده‌اند.
+
+## Scope و انتخاب تست ضروری
+
+فایل‌های تغییرکرده را با تسک، مسیر مجاز و Branch مبنا مقایسه کنید؛ Diff کامل
+commitها، staged/unstaged و فایل‌های جدید را بخوانید. نمونه با base=`origin/main`:
+
+```bash
+git fetch origin
+git status --short --branch
+git diff --stat origin/main...HEAD
+git diff origin/main...HEAD
+git diff
+git diff --cached
+git ls-files --others --exclude-standard
+git diff --check
+```
+
+اگر base مصوب دیگری دارید آن را جایگزین کنید. `...HEAD` تغییر commit‌نشده را نشان
+نمی‌دهد؛ دو diff بعدی و فهرست فایل جدید لازم‌اند. تغییر تصادفی، formatting نامرتبط،
+حذف ناخواسته و تغییر قرارداد را بررسی و فقط تغییر خارج از scope متعلق به خودتان
+را اصلاح کنید؛ کار دیگران را reset/clean یا خودسرانه حذف نکنید.
+
+اثر بر API، Database، Roles، Permissions و Business Logic را صریح ثبت کنید. از
+caller/handler تا service، ذخیره‌سازی، UI/export و side effectهای وابسته را trace
+کنید؛ فقط فایل و مسیر موفقی که مستقیم تغییر کرده کافی نیست. تست‌های موجود و بخش ۸
+قرارداد ماژول را شناسایی و اجرا کنید. برای باگ اصلاح‌شده/رفتار جدید، در صورت امکان
+regression دارای assertion اضافه کنید؛ دلیل و خطر نبودن آن را گزارش دهید.
+
+## تست امنیتی اجباری بر اساس ارتباط با تغییر
+
+برای **هر کنترل** زیر نتیجه و شاهد یا دلیل مشخص N/A ثبت شود؛ گروه‌بندی جدول به
+معنی حذف کنترل‌های درون گروه نیست. مطالعه کد می‌تواند شاهد review باشد ولی جای
+تست runtime موردنیاز را نمی‌گیرد.
+
+| کنترل | نمونه سناریوی لازم در تغییر مرتبط |
+|---|---|
+| Authentication / Authorization | guest، session/token معتبر و نامعتبر؛ عملیات مجاز و غیرمجاز |
+| Role & Capability / Privilege Escalation | cap غایب یا لغوشده، نقش نامرتبط، ورودی role جعلی؛ عدم اعطای دسترسی ناخواسته |
+| Record-level Access / API Access Control | رکورد خود/تیم دیگر، شناسه جعلی و دسترسی مستقیم به endpoint/export |
+| Nonce / CSRF | nonce غایب، غلط یا نامعتبر و عدم mutation پس از رد درخواست |
+| SQL Injection / Input Validation | مقدار/نوع نامعتبر، ورودی array، identifier خارج allowlist، عدم اثر SQL ناخواسته |
+| XSS / Output Escaping | داده ساختگی دارای markup در HTML/attribute/URL/JS و escape متناسب با context |
+| File Upload Security | MIME/extension جعلی، اندازه، مجوز آپلود/دریافت و عدم ذخیره فایل مردود |
+| Sensitive Data Exposure / Secret Scanning | خروجی UI/API/log/export بدون token/اطلاعات محرمانه؛ Gitleaks و بررسی داده حساس |
+
+N/A فقط یعنی کنترل به تغییر مربوط نیست؛ مثلاً تغییر صرفاً متنی مستندات با عدم
+تغییر runtime اثبات‌شده، مسیر اجرایی upload یا SQL را عوض نمی‌کند. «وردپرس/DB آماده
+نیست» دلیل N/A برای تغییر مرتبط نیست: تست ضروری در این حالت BLOCKED یا NOT_RUN است.
+Secret Scan و scope review حتی برای تغییر مستندات انجام شوند. هیچ اطلاعات مشتری
+واقعی، payload مالی یا Credential در شاهد، screenshot، PR یا prompt وارد نشود.
+
+## عملکرد و رگرسیون مسیرهای متأثر
+
+| حوزه | سناریوهای پایه در صورت اثرپذیری از تغییر |
+|---|---|
+| کاربران و دسترسی‌ها | ورود/خروج، تغییر/لغو cap، scope و پنل نقش مرتبط و نامرتبط |
+| MIS و تخصیص پرونده | import/assign/return، duplicate، history، race و rollback؛ ورودی classic جدا |
+| فروش و مدیریت مشتری | لید خود/دیگران، transition وضعیت، حفظ مشتری/تخصیص و مسیرهای downstream |
+| فاکتور | کد جدید/legacy، token، مبلغ/اقلام/تخفیف، وضعیت و مراحل |
+| پرداخت و تراکنش | روش‌های متأثر، callback تکراری، manual همزمان، خطای provider ساختگی، عدم double-credit |
+| مالی و کیف پول | approve/reject، ledger، بازگشت/رد و ثبت دقیق یک‌بار |
+| پورسانت | rule و تاریخ مؤثر، dry-run بدون ledger، posting با flag/approval و عدم ثبت تکراری |
+| منابع انسانی | hierarchy/transfer، active state، history و حفظ تفکیک HR Position از WordPress Role |
+| گزارش و خروجی | scope ردیف/خروجی، delegation، totals، بازه زمانی و pagination |
+| API و یکپارچه‌سازی | ورودی/خروجی/خطای سازگار، auth، retry/idempotence، timeout و عدم اثر بیرونی واقعی |
+
+سناریوی مثبت، منفی، خطا و داده/قرارداد قبلی مرتبط را اجرا کنید. تغییر helper مشترک،
+قیمت، scope یا history می‌تواند چند ماژول را متأثر کند؛ تحلیل dependency باید دلیل
+انتخاب یا N/A هر حوزه را توضیح دهد. همه WordPress/DB fixtureها فقط روی محیط کاملاً
+ایزوله، disposable و synthetic اجرا شوند؛ هیچ تست مخرب یا تغییر داده روی Production
+مجاز نیست. بیرون‌رفت شبکه، SMS، mail و درگاه واقعی پیش از bootstrap مسدود باشند.
+
+## Pre-PR، Pre-Merge و تصمیم آمادگی
+
+قبل از PR و هر Push اصلاحی: Syntax، docs/hygiene، Secret Scan، امنیت مرتبط، عملکرد
+و رگرسیون لازم اجرا، diff کامل و staged files بازبینی، سازگاری قراردادها بررسی و
+شواهد ثبت شوند. نبود تست ضروری با اعتماد به مدل، توضیح شفاهی یا CI سبز جبران نمی‌شود.
+
+قبل از Merge توسط فرد دارای مجوز مستقل همان عمل: آخرین Head SHA، base و Diff را
+بخوانید و تأیید کنید required CI موفق به همان Head فعلی مرتبط است. اگر job روی
+merge ref تست می‌کند، parentهای head/base آزموده‌شده هم با PR فعلی تطبیق داده شوند.
+بعد از commit جدید، حل conflict یا تغییر base مؤثر بر نتیجه، تست مربوط دوباره اجرا
+و evidence تازه ثبت شود. Review مستقل، approval معتبر و گفتگوهای باز کنترل شوند.
+READY FOR REVIEW یعنی درخواست Review، نه تأیید یا اختیار Merge.
+
+| وضعیت نهایی تسک | شرط |
+|---|---|
+| READY FOR REVIEW | تمام تست‌های ضروری این مرحله و کنترل scope/سازگاری موفق؛ N/Aها مستدل؛ بدون blocker شناخته‌شده |
+| BLOCKED — TEST FAILURE | حداقل یک تست ضروری FAIL است |
+| BLOCKED — MISSING REQUIRED TEST | تست ضروری غایب، BLOCKED یا NOT_RUN است؛ از جمله زیرساخت ناقص |
+| BLOCKED — UNRELATED CHANGES | تغییر خارج از scope هنوز رفع/تعیین تکلیف نشده است |
+| BLOCKED — SECURITY RISK | خطر امنیتی مرتبط حل‌نشده وجود دارد |
+
+اگر چند مانع وجود دارد همه را ثبت و یک وضعیت اصلی اعلام کنید. PR دارای تست ضروری
+ناموفق یا اجرا‌نشده نباید Ready معرفی شود؛ در صورت نیاز فقط Draft با توضیح صریح
+نقص تست ایجاد کنید. نتیجه یا blocker تغییر کرد، وضعیت PR و گزارش نیز به‌روز شود.
+موفقیت سه Check فعلی تضمین سلامت کل CRM نیست و approval را خودکار صادر نمی‌کند.
+
+## جدول اجباری تحویل و PR
+
+در پایان هر تسک و داخل PR جدول زیر را با نتیجه **واقعی**، دستور، محیط، revision،
+خروجی/assertion و محدودیت تکمیل کنید؛ برای N/A دلیل مرتبط با همین diff لازم است.
+بعد از Push، Head و لینک run/jobهای GitHub و زمان بررسی نهایی را هم ثبت کنید.
+
+| Test | Status | Evidence |
+|---|---|---|
+| Syntax | PASS/FAIL/BLOCKED/NOT_RUN | command، runtime و تعداد/خروجی واقعی |
+| Documentation / Hygiene | PASS/FAIL/BLOCKED/NOT_RUN | command و نتیجه |
+| Secret Scan | PASS/FAIL/BLOCKED/NOT_RUN | ابزار/نسخه، worktree/history scope، نتیجه redacted |
+| Security | PASS/FAIL/BLOCKED/NOT_RUN/N/A | هر کنترل مرتبط، سناریو، شاهد؛ دلیل کنترل‌های نامرتبط |
+| Functional | PASS/FAIL/BLOCKED/NOT_RUN/N/A | معیار پذیرش و مسیرهای مثبت/منفی |
+| Regression | PASS/FAIL/BLOCKED/NOT_RUN/N/A | تست موجود/جدید و ماژول‌های وابسته؛ دلیل شکاف |
+| Scope/Diff | PASS/FAIL | base، فایل‌های مقایسه‌شده، staged/unstaged/new و انحراف‌ها |
+| API/DB/Role Compatibility | PASS/FAIL/BLOCKED/NOT_RUN/N/A | اثر روی قرارداد، permissions و business logic یا دلیل عدم اثر |
+| GitHub CI / Pre-Merge | PASS/FAIL/BLOCKED/NOT_RUN | Head SHA و run مرتبط؛ review/approval و بحث‌های باز جداگانه |
+
+## زیرساخت موجود و محدودیت واقعی CI
 
 | کنترل | زیرساخت موجود | دستور / شرط |
 |---|---|---|
@@ -18,7 +141,7 @@
 | Auth/API واقعی | PARTIAL | fixture MIS نقش‌ها دارد؛ بقیه نیازمند سناریوی سایت ایزوله |
 | UI/mobile/RTL/accessibility | NOT_IMPLEMENTED | browser harness قابل حمل در ZIP نیست |
 | Migration/upgrade | PARTIAL | fixture MIS setup؛ کل upgrade نیازمند snapshot ساختگی |
-| Dependency audit | NOT_APPLICABLE برای manifest غایب | WP/WooCommerce و provider جداگانه بررسی شوند |
+| Dependency audit | Composer/npm manifest موجود نیست؛ audit خودکار جامع NOT_IMPLEMENTED | WP/WooCommerce و provider جدا بررسی شوند؛ تست ضروری مرتبطِ اجرا‌نشده BLOCKED/NOT_RUN است |
 
 پیش‌نیاز check.py: Python 3.10+، PHP CLI، Node.js. `PHP_BIN` می‌تواند مسیر PHP CLI را
 تعیین کند. CI روی PHP 8.3 lint می‌کند؛ بررسی این جلسه روی PHP 8.4 انجام شده است.
