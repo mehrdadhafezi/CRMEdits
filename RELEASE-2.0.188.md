@@ -1,0 +1,5 @@
+# Sales Network 2.0.188 receipt corrections Development
+
+Independent manual payment decisions, versioned unapproved receipt corrections, same-receipt appeals, review ownership/reassignment, previous-reviewer priority and recorded manual bank confirmation extend the existing payment UI. Approved sibling receipts remain unchanged. The purpose commission engine releases stages at full invoice settlement and preserves configured rates and known sale attribution for new invoices. Wallet schema preparation no longer runs inside financial transactions. Gateway initiation, direct manual registration and whole batches share the existing stage advisory lock through commit, preventing concurrent payment channels.
+
+Local WordPress/Chrome tests use synthetic records only. Sensitive amendments of approved receipts, full refund reservations, overpayment management, legal retention and new financial workflows remain outside this build. No Production connection or deployment was performed. This is a Development build and is not approved for Production. See the separate audit/receipt-corrections-188 report in the engineering workspace.

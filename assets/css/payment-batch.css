@@ -1,0 +1,86 @@
+body.sn-batch-open{overflow:hidden}
+.sn-batch-launch{display:block!important;margin:16px 0!important;white-space:normal!important}
+.sn-batch-modal[hidden]{display:none!important}
+.sn-batch-modal{position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.68);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;font-family:inherit;color:#0f172a}
+.sn-batch-card-shell{background:#fff;border-radius:18px;box-shadow:0 24px 64px #0004;width:min(820px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:24px;box-sizing:border-box}
+.sn-batch-head{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.sn-batch-head h3{margin:0;font-size:22px}
+.sn-batch-close{border:0;background:#f1f5f9;color:#334155;cursor:pointer;border-radius:10px;font-size:26px;width:40px;height:40px}
+.sn-batch-help,.sn-batch-date-help{font-size:13px;line-height:1.9;color:#475569}
+.sn-batch-summary{padding:12px;background:#eff6ff;border-radius:10px;line-height:1.9;font-weight:600}
+.sn-batch-row{min-width:0;margin:18px 0;padding:16px;border:1px solid #cbd5e1;border-radius:12px}
+.sn-batch-row legend{float:none;width:auto;font-size:15px;font-weight:700;padding:0 8px;margin:0}
+.sn-batch-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.sn-batch-field{display:flex;flex-direction:column;gap:7px;font-size:13px;margin:0!important;min-width:0}
+.sn-batch-field input,.sn-batch-field select{width:100%;min-height:42px;box-sizing:border-box;border:1px solid #cbd5e1;border-radius:8px;padding:8px 10px;background:#fff;color:#0f172a;font:inherit}
+.sn-batch-info{margin-top:12px}
+.sn-batch-bank,.sn-batch-date-help{grid-column:1/-1}
+.sn-payment-datetime-field{grid-column:1/-1;min-width:0}
+.sn-payment-datetime{display:grid;grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:8px;margin-top:6px}
+.sn-payment-datetime label{display:flex;flex-direction:column;gap:5px;min-width:0;margin:0}
+.sn-payment-datetime select{min-width:0}
+.sn-batch-upload{display:flex;flex-direction:column;gap:8px;margin:14px 0;font-size:13px}
+.sn-batch-file{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;background:#f8fafc;border-radius:8px;margin:5px 0;font-size:12px}
+.sn-batch-file span{overflow-wrap:anywhere}
+.sn-batch-remove-file{background:transparent;border:0;color:#b91c1c;cursor:pointer;padding:5px 10px}
+.sn-batch-remove-row{margin-top:12px}
+.sn-batch-footer{display:flex;flex-wrap:wrap;gap:10px;position:sticky;bottom:-24px;background:white;padding:16px 0 8px;border-top:1px solid #e2e8f0}
+.sn-batch-message{line-height:1.9;padding:8px 0;font-size:14px}
+.sn-batch-modal .is-error{color:#b91c1c}
+.sn-batch-modal .is-success{color:#166534;background:#f0fdf4;padding:12px;border-radius:8px}
+.sn-batch-modal [hidden]{display:none!important}
+.sn-batch-modal :focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+@media(max-width:600px){.sn-batch-modal{padding:8px}.sn-batch-card-shell{padding:16px;max-height:calc(100dvh - 16px)}.sn-batch-grid{grid-template-columns:1fr}.sn-batch-footer{bottom:-16px}.sn-batch-footer .sn-btn{flex:1;white-space:normal}.sn-batch-row{padding:12px}}
+
+.sn-batch-modal .sn-btn{border:1px solid #cbd5e1;border-radius:9px;padding:10px 14px;font:inherit;font-size:13px;cursor:pointer;background:#fff;color:#334155;line-height:1.6}
+.sn-batch-modal .sn-btn-primary{background:#2563eb;color:#fff;border-color:#2563eb}
+.sn-batch-modal button:disabled{opacity:.55;cursor:default}
+
+.sn-plus-edit-modal table{width:100%;border-collapse:collapse;table-layout:fixed}.sn-plus-edit-modal th,.sn-plus-edit-modal td{padding:.5rem;border:1px solid #ddd;overflow-wrap:anywhere;text-align:right}.sn-plus-edit-modal label{display:grid;gap:.35rem;margin:.7rem 0}.sn-plus-edit-modal input,.sn-plus-edit-modal select{width:100%;min-height:44px;max-width:100%}
+
+.sn-plus-edit-modal *{box-sizing:border-box;min-width:0}
+
+#sn-plus-invoice-edit-modal{font-size:15px;line-height:1.8}#sn-plus-invoice-edit-modal .sn-modal-body>.sn-btn{margin:6px}#sn-plus-invoice-edit-modal table{font-size:14px}#sn-plus-invoice-edit-modal :focus-visible{outline:3px solid #60a5fa;outline-offset:2px}
+
+/* Receipt decisions live inside the existing finance/payment dialogs. */
+.sn-receipt-review{direction:rtl;min-width:0;padding:12px;color:#153247}.sn-review-totals{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.sn-review-totals>div{padding:12px;background:#eef6f6;border-radius:10px}.sn-review-totals small,.sn-review-totals strong{display:block}.sn-review-payment{margin:16px 0;padding:16px;border:1px solid #d5e2e6;border-radius:12px;background:#fff;overflow-wrap:anywhere}.sn-review-status{padding:8px;border-radius:8px;background:#f1f5f9}.sn-review-status.is-approved{background:#e3f6eb;color:#145b36}.sn-review-status.is-rejected{background:#fff0f0;color:#913030}.sn-review-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.sn-review-form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding:16px;background:#f8fafb;border-radius:10px}.sn-review-form h4,.sn-review-form>p,.sn-review-form .sn-review-actions,.sn-review-check{grid-column:1/-1}.sn-review-form label{display:flex;flex-direction:column;gap:6px;min-width:0}.sn-review-form input:not([type=checkbox]),.sn-review-form textarea,.sn-review-form select{box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px solid #b9cbd2;border-radius:8px;background:white;color:#153247;font:inherit}.sn-review-form .sn-review-check{display:flex;flex-direction:row;align-items:center}.sn-review-warning{padding:10px;background:#fff5d9;color:#6c4b0a;border-radius:8px}.sn-review-error{color:#a52424;background:#fff0f0;padding:10px}.sn-review-event{padding:10px;border-bottom:1px solid #dbe5e9}.sn-review-feedback{white-space:pre-wrap}.sn-review-payment .sn-transactions>h4{display:none}.sn-fin-v2-receipt-card:has(.sn-receipt-review){width:min(1100px,96vw);max-height:92vh;overflow:auto}.sn-review-payment button:focus-visible,.sn-review-form input:focus-visible{outline:3px solid #168c94;outline-offset:2px}@media(max-width:650px){.sn-review-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.sn-review-form{grid-template-columns:minmax(0,1fr)}.sn-review-payment{padding:10px}.sn-review-actions .sn-btn{flex:1 1 130px}}
+
+.sn-receipt-review{font-size:15px;line-height:1.75}.sn-receipt-review h3{font-size:20px;margin:0 0 12px}.sn-review-payment h4{font-size:17px;margin:0 0 10px}.sn-receipt-review p{font-size:14px;line-height:1.8;margin:6px 0}.sn-review-payment{margin:12px 0;padding:12px}.sn-review-status{font-size:14px}.sn-review-warning summary{font-weight:600;cursor:pointer}.sn-review-payment>details{font-size:14px;margin:8px 0}.sn-review-totals strong{font-size:17px}.sn-review-totals small{font-size:13px}
+
+/* 2.0.198: finance review restores evidence beside customer, bank data and decisions. */
+.sn-receipt-review{display:flex;flex-direction:column;gap:10px;min-width:0;min-height:0;padding:14px;color:#173247;background:#fff}
+.sn-receipt-review .sn-review-customer h3{display:block!important;margin:0 0 8px;font-size:18px;line-height:1.6;color:#173247}
+.sn-receipt-review dl,.sn-receipt-review dd{margin:0}.sn-review-customer-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;background:#f7fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px}
+.sn-receipt-review .sn-review-detail{min-width:0;overflow-wrap:anywhere}.sn-receipt-review dt{font-size:12px;color:#526779;line-height:1.6}.sn-receipt-review dd{font-size:14px;font-weight:600;color:#173247;line-height:1.7}.sn-receipt-review dd[dir=ltr]{text-align:right;unicode-bidi:plaintext}
+.sn-receipt-review .sn-review-totals{gap:8px}.sn-receipt-review .sn-review-totals>div{padding:9px 12px}.sn-receipt-review .sn-review-totals strong{font-size:16px}.sn-receipt-review .sn-review-totals small{font-size:12px}
+.sn-receipt-review .sn-review-feedback:empty{display:none}.sn-receipt-review .sn-review-feedback{margin:0;padding:8px;background:#eff8f3;color:#185b3a;border-radius:8px}.sn-receipt-review .sn-review-feedback.sn-review-error{background:#fff1f1;color:#9b2323}
+.sn-review-workspace{display:grid;grid-template-columns:minmax(290px,360px) minmax(0,1fr);gap:14px;min-width:0;min-height:380px;align-items:stretch;flex:1}
+.sn-review-sidebar{min-width:0;min-height:0;overflow:auto;overscroll-behavior:contain;padding:3px 3px 10px;scrollbar-gutter:stable}
+.sn-review-sidebar>label{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600}.sn-review-sidebar>label>select{width:100%;min-width:0;background:#fff;color:#173247;border:1px solid #becfdb;border-radius:8px;padding:10px;font:inherit}
+.sn-review-help{color:#526779;font-size:12px!important}.sn-review-selected{min-width:0}.sn-review-selected>h4{display:block!important;font-size:17px!important;color:#173247!important;margin:10px 0!important;line-height:1.6}.sn-review-selected .sn-review-status{font-size:13px;padding:8px;margin-bottom:10px}
+.sn-review-bank-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;border-bottom:1px solid #dfe8ef;padding:0 0 12px}.sn-review-bank-grid .sn-review-detail:first-child{grid-column:1/-1}.sn-review-bank-grid .sn-review-detail:first-child dd{font-size:19px;color:#0d6b65}
+.sn-review-access-note{padding:10px;border:1px solid #c9deef;border-radius:8px;background:#f0f7fc;color:#244c69}.sn-review-selected .sn-review-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}.sn-review-selected .sn-review-actions>.sn-btn:first-child:last-child{grid-column:1/-1}
+.sn-receipt-review .sn-btn{cursor:pointer;font:inherit;min-height:40px;border-radius:8px;padding:8px 12px;border:1px solid #c9d7e3;white-space:normal}.sn-receipt-review .sn-btn-primary,.sn-receipt-review .sn-review-approve{background:#0c7167!important;color:#fff!important;border-color:#0c7167!important}.sn-receipt-review .sn-review-reject{background:#fff1f1!important;color:#a32828!important;border-color:#e1aaaa!important}.sn-receipt-review .sn-btn-secondary{background:#f5f9fc!important;color:#244c69!important}
+.sn-receipt-review button:disabled{opacity:.6;cursor:wait}.sn-review-management,.sn-review-history{border-top:1px solid #dfe8ef;padding:10px 0;font-size:13px}.sn-review-management summary,.sn-review-history summary{cursor:pointer;list-style:disclosure-closed;font-weight:600}.sn-review-management[open] summary,.sn-review-history[open] summary{list-style:disclosure-open}.sn-review-management button{margin:8px 0 0 6px}
+.sn-review-selected .sn-review-form{grid-template-columns:1fr;padding:12px;margin-top:12px;gap:10px;border:1px solid #cbdbe8}.sn-review-selected .sn-review-form h4{font-size:15px}.sn-review-selected .sn-review-form .sn-review-actions{display:flex}.sn-review-selected .sn-review-form .sn-review-check{font-size:13px;align-items:flex-start}.sn-review-check input{flex:none;width:18px;height:18px;margin-top:4px}
+.sn-review-evidence{display:flex;flex-direction:column;min-width:0;min-height:0;border:1px solid #d7e3ed;background:#f1f5f9;border-radius:12px;overflow:hidden}.sn-review-evidence-head{padding:10px 14px;background:#fff;border-bottom:1px solid #d7e3ed}.sn-review-evidence-head h4{display:block!important;color:#173247!important;font-size:16px!important;line-height:1.7!important;margin:0!important}
+.sn-review-file-tabs{display:flex;gap:6px;flex-wrap:wrap;padding:10px 12px 0}.sn-review-file-tabs .sn-btn[aria-pressed=true]{background:#e1f1f0!important;border-color:#14827a!important;color:#0c625b!important}.sn-review-image-tools{display:flex;gap:6px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #d7e3ed}.sn-review-image-tools .sn-btn{min-height:34px;padding:6px 9px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center}
+.sn-review-evidence-viewport{overflow:auto;min-width:0;min-height:280px;flex:1;padding:16px;overscroll-behavior:contain;position:relative;text-align:center}.sn-review-receipt-image{display:block!important;max-width:100%;height:auto;max-height:none;margin:0 auto;background:#fff;object-fit:contain;transition:transform .12s ease}.sn-review-pdf{display:block;width:100%;height:65vh;min-height:320px;border:0;background:white}.sn-review-empty{padding:20px;color:#526779;line-height:1.9}.sn-review-media-help{font-size:12px!important;color:#526779}
+#sn-fin-v2-receipt-modal:has(.sn-receipt-review) .sn-fin-v2-modal-card{width:min(1320px,100%);height:min(900px,calc(100dvh - 32px));max-height:calc(100dvh - 32px);min-height:0}
+#sn-fin-v2-receipt-modal:has(.sn-receipt-review) #sn-fin-v2-receipt-body{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+#sn-fin-v2-receipt-modal .sn-receipt-review{height:100%;flex:1;overflow:hidden;box-sizing:border-box}
+#sn-fin-v2-receipt-modal .sn-review-workspace{min-height:0}
+#sn-unified-invoice-modal .sn-review-workspace{max-height:65vh;min-height:400px}
+.sn-receipt-review :is(button,a,input,textarea,select,summary):focus-visible{outline:3px solid #18877e;outline-offset:2px}
+@media(max-width:760px){.sn-review-customer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.sn-review-workspace{display:flex;flex-direction:column;min-height:0!important;max-height:none!important}.sn-review-sidebar{overflow:visible;flex:none}.sn-review-evidence{min-height:380px}.sn-review-evidence-viewport{max-height:65vh;min-height:280px}.sn-review-totals{grid-template-columns:repeat(2,minmax(0,1fr))}.sn-receipt-review{padding:10px}#sn-fin-v2-receipt-modal:has(.sn-receipt-review) #sn-fin-v2-receipt-body{overflow:auto}#sn-fin-v2-receipt-modal .sn-receipt-review{height:auto;overflow:visible;flex:none}.sn-review-image-tools .sn-btn{flex:1 1 100px}}
+
+.sn-review-image-canvas{position:relative;flex:none;margin:0 auto;min-width:0;min-height:0}.sn-review-image-canvas .sn-review-receipt-image{position:absolute;top:50%;left:50%;margin:0;max-width:none!important;max-height:none!important;object-fit:contain;transition:none}
+
+.sn-review-evidence-controls{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid #d7e3ed}.sn-review-evidence-controls .sn-review-file-tabs,.sn-review-evidence-controls .sn-review-image-tools{padding:0;border:0}.sn-review-evidence-viewport{min-height:0}.sn-review-evidence{min-height:320px}#sn-fin-v2-receipt-modal .sn-review-evidence{min-height:0}@media(max-width:760px){#sn-fin-v2-receipt-modal .sn-review-evidence{min-height:440px}.sn-review-evidence-controls .sn-btn{font-size:12px}.sn-review-evidence-viewport{min-height:240px}}
+
+.sn-review-bank-grid .sn-review-detail:first-child{grid-column:auto}.sn-review-bank-grid .sn-review-detail:first-child dd{font-size:14px;color:#173247}.sn-review-selected .sn-review-actions{margin:6px 0}.sn-review-access-note{font-size:13px!important;line-height:1.65!important;padding:8px;margin:6px 0!important}
+
+.sn-review-decisions{display:grid;gap:8px;margin:8px 0}
+.sn-review-selected .sn-review-decision{grid-template-columns:minmax(0,1fr) auto;align-items:end;margin:0;padding:8px}
+.sn-review-decision textarea{resize:vertical}
+@media(max-width:420px){.sn-review-selected .sn-review-decision{grid-template-columns:1fr}}

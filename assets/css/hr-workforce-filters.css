@@ -1,0 +1,43 @@
+/* Global HR search + initial account credentials. No selectors affect sales/finance forms. */
+html body #sn-hr-panel .sn-hr-global-filter-form{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:end!important;gap:12px!important;
+ padding:16px!important;margin:14px 0!important;background:var(--hr-soft,#f8fafc)!important;
+ border:1px solid var(--hr-line,#e2e8f0)!important;border-radius:12px!important;box-shadow:none!important;
+}
+html body #sn-hr-panel .sn-hr-global-filter-form>.sn-hr-search-wide{grid-column:1/-1;min-width:0}
+html body #sn-hr-panel .sn-hr-global-filter-form>label{display:flex!important;flex-direction:column;gap:6px;min-width:0!important;font-size:12px!important;font-weight:600!important;color:var(--hr-text,#334155)!important}
+html body #sn-hr-panel .sn-hr-global-filter-form :is(input:not([type=hidden]),select){width:100%!important;min-height:42px!important;margin:0!important;border-radius:8px!important;box-shadow:none!important}
+html body #sn-hr-panel .sn-hr-filter-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px;grid-column:1/-1;min-width:0}
+html body #sn-hr-panel .sn-hr-filter-scope{grid-column:1/-1;min-width:0;overflow-wrap:break-word;margin:0!important;font-size:11px!important;line-height:1.9;color:var(--hr-muted,#64748b)!important}
+html body #sn-hr-panel .sn-hr-excel-filter-btn[data-sn-server-filtered]{background:#dbeafe!important;border-color:#60a5fa!important;color:#1d4ed8!important;box-shadow:0 0 0 2px #dbeafe!important}
+html body #sn-hr-panel .sn-hr-create-person-form{gap:16px!important}
+html body #sn-hr-panel .sn-hr-create-person-form>label{font-size:12px;line-height:1.9}
+html body #sn-hr-panel .sn-hr-initial-password{min-width:0;grid-column:1/-1;margin:0;padding:14px 16px;border:1px solid var(--hr-line,#dbe3ef);border-radius:12px;background:var(--hr-soft,#f8fafc)}
+html body #sn-hr-panel .sn-hr-initial-password legend{padding:0 8px;font-size:13px;font-weight:700;color:var(--hr-text,#1e293b)}
+html body #sn-hr-panel .sn-hr-initial-password>.sn-note{margin:0 0 12px;font-size:11px!important;line-height:1.9}
+html body #sn-hr-panel .sn-hr-initial-password input{min-height:44px;border-radius:8px;direction:ltr}
+html body #sn-hr-panel .sn-hr-create-person-form>.sn-actions{padding-top:14px;border-top:1px solid var(--hr-line,#e2e8f0)}
+html body .sn-hr-server-menu{position:fixed;z-index:100000;max-height:calc(100vh - 24px);overflow:auto;box-sizing:border-box;padding:16px;border:1px solid #dbe3ef;border-radius:12px;background:#fff;color:#1e293b;box-shadow:0 14px 45px #0f172a24;font-size:12px;line-height:1.9}
+html body .sn-hr-server-menu-title{display:block;font-size:14px}
+html body .sn-hr-server-menu-hint{margin:4px 0 12px;color:#64748b;font-size:11px}
+html body .sn-hr-server-menu form{display:block;margin:0;padding:0}
+html body .sn-hr-server-menu form>label:not(.sn-hr-server-choice){display:block;font-size:12px;font-weight:600}
+html body .sn-hr-server-menu input[type=search]{display:block;width:100%;min-height:40px;margin:6px 0 12px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#1e293b;font:inherit;box-sizing:border-box}
+html body .sn-hr-server-values{max-height:190px;overflow:auto;border-block:1px solid #e2e8f0;margin-block:8px;padding-block:6px}
+html body .sn-hr-server-choice{display:flex!important;align-items:center;gap:8px;padding:5px 0;cursor:pointer;font-size:12px}
+html body .sn-hr-server-choice input{flex:0 0 auto;width:16px!important;height:16px!important;min-height:0!important;margin:0!important;accent-color:#2563eb}
+html body .sn-hr-server-menu-actions,html body .sn-hr-server-sorts{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+html body .sn-hr-server-sorts{padding-top:12px;border-top:1px solid #e2e8f0}
+html body .sn-hr-server-menu .sn-btn{display:inline-flex;justify-content:center;align-items:center;min-height:36px;margin:0;padding:6px 10px;border:1px solid #2563eb;border-radius:7px;background:#2563eb;color:#fff;-webkit-text-fill-color:#fff;font:inherit;font-weight:600;cursor:pointer;box-shadow:none}
+html body .sn-hr-server-menu .sn-btn-secondary{background:#fff;color:#334155;-webkit-text-fill-color:#334155;border-color:#cbd5e1}
+html body .sn-hr-server-menu :is(input,button):focus-visible{outline:3px solid #93c5fd;outline-offset:2px}
+html body.sn-dark-mode .sn-hr-server-menu{background:#111827;border-color:#334155;color:#e2e8f0}
+html body.sn-dark-mode .sn-hr-server-menu-hint{color:#94a3b8}
+html body.sn-dark-mode .sn-hr-server-menu input[type=search],html body.sn-dark-mode .sn-hr-server-menu .sn-btn-secondary{background:#1e293b;color:#e2e8f0;-webkit-text-fill-color:#e2e8f0;border-color:#475569}
+html body.sn-dark-mode .sn-hr-server-values,html body.sn-dark-mode .sn-hr-server-sorts{border-color:#334155}
+@media(max-width:1100px){html body #sn-hr-panel .sn-hr-global-filter-form{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:600px){html body #sn-hr-panel .sn-hr-global-filter-form{padding:12px!important;gap:10px!important}html body #sn-hr-panel .sn-hr-filter-actions .sn-btn{flex:1;justify-content:center;white-space:normal;text-align:center}html body #sn-hr-panel .sn-hr-initial-password{padding:12px}html body #sn-hr-panel .sn-hr-initial-password .sn-hr-form-grid{grid-template-columns:minmax(0,1fr)}}
+
+/* Keep hidden route/state controls outside the grid, even with theme input overrides. */
+html body #sn-hr-panel .sn-hr-global-filter-form>input[type="hidden"]{display:none!important}
+html body #sn-hr-panel .sn-hr-global-filter-form label{white-space:normal;overflow-wrap:break-word}

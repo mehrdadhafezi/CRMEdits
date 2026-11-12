@@ -1,0 +1,9 @@
+# Confirmed repository owner. Module specialists are UNASSIGNED until confirmed.
+# GitHub settings must separately enable required CODEOWNER approval.
+* @mehrdadhafezi
+/includes/ @mehrdadhafezi
+/sales-network.php @mehrdadhafezi
+/.github/ @mehrdadhafezi
+/AGENTS.md @mehrdadhafezi
+/CLAUDE.md @mehrdadhafezi
+/scripts/ @mehrdadhafezi

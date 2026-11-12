@@ -1,0 +1,18 @@
+{
+  "exit_code": 0,
+  "passed_assertions": 57,
+  "elapsed_seconds": 79.787,
+  "php": "8.3.6",
+  "wordpress": "6.8.3",
+  "database": "embedded MariaDB 10.11.7 / InnoDB",
+  "cgi_form_checks": 8,
+  "sales_chain_checks": 4,
+  "multipart_xlsx_checks": 1,
+  "get_export_checks": 1,
+  "approval_failure_checks": 2,
+  "php_syntax_files": 50,
+  "new_javascript_syntax": "passed",
+  "browser_visual_qa": "not completed; local Chromium could not launch",
+  "production_database_test": "not available",
+  "payment_gateway_test": "not available"
+}

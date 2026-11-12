@@ -1,0 +1,19 @@
+name: CRM development task
+description: Define a scoped CRM change for a developer or AI agent
+title: "[Task] "
+body:
+  - type: textarea
+    id: task
+    attributes:
+      label: Task contract
+      description: Complete docs/TASK_TEMPLATE.md; include module, allowed paths, acceptance criteria, tests, reviewer and rollback.
+      placeholder: Business goal, current behavior, expected behavior, scope and evidence
+    validations:
+      required: true
+  - type: textarea
+    id: sensitive
+    attributes:
+      label: Sensitive impact and authorization
+      description: State API, database, financial, role, scope and security impacts. Do not paste secrets or customer data.
+    validations:
+      required: true

@@ -1,0 +1,46 @@
+body { margin: 0; background: #edf2f7; color: #18243a; font: 15px/1.7 Tahoma, system-ui, sans-serif; }
+.sn-support { max-width: 1180px; padding: clamp(12px, 3vw, 32px); margin: 0 auto; }
+.sn-support > header, .sn-support > nav { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 14px; align-items: center; }
+.sn-support > header { background: #152940; color: #fff; padding: 20px clamp(16px, 3vw, 28px); border-radius: 16px; }
+.sn-support > header h1 { font-size: clamp(21px, 3vw, 29px); margin: 0; }
+.sn-support-eyebrow { display: block; color: #a8e0d8; font-size: .85rem; }
+.sn-support > header form { margin: 0; }
+.sn-support > header button[name=lock_panel] { background: transparent; border-color: #8093ab; }
+.sn-support > nav { justify-content: flex-start; gap: 8px; margin-block: 16px; }
+.sn-support > nav a { display: inline-block; padding: 5px 12px; border: 1px solid #cdd9e6; border-radius: 8px; background: #fff; color: #274760; text-decoration: none; }
+.sn-support > nav a:hover { background: #e1eeff; }
+.sn-support > section { background: #fff; border: 1px solid #d4deec; border-radius: 14px; margin-block: 14px; padding: clamp(14px, 3vw, 24px); }
+.sn-support > section h2 { margin: 0 0 6px; font-size: 1.2rem; }
+.sn-support > .sn-support-search { border-block-start: 4px solid #08746a; }
+.sn-support-hint { color: #42566d; margin: 0 0 14px; }
+.sn-support-search-term { flex: 1 1 240px; min-width: 0; }
+.sn-support-search input, .sn-support-search select { box-sizing: border-box; min-height: 42px; width: 100%; background: #fff; }
+.sn-support-search button { min-height: 42px; min-width: 96px; }
+.sn-support a { color: #175085; text-underline-offset: .16em; }
+.sn-support-clear { padding: 7px 4px; }
+.sn-support-empty { background: #fff8e6; color: #674400; border-inline-start: 3px solid #a16a08; padding: 10px 12px; border-radius: 6px; margin: 14px 0 0; }
+.sn-support-table-scroll { overflow-x: auto; }
+.sn-support-table { border-collapse: collapse; width: 100%; text-align: start; }
+.sn-support-table th, .sn-support-table td { padding: 10px 12px; border-bottom: 1px solid #dfe8f0; text-align: start; }
+.sn-support-table th { background: #f0f5fa; white-space: nowrap; }
+.sn-support-table tr:last-child td { border-bottom: 0; }
+.sn-support-table td:first-child a { display: inline-block; font-weight: bold; padding-block: 4px; }
+.sn-support-table td:nth-child(4), .sn-support-table td:nth-child(5) { white-space: nowrap; }
+.sn-support-badge { display: inline-block; padding: 2px 9px; border-radius: 6px; background: #e1f3ef; color: #09574d; font-size: .82rem; }
+.sn-support-invoice-heading { display: flex; flex-wrap: wrap; gap: 10px; align-items: start; justify-content: space-between; }
+.sn-support-invoice-heading p { margin: 0; }
+.sn-support-amounts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin-block: 14px; }
+.sn-support-amounts div { background: #f0f5fa; border-radius: 8px; padding: 9px 12px; }
+.sn-support-amounts dt { color: #42566d; font-size: .85rem; }
+.sn-support-amounts dd { margin: 0; font-weight: bold; }
+.sn-support form { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; margin-block: 10px; }
+.sn-support label { display: inline-flex; flex-direction: column; gap: 4px; }
+.sn-support input:not([type=hidden]), .sn-support select, .sn-support textarea { padding: 6px 10px; border: 1px solid #9aabc0; border-radius: 5px; }
+.sn-support :is(input, select, textarea, button, a):focus-visible { outline: 2px solid #168879; outline-offset: 2px; }
+.sn-support button { cursor: pointer; }
+.sn-support button:not([class]) { padding: 7px 12px; border: 1px solid #215895; border-radius: 5px; color: #fff; background: #215895; }
+.sn-support button:disabled { opacity: .55; cursor: wait; }
+.sn-support details { margin-block: 8px; }
+.sn-support pre { direction: ltr; white-space: pre-wrap; overflow-wrap: anywhere; }
+.sn-support fieldset { border: 1px solid #d4deec; border-radius: 8px; padding: 10px; width: 100%; }
+.sn-support [role=status]:empty { display: none; }
