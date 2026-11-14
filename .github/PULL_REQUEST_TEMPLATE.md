@@ -5,6 +5,7 @@ Summary / acceptance criteria:
 Files changed and allowed scope:
 Approved base branch / base SHA:
 Latest PR head SHA and revision tested:
+For experimental promotion: owner approval link, approved scope and source SHAs:
 
 ## Contract and risk
 
@@ -12,6 +13,7 @@ Latest PR head SHA and revision tested:
 - Database / migration changes and approval:
 - Role / permission / scope changes and approval:
 - Business logic changes and dependent modules/callers:
+- Stable/experimental compatibility evidence (both base SHAs when applicable):
 - Security review (no secrets or customer data):
 - Regression risks and affected modules:
 - Migration plan (or not applicable):

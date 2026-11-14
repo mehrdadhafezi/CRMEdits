@@ -5,14 +5,14 @@
 Private است. افزونه موجود «شبکه فروش» با مبنای ZIP تأییدشده مالک نسخه 2.0.235 توسعه
 می‌یابد. مقایسه مستقیم با Production در این مأموریت انجام نشده است.
 
-مرجع مشترک سورس و مستندات، شاخه **main** همین مخزن است. هر توسعه‌دهنده برای
-هر تسک روی Branch خودش کار می‌کند؛ تغییر مستقیم روی main و Force Push شاخه مشترک
+مرجع مسیر پایدار و مستندات، شاخه **main** است. تغییرات آزمایشی در **experimental**
+تجمیع می‌شوند. هر توسعه‌دهنده روی Branch تسک خودش کار می‌کند؛ پوش مستقیم و Force Push شاخه مشترک
 مجاز نیست. اسناد ممیزی R1 و R2 وضعیت زمان تهیه خود را ثبت کرده‌اند؛ راهنمای روزمره
 تیم همین فایل است. دریافت یا Merge کد در GitHub، سایت و دیتابیس عملیاتی را تغییر نمی‌دهد.
 
 ## 1. پروژه و هدف
 
-همه از یک Git history و main مصوب کار می‌کنند؛ هر تغییر با Issue، branch، تست و PR
+همه از یک مخزن کار می‌کنند؛ هر تغییر با Issue، branch، تست و PR
 تحویل می‌شود. هدف حفظ فرآیند و داده فعلی CRM است. کپی شخصی و ZIP ارسالی جایگزین
 سورس مشترک نیست. Merge کد روی GitHub به‌خودی‌خود افزونه نصب‌شده سایت را آپدیت نمی‌کند.
 
@@ -91,7 +91,10 @@ Codex باید AGENTS.md را بخواند؛ CLAUDE.md نیز
 
 ## 8. ایجاد branch
 
-روی worktree تمیز، remote صحیح و main به‌روز کار کنید. برای نمونه Issue واقعی 123:
+روی worktree تمیز و remote صحیح کار کنید. در شروع تسک، مسیر پایدار یا آزمایشی،
+base SHA، مقصد PR و فایل‌های مشترک را مشخص کنید. برای تسک آزمایشی، شاخه
+`experiment/*` را از آخرین `origin/experimental` بسازید. روش همگام‌سازی و انتقال
+انتخابی در [Git workflow](GIT_WORKFLOW.md) آمده است. نمونهٔ مسیر پایدار برای Issue 123:
 
 ```bash
 git status --short --branch
@@ -174,7 +177,8 @@ Private بودن مخزن، محتوای staged، Secret scan و history برر�
 
 ## 15. Pull Request
 
-در GitHub از branch خود PR به main بسازید و
+در GitHub از branch خود برای مسیر پایدار یا انتقال مصوب به `main`، و برای
+مسیر آزمایشی به `experimental`، PR بسازید و
 [قالب PR](../.github/PULL_REQUEST_TEMPLATE.md) را کامل کنید. اگر gh نصب و login معتبر
 است، متن واقعی PR را در `/tmp/crm-pr.md` بنویسید و اجرا کنید:
 
@@ -223,7 +227,8 @@ approval قدیمی را معتبر نگه نمی‌دارد؛ re-review لاز�
 
 ## 17. Merge Conflict
 
-`git fetch origin` و روی branch خود `git merge origin/main` انجام دهید. تغییر هر دو
+`git fetch origin` و روی branch خود، ref مقصد PR (`origin/main` یا
+`origin/experimental`) را merge کنید. تغییر هر دو
 طرف را بفهمید؛ ours/theirs عمومی ممنوع است. پس از حل، تست و diff کامل را بررسی و
 commit merge را push کنید. Rebase فقط برای commit محلی منتشرنشده پیش‌فرض مجاز است؛
 روی branch منتشرشده بدون هماهنگی history بازنویسی نکنید.
@@ -270,8 +275,9 @@ branch و review دارد؛ فوریت مجوز حذف history یا تست unsaf
 
 ## 22. Release و Deployment
 
-Development → PR → Review → CI → Merge → Staging → Release Approval → Production.
-[DEPLOYMENT.md](DEPLOYMENT.md) مسئولیت، artifact، backup، smoke و توقف را توضیح می‌دهد.
+مسیر پایدار از `main` به Staging می‌رود و همان ZIP تست‌شده پس از مجوز مستقل
+می‌تواند به Production برسد. مسیر `experimental` فقط به Preview می‌رود.
+[DEPLOYMENT.md](DEPLOYMENT.md) الزامات ایزولاسیون، artifact، backup و rollback را توضیح می‌دهد.
 Merge به معنای نصب روی سایت نیست. CI عمداً deploy ندارد؛ هیچ دسترسی Production به
 کارمند فقط به دلیل دسترسی repo داده نمی‌شود.
 
@@ -322,7 +328,7 @@ git push -u origin HEAD
 ```text
 روی همین checkout از mehrdadhafezi/CRMEdits تسک زیر را انجام بده.
 ابتدا AGENTS.md و docs/DEVELOPER_HANDBOOK.md و قرارداد ماژول مرتبط را بخوان.
-Git status، remote، branch، تغییرات ثبت‌نشده و مبنای صریح تسک یا آخرین main مصوب را بررسی کن.
+Git status، remote، branch، تغییرات ثبت‌نشده و آخرین base مصوب (main یا experimental) را بررسی کن.
 تسک، معیار پذیرش، مسیرهای مجاز/ممنوع و API/DB/Role/security impact را تحلیل کن.
 اگر کار مستقل و مجاز است ادامه بده؛ ابهام حساس را با شاهد گزارش کن.
 برای همین Issue branch اختصاصی بساز؛ تغییرات دیگران را حفظ کن.
@@ -339,7 +345,7 @@ PASS فقط برای تست اجراشده؛ هر N/A دلیل نامرتبط‌
 ضروری BLOCKED/NOT_RUN است. با تست ضروری FAIL/BLOCKED/NOT_RUN، PR را Ready معرفی نکن؛
 در صورت نیاز Draft با توضیح نقص تست بساز.
 Diff و staged files را بازبینی و اسناد مرتبط را به‌روز کن.
-Commit روشن بساز، فقط branch خودت را push و PR به base مصوب تسک (معمولاً main)
+Commit روشن بساز، فقط branch خودت را push و PR به base مصوب تسک (main یا experimental)
 با قالب استاندارد ایجاد کن؛ وابستگی به PR دیگر را روشن بنویس و شاخه آن را تغییر نده.
 در گزارش نهایی تغییر، دلیل، تست، ریسک، rollback، branch/commit/PR و مانع‌ها را بده.
 جدول Test/Status/Evidence استاندارد و یکی از پنج وضعیت آمادگی Testing Standards را
