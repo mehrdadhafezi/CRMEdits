@@ -47,11 +47,61 @@ Use OBSERVED, INFERRED, PROPOSED and UNVERIFIED accurately.
 
 ## Validation and delivery
 
-Run `python3 scripts/check.py all` (Python 3.10+, PHP CLI, Node.js required), then
-the meaningful tests for the changed behavior. Scan worktree and history with
-Gitleaks as documented. If a tool or fixture is missing, report BLOCKED/NOT_RUN;
-never claim a historical test passed now. Review the complete diff and staged files.
-Update the module contract and API/schema docs for changed contracts.
+**No verified tests, no approval. No approval, no merge.** These rules apply to
+human developers, Codex and Claude. Follow the detailed applicability, evidence and
+decision rules in [testing standards](docs/TESTING_STANDARDS.md).
+
+After every code change, including review fixes or conflict resolution, compare
+all changed files with the original task and approved base. Review the complete
+committed diff, staged and unstaged changes, and new files. Find accidental edits,
+unnecessary formatting and unrelated deletions. Correct your own out-of-scope
+changes without discarding another contributor's work. Report effects on API,
+database, roles, permissions and business logic; do not change contracts implicitly.
+
+Before creating a PR or pushing a subsequent revision:
+
+1. Run `python3 scripts/check.py all` (Python 3.10+, PHP CLI, Node.js required) and
+   scan the worktree and available Git history with Gitleaks as documented.
+2. Run security tests relevant to the change: authentication, authorization,
+   role/capability and privilege escalation, record/API access, nonce/CSRF, SQL
+   injection, XSS, input validation, output escaping, uploads, sensitive exposure
+   and secrets. Record a specific NOT_APPLICABLE (N/A) reason for each unrelated
+   control. Static review and secret scanning do not prove runtime security.
+3. Identify existing tests and execute functional and regression scenarios for the
+   changed behavior and affected callers, shared code and dependent modules.
+   Add a regression test for new behavior or a bug fix when feasible; explain gaps.
+   WordPress/database tests require an isolated, disposable, synthetic-data site.
+   Never run destructive fixtures against production or customer-data clones.
+4. Review the final full diff and staged files, verify scope/compatibility, update
+   affected contracts, and record exact commands, environment, revision and results.
+
+Missing required infrastructure is BLOCKED or NOT_RUN with a reason, not N/A or
+PASS. Required FAIL, BLOCKED or NOT_RUN results prohibit READY FOR REVIEW. A draft
+PR may expose the blocker, but must say testing is incomplete. If new code is added
+after testing, rerun the affected tests before claiming readiness.
+
+Before any separately authorized merge, fetch and inspect the latest PR head,
+base, final diff, independent review and unresolved discussions. Verify successful
+required GitHub checks belong to that exact current head; for a tested merge ref,
+verify its head/base parents match the PR. Revalidate after new commits, conflicts
+or base updates that affect the tested result. Old green CI is not evidence for a
+new revision, and the current syntax/docs/secret CI does not certify the whole CRM.
+Out-of-scope edits, missing required tests, failures and security risks block merge.
+
+In every task handover and PR include a `Test | Status | Evidence` table covering
+Syntax, Secret Scan, Security, Functional, Regression, Scope/Diff and API/DB/Role
+Compatibility, plus documentation/hygiene and exact GitHub CI evidence when available.
+PASS requires a real completed check; N/A requires a change-specific reason. End
+with exactly one readiness classification (record all blockers if several exist):
+
+- `READY FOR REVIEW`
+- `BLOCKED — TEST FAILURE`
+- `BLOCKED — MISSING REQUIRED TEST`
+- `BLOCKED — UNRELATED CHANGES`
+- `BLOCKED — SECURITY RISK`
+
+READY FOR REVIEW requests review; it is neither approval nor merge authorization.
+Never fabricate approvals or substitute confidence for unverified required tests.
 
 Follow [Git workflow](docs/GIT_WORKFLOW.md): task branch, clear commit, push only
 your branch, PR to main, independent review and successful required CI. No direct
