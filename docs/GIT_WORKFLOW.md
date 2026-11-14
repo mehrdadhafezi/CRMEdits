@@ -17,46 +17,53 @@ Branch Protection نیست.
 | `experimental` | شاخهٔ مشترک آزمایشی. مبنای Preview |
 | `experiment/*` | از `experimental` به‌روز → PR به `experimental` |
 
-شاخه‌های `docs/*` و `test/*` نیز از مقصد مصوب تسک شروع می‌شوند. برای تسک
-آزمایشی، پس از fetch از `git switch -c experiment/123-change origin/experimental`
-استفاده کنید. نمونهٔ زیر برای مسیر پایدار است.
+شاخه‌های `docs/*` و `test/*` نیز از مقصد مصوب تسک شروع می‌شوند.
+
+## ساخت شاخه از SHA تأییدشده
+
+SHA کامل مقصد را در GitHub بخوانید و مبنای مصوب را در تسک ثبت کنید. بلوک را
+یکجا در Git Bash اجرا کنید. برای مسیر آزمایشی، `target` را `experimental` و
+`topic` را مثلاً `experiment/123-change` بگذارید.
 
 ```bash
-git status --short --branch
-git remote -v
-git fetch origin
-git switch main
-git pull --ff-only origin main
-git switch -c fix/123-specific-behavior
+(
+  set -euo pipefail
+  target=main
+  expected='<approved-full-sha>'
+  topic=fix/123-specific-behavior
+  fetch_url=$(git remote get-url origin)
+  push_url=$(git remote get-url --push origin)
+  test "$fetch_url" = https://github.com/mehrdadhafezi/CRMEdits.git
+  test "$push_url" = "$fetch_url"
+  changes=$(git status --porcelain --untracked-files=all)
+  test -z "$changes" || { git status --short; echo 'Stop: worktree is dirty'; exit 1; }
+  git fetch origin
+  ref="refs/remotes/origin/$target"
+  base=$(git rev-parse --verify "$ref^{commit}")
+  test "$base" = "$expected" || { echo "Stop: fetched base is $base"; exit 1; }
+  unpublished=$(git rev-list HEAD --not --remotes=origin)
+  test -z "$unpublished" || { echo 'Stop: current HEAD has unpublished commits'; exit 1; }
+  if git show-ref --verify --quiet "refs/heads/$target"; then
+    git merge-base --is-ancestor "refs/heads/$target" "$base" ||
+      { echo 'Stop: local target is ahead of or diverged from origin'; exit 1; }
+  fi
+  git switch --no-track -c "$topic" "$base"
+)
 ```
 
-این دستورات فرض می‌کنند worktree تمیز و main موجود است؛ در غیر این صورت تغییر
-دیگران را stash/reset/clean نکنید. از worktree مستقل یا هماهنگی با مالک تغییر استفاده کنید.
+خطا را گزارش دهید و کار وابسته را تا روشن‌شدن وضعیت متوقف کنید. تغییر یا commit
+محلی را پاک، reset یا بازنویسی نکنید. با هماهنگی مالک تغییر، از worktree یا clone
+تمیز و همان SHA تأییدشده ادامه دهید. `git pull --ff-only` برای تشخیص main محلیِ
+جلوتر کافی نیست.
 
 Commitها روشن و قابل ردیابی باشند: `feat(module): ...`، `fix(module): ...`،
 `refactor(module): ...`، `test(module): ...` یا `docs(module): ...`؛ Issue در پیام/PR
-ذکر شود. قبل از commit فایل‌ها را صریح stage کنید و diff نهایی را ببینید:
-
-```bash
-python3 scripts/check.py all
-git diff --check
-git diff
-git add docs/DEVELOPER_HANDBOOK.md
-git diff --cached
-git commit -m "docs(handbook): clarify setup steps (#123)"
-git push -u origin HEAD
-```
-
-فایل stage نمونه را با فایل‌های واقعی تسک جایگزین کنید. push فقط به branch خودتان؛
+ذکر شود. برای تست، stage صریح، Commit و Push از
+[نمونهٔ fail-fast راهنما](DEVELOPER_HANDBOOK.md#24-نمونه-کامل-از-تسک-تا-pr)
+استفاده کنید. Push فقط به branch خودتان مجاز است.
 Direct Push به `main` یا `experimental`، Force Push شاخه مشترک و حذف branch دیگران ممنوع است.
-برای PR با GitHub UI یا، در صورت نصب و ورود معتبر `gh`:
-
-```bash
-gh pr create --base main --head fix/123-specific-behavior --title "fix(module): specific behavior" --body-file /tmp/crm-pr.md
-```
-
-پیش از اجرای این دستور، توضیح واقعی PR را طبق
-[قالب PR](../.github/PULL_REQUEST_TEMPLATE.md) در فایل `/tmp/crm-pr.md` بنویسید.
+ترتیب Draft، CI و Ready در [راهنمای PR](DEVELOPER_HANDBOOK.md#15-pull-request)
+آمده است. توضیح PR را طبق [قالب PR](../.github/PULL_REQUEST_TEMPLATE.md) تکمیل کنید.
 
 تغییرات همزمان: پس از fetch، روی branch منتشرشده خودتان ref مقصد PR
 (`origin/main` یا `origin/experimental`) را merge کنید و conflict را با بررسی هر دو تغییر حل کنید. هیچ فایل را کورکورانه با
@@ -77,13 +84,22 @@ merge/deploy از prompt ثابت AI استخراج نشود.
 بسازد و آخرین `main` را در آن ادغام کند. جهت انتقال همیشه پایدار به آزمایشی است:
 
 ```bash
-git fetch origin
-git switch -c experiment/sync-main-123 origin/experimental
-git merge --no-ff origin/main
-git diff --check origin/experimental...HEAD
-git diff origin/experimental...HEAD
+(
+  set -euo pipefail
+  main_sha='<approved-full-main-sha>'
+  experimental_sha='<approved-full-experimental-sha>'
+  test "$(git branch --show-current)" = experiment/sync-main-123
+  git fetch origin
+  test "$(git rev-parse --verify 'refs/remotes/origin/main^{commit}')" = "$main_sha"
+  test "$(git rev-parse --verify 'refs/remotes/origin/experimental^{commit}')" = "$experimental_sha"
+  test "$(git rev-parse HEAD)" = "$experimental_sha"
+  git merge --no-ff "$main_sha"
+  git diff --check "$experimental_sha"...HEAD
+  git diff "$experimental_sha"...HEAD
+)
 ```
 
+ابتدا شاخهٔ `experiment/sync-main-123` را با نمونهٔ ساخت شاخه در همین سند بسازید.
 قبل از push، conflictها، diff و سازگاری دو مسیر را بازبینی و تست‌های متأثر را
 اجرا کنید. PR به `experimental` باز شود و فرد مجاز پس از review و CI، با
 **merge commit** آن را ادغام کند تا ancestry اصلاحات پایدار حفظ شود. برای PR
@@ -103,12 +119,12 @@ merge commit یا وابسته به آزمایش دیگر است، فقط بخش
 بازپیاده‌سازی کنید. منبع و وابستگی‌های هر تغییر را در PR ثبت کنید.
 
 ```bash
-git fetch origin
-git switch -c feature/123-approved-change origin/main
-# Apply only the owner-approved changes here.
-git log --oneline origin/main..HEAD
-git diff --check origin/main...HEAD
-git diff origin/main...HEAD
+# Create feature/123-approved-change using the verified-base example above.
+# After porting only the approved changes, compare with the recorded main SHA.
+base='<approved-full-main-sha>'
+git log --oneline "$base"..HEAD
+git diff --check "$base"...HEAD
+git diff "$base"...HEAD
 ```
 
 کل diff و فهرست commitها را با محدودهٔ مصوب تطبیق دهید، سازگاری با آخرین
@@ -123,7 +139,3 @@ Hotfixها را بررسی کنید و تست‌های مرتبط را دوبا�
 تأیید نمی‌کند، پس مقایسهٔ diff با فهرست مالک اجباری است. تا وقتی GitHub
 required checks و Branch Protection را enforce نمی‌کند، رعایت این کنترل
 و ممنوعیت push مستقیم به افراد دارای دسترسی نوشتن وابسته است.
-
-مخزن خالی: اولین commit فقط با تأیید صریح مالک، محتوای حداقلی bootstrap و بدون
-انتقال history قدیمی ساخته می‌شود؛ سپس همه تغییرات با PR. وضعیت approval و SHA
-واقعی در گزارش تحویل درج می‌شود.

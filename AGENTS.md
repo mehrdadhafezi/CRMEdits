@@ -15,7 +15,9 @@ Canonical remote: https://github.com/mehrdadhafezi/CRMEdits (private).
    and [security policy](docs/SECURITY_POLICY.md).
 4. Trace the actual caller, handler, authorization, storage and side effects.
    Inspect the relevant function bodies; symbol indexes are navigation aids only.
-5. Select and record the base and PR target before editing. Use current `main` for
+5. Follow the task's activity mode in the handbook; default to read-only analysis.
+   If implementation is authorized, select and record the verified remote SHA and
+   PR target before editing. Use current `main` for
    stable work and `experimental` for `experiment/*`. Follow the
    [Git workflow](docs/GIT_WORKFLOW.md) for syncs and approved promotions. If the
    required base is missing, report it and stop the dependent work.
@@ -78,8 +80,9 @@ Before creating a PR or pushing a subsequent revision:
    affected contracts, and record exact commands, environment, revision and results.
 
 Missing required infrastructure is BLOCKED or NOT_RUN with a reason, not N/A or
-PASS. Required FAIL, BLOCKED or NOT_RUN results prohibit READY FOR REVIEW. A draft
-PR may expose the blocker, but must say testing is incomplete. If new code is added
+PASS. Required FAIL, BLOCKED or NOT_RUN results prohibit READY FOR REVIEW. Publish
+incomplete work as a Draft only when the owner explicitly requests it and it is
+safe to push. If new code is added
 after testing, rerun the affected tests before claiming readiness.
 
 Before any separately authorized merge, fetch and inspect the latest PR head,
@@ -94,7 +97,8 @@ In every task handover and PR include a `Test | Status | Evidence` table coverin
 Syntax, Secret Scan, Security, Functional, Regression, Scope/Diff and API/DB/Role
 Compatibility, plus documentation/hygiene and exact GitHub CI evidence when available.
 PASS requires a real completed check; N/A requires a change-specific reason. End
-with exactly one readiness classification (record all blockers if several exist):
+with exactly one readiness classification. Record workflow stage and block reasons
+separately:
 
 - `READY FOR REVIEW`
 - `BLOCKED — TEST FAILURE`

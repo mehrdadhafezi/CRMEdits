@@ -5,6 +5,8 @@ Summary / acceptance criteria:
 Files changed and allowed scope:
 Approved base branch / base SHA:
 Latest PR head SHA and revision tested:
+Workflow stage (local / pushed / draft / CI pending / ready / review):
+Block reason and follow-up role/status, if applicable:
 For experimental promotion: owner approval link, approved scope and source SHAs:
 
 ## Contract and risk
