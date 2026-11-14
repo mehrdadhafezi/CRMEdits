@@ -4,6 +4,14 @@
 Header حداقل WordPress 6.0 و PHP 8.0 را اعلام می‌کند. نسخه runtime Production و
 نسخه دقیق WooCommerce، MySQL/MariaDB و افزونه‌های همراه هنوز UNVERIFIED است.
 
+پیش‌نیازهای اجرایی جدا از بررسی محلی سورس:
+
+| مورد | وضعیت و نقش پیگیر |
+|---|---|
+| نسخه‌های دقیق Production | `UNVERIFIED`. اپراتور مجاز، در انتظار شواهد نسخه‌ها با مجوز جداگانه. |
+| محیط خودکار WordPress و DB ساختگی | `UNVERIFIED`. مسئول محیط تست که مالک تعیین می‌کند، در انتظار اجرای معتبر. تست ضروری وابسته تا آن زمان `BLOCKED` است. |
+| ایزولاسیون Staging و آزمون Restore | `UNVERIFIED`. اپراتور میزبان، در انتظار بررسی و گزارش بازیابی مجاز طبق [راهنمای استقرار](DEPLOYMENT.md). |
+
 1. Git و دسترسی شخصی GitHub، Python 3.10+، PHP CLI و Node.js برای بررسی‌های محلی
    نصب کنید. برای سایت آزمایشی WordPress، وب‌سرور و MySQL/MariaDB InnoDB مستقل
    لازم است؛ PHP ZIP برای MIS XLSX و extensionهای لازم WordPress فراهم شوند.
@@ -29,9 +37,8 @@ Production از این سند استنباط نشود. برای تست قابل 
 ```bash
 git clone https://github.com/mehrdadhafezi/CRMEdits.git
 cd CRMEdits
-git switch main
-git pull --ff-only origin main
-python3 scripts/check.py all
+git fetch origin
+git rev-parse --verify 'refs/remotes/origin/main^{commit}'
 ```
 
 پیش از توسعه، Branch مستقل تسک را مطابق [Handbook](DEVELOPER_HANDBOOK.md) بسازید؛
