@@ -61,7 +61,9 @@ git status --short --branch
 
 ## 4. استفاده از Codex و Claude
 
-پوشه همین clone را در ابزار باز کنید. Codex باید AGENTS.md را بخواند؛ CLAUDE.md نیز
+در Codex Desktop پوشه `CRMEdits` را به‌عنوان پروژه باز کنید. اگر از ترمینال کار
+می‌کنید، از ریشه همین clone دستور `codex` یا `claude` را اجرا کنید.
+Codex باید AGENTS.md را بخواند؛ CLAUDE.md نیز
 به همان قوانین مشترک ارجاع می‌دهد. تسک کامل، مسیرهای مجاز و قرارداد ماژول را بدهید.
 حساب AI دیگران به معنای اشتراک Git credentials نیست؛ push با حساب GitHub خود فرد
 انجام می‌شود. فایل مشتری، Secret یا prompt حاوی داده Production به ابزار AI ندهید.
