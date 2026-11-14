@@ -1,14 +1,60 @@
 # Deployment governance — R1 (current policy)
 
-فرآیند: Development → Pull Request → Review → CI → Merge → Staging → Release
-Approval → Production. در این مأموریت هیچ activation، migration، merge یا deployment
-انجام نمی‌شود. دریافت Git سورس، سایت نصب‌شده را تغییر نمی‌دهد.
+Merge در GitHub فایل‌های WordPress را منتشر نمی‌کند. هیچ workflow این مخزن
+به Production استقرار خودکار ندارد. نصب، فعال‌سازی، تغییر سرور، Migration و
+انتشار فقط برای محیط مشخص و با مجوز صریح مالک انجام می‌شوند.
+
+## محیط‌ها و مسیر استقرار
+
+| محیط | منبع و کاربرد |
+|---|---|
+| Production | سایت واقعی موجود. فقط همان ZIP پایدار تأییدشده در Staging، با مجوز جداگانهٔ مالک |
+| [Staging](https://staging.payasetareh.ir) | commit مشخص و ادغام‌شده در `main`. بررسی نسخهٔ نامزد انتشار با داده ساختگی |
+| Experimental Preview | WordPress جداگانه در `preview.payasetareh.ir` پس از تأیید میزبان. فقط commit مشخص از `experimental` و داده ساختگی |
+
+برای هر مسیر از checkout تمیز روی SHA کامل و تأییدشده، `python3 scripts/package.py`
+را اجرا کنید. محیط، شاخه، SHA کامل، نام ZIP و SHA-256 را ثبت کنید. پیش از نصب،
+SHA-256 فایل تحویلی را با فایل `.zip.sha256` به‌دست‌آمده از همان ساخت مقایسه کنید
+(با `sha256sum -c` یا `Get-FileHash -Algorithm SHA256`). نتیجهٔ smoke، رگرسیون
+مرتبط و شواهد را به همان SHA و ZIP وصل کنید. ZIP Preview هرگز به Staging یا
+Production منتقل نمی‌شود. پس از [انتقال انتخابی قابلیت و Merge مجاز](GIT_WORKFLOW.md)،
+از commit جدید `main` یک ZIP پایدار بسازید و همان فایل را در Staging تست کنید.
+برای انتشار مصوب Production، از همان فایل موفق Staging استفاده کنید. آن را
+دوباره نسازید و تغییر ندهید.
+
+## شرط استفاده از Staging و ساخت Preview
+
+پاسخ HTTPS فقط دسترسی عمومی به hostname را نشان می‌دهد. پیش از نصب یا اجرای تست،
+اپراتور مجاز باید موارد زیر را برای هر محیط ثبت و تأیید کند:
+
+1. vhost، DocumentRoot، مسیر واقعی افزونه و uploads، مالک فایل و کاربر/PHP pool
+   جدا. Symlink، mount یا دسترسی خواندن یا نوشتن به مسیرهای Production و محیط
+   دیگر نباید وجود داشته باشد. دسترسی HTTP به Preview برای تیم مجاز محدود باشد.
+2. DB/schema و کاربر DB جدا و محدود به همان محیط، `wp-config.php` و salts مستقل،
+   و cache، session و uploads مستقل. از دادهٔ مشتری، backup واقعی و credential
+   واقعی استفاده نشود. نام DB و مجوزها بدون نمایش secret بررسی شوند.
+3. WP-Cron و Cron میزبان، workerها و webhookها را برای هر نصب شناسایی کنید. قبل
+   از bootstrap، ارسال SMTP/Mail، SMS، درگاه پرداخت و APIهای واقعی را برای
+   حساب آن محیط در سطح شبکه و سرویس ببندید. فقط مقصدهای ساختگی مجاز باشند.
+   بررسی کنید مسیرهای مستقیم افزونه (cURL، SMTP و callbackها) هم پوشش دارند؛
+   خاموش‌کردن WP-Cron یا تنظیم WordPress به‌تنهایی کافی نیست.
+4. روی میزبان مشترک، محدودیت CPU/RAM، دیسک و اتصال DB را بررسی کنید. اگر
+   جداسازی کاربر فرایند، دسترسی فایل/DB، شبکهٔ خروجی یا سقف منابع قابل اثبات
+   نیست، Preview در همان میزبان ساخته نشود و میزبان یا VM جدا پیشنهاد شود.
+5. برای هر محیط backup از فایل‌ها، پیکربندی و DB ساختگی با مسیر و دسترسی جدا
+   و نگه‌داری خارج از DocumentRoot تعریف کنید. Restore را در محیط disposable
+   با DB جدا آزمایش کنید و مسئول و زمان بازیابی را ثبت کنید.
+
+تست مخرب MIS فقط روی WordPress و DB **disposable** جداگانه با داده ساختگی و
+guardهای [استاندارد تست](TESTING_STANDARDS.md) اجرا شود. Staging و Preview مشترک
+تیم محیط تست مخرب نیستند. بررسی فایل/DB/Cron/شبکه و Restore به دسترسی خواندنی
+سرور یا شواهد اپراتور نیاز دارد. ساخت Preview و اعمال هر تغییر مجوز جدا می‌خواهد.
 
 | مرحله | مسئول | شرط خروج |
 |---|---|---|
 | Development / PR | توسعه‌دهنده | scope، معیار پذیرش، diff، تست و مستندات |
 | Review / CI | reviewer مستقل و مالک بخش حساس | approval معتبر، CI سبز، discussion حل‌شده |
-| Merge | فرد مجاز تعیین‌شده مالک | ruleset و review برقرار، بدون bypass خودسرانه |
+| Merge | فرد مجاز تعیین‌شده مالک | CI، review و مجوز مالک، همراه با ruleset در صورت فعال‌بودن |
 | Staging | مسئول release که مالک تعیین می‌کند | محیط ایزوله، smoke و regression مرتبط |
 | Release approval | مالک محصول و مالک فنی/مالی مرتبط | نسخه، migration، ریسک و rollback مصوب |
 | Production | اپراتور مجاز و تأییدشده | backup معتبر، artifact مشخص، نظارت و زمان‌بندی |

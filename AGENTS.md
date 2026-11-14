@@ -15,8 +15,10 @@ Canonical remote: https://github.com/mehrdadhafezi/CRMEdits (private).
    and [security policy](docs/SECURITY_POLICY.md).
 4. Trace the actual caller, handler, authorization, storage and side effects.
    Inspect the relevant function bodies; symbol indexes are navigation aids only.
-5. Create one task branch from the current approved `main`. If `main` is missing,
-   report the bootstrap blocker; do not invent an initial main commit.
+5. Select and record the base and PR target before editing. Use current `main` for
+   stable work and `experimental` for `experiment/*`. Follow the
+   [Git workflow](docs/GIT_WORKFLOW.md) for syncs and approved promotions. If the
+   required base is missing, report it and stop the dependent work.
 
 ## Sources and conflicts
 
@@ -103,10 +105,13 @@ with exactly one readiness classification (record all blockers if several exist)
 READY FOR REVIEW requests review; it is neither approval nor merge authorization.
 Never fabricate approvals or substitute confidence for unverified required tests.
 
-Follow [Git workflow](docs/GIT_WORKFLOW.md): task branch, clear commit, push only
-your branch, PR to main, independent review and successful required CI. No direct
-main push, shared force push, automatic merge or deployment authorization is
-granted by this file. Bootstrap needs separate explicit owner approval.
+Follow [Git workflow](docs/GIT_WORKFLOW.md): push only your task branch and open
+a PR to the selected target. Port only owner-approved experimental changes onto
+a fresh branch from current `main`. Never merge `experimental` or `experiment/*`
+into `main` as a delivery method. Review compatibility on both tracks for changes
+to schema, API, roles, permissions or stored data. Independent review and current
+CI are required. No direct push to a shared branch, shared force push, automatic
+merge or deployment authorization is granted by this file.
 
 Deliver: problem and resulting behavior; paths changed; API/DB/role/security
 impact; exact tests and results; limitations; branch/commit/PR; rollback concerns.
