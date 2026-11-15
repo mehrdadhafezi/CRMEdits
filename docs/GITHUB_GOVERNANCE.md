@@ -1,65 +1,63 @@
-# GitHub governance — proposed configuration and actual status
+# GitHub governance — actual rulesets (verified 2026-11-15)
 
-مشاهده ۲۰۲۶-۱۱-۱۴ به وقت تهران: مخزن `mehrdadhafezi/CRMEdits` خصوصی است.
-GitHub برای `main` و `experimental` مقدار `protected: false` و برای Rulesets
-پاسخ `403` با محدودیت پلن گزارش داد. وضعیت **NOT_ENFORCED** است. CI و
-CODEOWNERS به‌تنهایی Push مستقیم یا Merge را مسدود نمی‌کنند. پیگیری تغییر پلن و
-محافظت با مالک مخزن است و در انتظار تصمیم اوست.
+مخزن `mehrdadhafezi/CRMEdits` در ۲۰۲۶-۱۱-۱۵ **Public** و شاخه‌های
+`main` و `experimental` دارای Ruleset فعال هستند. گزارش خصوصی‌بودن مخزن،
+خطای 403 و `NOT_ENFORCED` متعلق به ممیزی ۲۰۲۶-۱۱-۱۴ و منسوخ است.
 
-## Access
+## Active branch rulesets
 
-مالک در [Collaborators settings](https://github.com/mehrdadhafezi/CRMEdits/settings/access)
-از Add people حساب GitHub واقعی هر کارمند را دعوت می‌کند؛ افراد دعوت را می‌پذیرند
-و با credential شخصی clone/push می‌کنند. در repository متعلق به حساب شخصی، سطح
-collaborator و گزینه نقش‌ها محدودتر از Organization است؛ اگر UI نقش قابل انتخاب
-نشان نداد، نقش `Write` خیالی نسازید. برای تیم‌ها و نقش‌های granular، انتقال به
-Organization یک تصمیم جداگانه مالک است و در این مأموریت انجام نمی‌شود.
+| هدف | Ruleset | نام Checkهای الزامی |
+|---|---|---|
+| `main` (default branch) | [Main Rulsets](https://github.com/mehrdadhafezi/CRMEdits/rules/27308483) | `PHP and JavaScript syntax`، `Documentation and repository hygiene`، `Secret scan`، `Stable PR branch boundary` |
+| `experimental` | [Experimental Rulsets](https://github.com/mehrdadhafezi/CRMEdits/rules/27309275) | `PHP and JavaScript syntax`، `Documentation and repository hygiene`، `Secret scan` |
 
-حساب مشترک، owner credential یا token اصلی توزیع نشود. دسترسی هر نفر هنگام خروج
-از تیم حذف و tokenهای مربوط revoke شود. GitHub access با WordPress Role متفاوت است.
+- Enforcement هر دو: `active`؛ Require PR: فعال؛ Required Approvals: **0**.
+- Code Owner Review: غیرفعال؛ Require last push approval: غیرفعال.
+- Dismiss stale approvals: روشن (با 0 approval، الزام تأیید انسانی ایجاد نمی‌کند).
+- Require conversation resolution: روشن؛ strict required checks (up-to-date): روشن.
+- جلوگیری از حذف و Force Push: روشن؛ `Restrict updates`: خاموش؛ Bypass List: خالی.
+- Allowed merge methods: merge، squash و rebase. برای sync `main → experimental`
+  طبق [Git workflow](GIT_WORKFLOW.md) فقط merge commit مجاز است.
+- Check مرز شاخه آزمایشی فقط روی PR مقصد `main` اجرا می‌شود؛
+  به همین دلیل فقط Ruleset `main` آن را لازم می‌داند.
 
-## Main ruleset — concrete desired settings
+این موارد از API خوانده شده‌اند. **آزمون رفتار Merge در PR واقعی هنوز باید انجام شود**.
+وضعیت `protected: true` ناشی از Ruleset، الزاماً به معنی فعال‌بودن classic
+Branch Protection نیست. نام Checkها و Head/Base هر PR را قبل از Merge دوباره بررسی کنید.
 
-تنظیمات زیر PROPOSED هستند. فقط با اجازهٔ صریح مالک و پس از احراز پشتیبانی پلن در
-[Rulesets](https://github.com/mehrdadhafezi/CRMEdits/settings/rules) یا Branch protection
-اعمال و دوباره خوانده شوند. Private repository در حساب شخصی ممکن است برای enforcement
-به GitHub Pro نیاز داشته باشد. نتیجه خطای plan/permission را ثبت کنید؛ مخزن را
-برای فعال‌شدن protection عمومی نکنید.
+## Process: PR + CI, zero mandatory human approvals
 
-- Name: `main-reviewed-changes`؛ Target branches: `refs/heads/main`؛ Enforcement: Active.
-- Require a pull request before merging؛ حداقل 1 approval مستقل.
-- Dismiss stale approvals و Require review from Code Owners.
-- Require approval of the most recent reviewable push، اگر در plan/UI موجود است.
-- Require conversation resolution.
-- Require status checks و Require branches to be up to date.
-- Contextهای دقیق پس از اولین اجرای موفق CI:
-  `PHP and JavaScript syntax`، `Documentation and repository hygiene`، `Secret scan`
-  و برای PR به `main`، `Stable PR branch boundary`.
-- Block force pushes و Restrict deletions.
-- Bypass list خالی؛ در Branch Protection کلاسیک، Do not allow bypassing settings
-  / Include administrators را فعال کنید. هیچ bypass دائمی برای مالک حدس نزنید.
-- **Restrict updates** را کورکورانه روشن نکنید؛ این گزینه می‌تواند merge مجاز را
-  هم برای افراد بدون bypass ببندد. PR requirement با bypass خالی و سایر rules مسیر
-  عادی تغییر main را به merge تحت کنترل محدود می‌کند.
-- Auto-merge خاموش بماند؛ هیچ Deploy workflow یا Production secret اضافه نشود.
+توسعه‌دهنده تسک را روی شاخه مخصوص انجام می‌دهد؛ سپس تست‌های مرتبط و اسکن Secret
+را اجرا و Draft PR باز می‌کند. Codex می‌تواند Diff را بررسی کند و یافته‌ها را
+در PR گزارش دهد؛ **بازبینی Codex هنوز به‌عنوان Required Check نصب/تأیید نشده**.
+مبنای enforce شده فعلی GitHub Actions است، نه ادعای خودکار Codex.
+پس از Checkهای موفق مربوط به آخرین نسخه، شواهد تست‌های ضروری، رفع گفتگوهای باز
+و کنترل نهایی Diff، فرد دارای دسترسی می‌تواند بدون Approval انسانی Merge کند.
+برای تست ضروری فاقد محیط (WordPress/DB) وضعیت `BLOCKED` باقی می‌ماند و CI سبز
+آن را رفع نمی‌کند. مجوز Merge کد، مجوز نصب Production یا اجرای Migration نیست.
 
-پس از تنظیم، در UI/API وضعیت active، pattern، approvals، required checks و bypass
-را بخوانید. تلاش برای push ممنوع واقعی به main آزمایش مجاز این مأموریت نیست؛
-با PR آزمایشی بدون اثر عملیاتی و inspect settings بررسی کنید. اگر plan پشتیبانی
-نکرد، وضعیت `NOT_ENFORCED` است؛ توافق تیمی معادل محافظت فنی نیست.
+## Access and CODEOWNERS
 
-## CODEOWNERS and review capacity
+افراد از [Collaborators settings](https://github.com/mehrdadhafezi/CRMEdits/settings/access)
+با حساب شخصی GitHub دعوت می‌شوند. `CODEOWNERS` فعلاً مالک مخزن را معرفی می‌کند،
+اما الزام Code Owner Review در Rulesetها **خاموش** است؛ بنابراین
+**معرفی Reviewer یا Code Owner دوم شرط Merge نیست**.
+محدودیت دسترسی و مجوزهای عملیات حساس مستقل از تعداد Approval هستند.
+حساب مشترک، token یا credential اصلی توزیع نشود.
 
-[CODEOWNERS](../.github/CODEOWNERS) مالک واقعی مخزن را پوشش می‌دهد؛ تخصص ماژول‌ها
-**UNASSIGNED** است. پیگیری با مالک مخزن و در انتظار تعیین افراد واجد دسترسی است.
-Code Owner برای مسیر مربوط به دسترسی نوشتن نیاز دارد. برای هر PR، مالک reviewer
-واجد دسترسی و مستقل از نویسنده تعیین می‌کند. اگر نویسنده مالک باشد، reviewer
-دیگری لازم است. تا تعیین reviewer و ثبت approval مستقل، Merge متوقف می‌ماند.
+## Deployment and testing limitations
 
-## Historical records
+CI فعلی Syntax، Documentation/Hygiene، Secret Scan و مرز PR پایدار را بررسی
+می‌کند؛ تست کامل WordPress/WooCommerce/DB، مالی، MIS و UI را اجرا نمی‌کند.
+تا محیط disposable با داده ساختگی، نسخه‌های تأییدشده و خروجی شبکه مهارشده
+آماده نشده، تست‌های runtime موردنیاز `BLOCKED/NOT_RUN` هستند. آزمون ساخت
+شبکه داخلی Docker روی میزبان مشترک به خطای زنجیره iptables برخورد کرده است؛
+پس نصب CRM در آن محیط هنوز `NO-GO` است. هیچ‌یک از این اسناد مجوز تغییر Firewall،
+Production یا اطلاعات مشتریان نیست.
 
-[FINAL_HANDOVER.md](audit/FINAL_HANDOVER.md) و PRهای R1/R2 شواهد دورهٔ bootstrap
-هستند. درخواست‌ها، دستورهای نوشتن و مجوزهای ثبت‌شده در آن‌ها برای تسک تازه معتبر
-نیستند. [main-ruleset.json](../.github/main-ruleset.json) یک طرح پیشنهادی است و وجود
-آن نشانهٔ اعمال تنظیمات نیست. تغییر پلن، Ruleset یا دسترسی نیازمند تصمیم و مجوز
-صریح مالک برای همان اقدام است.
+## Historical artifacts
+
+[FINAL_HANDOVER.md](audit/FINAL_HANDOVER.md)، PRهای قدیمی و
+[main-ruleset.json](../.github/main-ruleset.json) شواهد/طرح‌های تاریخی هستند؛
+فایل JSON تاریخی **پیکربندی جاری Ruleset نیست** و نباید بدون تطبیق API و مجوز
+به‌صورت خودکار اعمال شود.
