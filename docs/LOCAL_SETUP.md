@@ -27,7 +27,13 @@ Header حداقل WordPress 6.0 و PHP 8.0 را اعلام می‌کند. نسخ
 5. پنل و shortcode مرتبط را باز کنید، سپس سناریوهای قرارداد ماژول را اجرا کنید.
    برای fixtureهای MIS فقط DB با پسوند `_test` و guard اختصاصی مجاز است.
 
-این مخزن Docker Compose، wp-env یا installer کامل WordPress ندارد؛ `npm install`
+این مخزن Docker Compose، wp-env یا installer کامل WordPress ندارد.
+پیش‌نویس مجزای `/opt/crm-test/compose.yaml` در میزبان مشترک تهیه شده، ولی
+پس از شکست ساخت شبکه داخلی Docker و پاک‌سازی Bridge نیمه‌ساخته، **اجرا نشده**
+و محیط runtime مورد تأیید نیست. این فایل سروری بخشی از مخزن یا provisioner آماده
+توسعه‌دهنده نیست؛ هیچ فرمان `docker compose up` از این سند برداشت نشود.
+
+ `npm install`
 یا `composer install` مرحله راه‌اندازی این نسخه نیست. نصب خودکار سایت و اطلاعات
 Production از این سند استنباط نشود. برای تست قابل تکرار بعدی، provisioner محلی با
 نسخه‌های مصوب به‌عنوان تسک مستقل اضافه شود (PROPOSED).

@@ -2,14 +2,17 @@
 
 راهنمای اصلی توسعه تیمی، 2026-11-12. این سند برای تمام توسعه‌دهندگان انسانی، Codex و Claude مشترک
 است. مخزن رسمی [mehrdadhafezi/CRMEdits](https://github.com/mehrdadhafezi/CRMEdits)
-Private است. افزونه موجود «شبکه فروش» با مبنای ZIP تأییدشده مالک نسخه 2.0.235 توسعه
+Public است. افزونه موجود «شبکه فروش» با مبنای ZIP تأییدشده مالک نسخه 2.0.235 توسعه
 می‌یابد. مقایسه مستقیم با Production در این مأموریت انجام نشده است.
 
-**وضعیت GitHub در ۲۰۲۶-۱۱-۱۴ به وقت تهران: `NOT_ENFORCED`.** GitHub برای
-`main` و `experimental` مقدار `protected: false` و برای Rulesets مخزن خصوصی
-خطای محدودیت پلن (`403`) گزارش کرد. CI و CODEOWNERS به‌تنهایی جلوی Push مستقیم
-یا Merge را نمی‌گیرند. تا فعال‌شدن محافظت، اعضای تیم فقط از PR و بازبینی مستقل
-استفاده کنند. وضعیت و مسئول پیگیری در [GitHub governance](GITHUB_GOVERNANCE.md) ثبت شده‌اند.
+**وضعیت GitHub در ۲۰۲۶-۱۱-۱۵:** مخزن Public است و Rulesetهای فعال
+[Main Rulsets](https://github.com/mehrdadhafezi/CRMEdits/rules/27308483) و
+[Experimental Rulsets](https://github.com/mehrdadhafezi/CRMEdits/rules/27309275)
+برای هر دو شاخه مشترک الزام PR، CI و حل گفتگوهای باز دارند؛ تعداد Approval انسانی
+برابر **۰** است و Code Owner Review الزامی نیست. این قواعد مستقیماً در GitHub
+بررسی شده‌اند؛ آزمون PR واقعی و رفتار Merge هنوز جداگانه باید تأیید شود.
+Codex Review می‌تواند در گردش کار استفاده شود، ولی تا زمانی که به Check معتبر
+متصل و آزموده نشده، یک Gate خودکار اجباری نیست. [جزئیات](GITHUB_GOVERNANCE.md).
 
 مرجع مسیر پایدار و مستندات، شاخه **main** است. تغییرات آزمایشی در **experimental**
 تجمیع می‌شوند. هر توسعه‌دهنده روی Branch تسک خودش کار می‌کند؛ پوش مستقیم و Force Push شاخه مشترک
@@ -24,10 +27,10 @@ Private است. افزونه موجود «شبکه فروش» با مبنای ZI
 
 فرآیند ساده هر تسک:
 
-**دریافت تسک → ساخت Branch → توسعه → تست محلی → Commit → Push → Draft PR → CI → Ready → بازبینی → Merge مجاز**
+**دریافت تسک → ساخت Branch → توسعه → تست محلی → Commit → Push → Draft PR → CI → Ready → کنترل نهایی → Merge مجاز**
 
-توسعه‌دهنده تغییرات مرتبط را روی Branch خودش تحویل می‌دهد. مالک مخزن یا فرد مجاز
-پس از بررسی PR و نتیجه تست‌ها، تغییر را Merge می‌کند؛ سپس همه برای تسک بعدی main
+توسعه‌دهنده تغییرات مرتبط را روی Branch خودش تحویل می‌دهد. فرد دارای مجوز Merge
+پس از کنترل PR و نتیجه تست‌ها، تغییر را Merge می‌کند؛ سپس همه برای تسک بعدی main
 را به‌روز می‌کنند. Merge یا انتشار خودکار از prompt ثابت Agent برداشت نشود.
 
 ## 2. پیش‌نیازها
@@ -99,7 +102,7 @@ Release، گزارش ممیزی، متن bootstrap و قالب‌های تاری
 ## 7. دریافت تسک
 
 [قالب تسک](TASK_TEMPLATE.md) باید Issue ID، هدف، رفتار فعلی و مطلوب، معیار پذیرش،
-ماژول، مسیر مجاز/ممنوع، ریسک، API/DB/Role، تست، reviewer مستقل و rollback داشته
+ماژول، مسیر مجاز/ممنوع، ریسک، API/DB/Role، تست، روش بازبینی کد (Codex یا دستی، بدون Approval اجباری) و rollback داشته
 باشد. قراردادها و مستندات موجود متأثر را از ابتدا در محدوده بنویسید و برای هر
 تغییر خارج از محدوده تأیید صریح بگیرید. برای مورد UNVERIFIED یا UNASSIGNED،
 نقش مسئول و وضعیت را ثبت کنید. نام یا مهلت حدس نزنید.
@@ -200,22 +203,22 @@ gh pr create --draft --base main --head docs/123-clarify-handbook --title "docs(
 ۳. CI شاخه ممکن است با Push شروع شود. پس از ایجاد Draft، نتیجهٔ workflow رویداد
 `pull_request` را برای Head/Base واقعی بررسی کنید. موفقیت run روی Push جای آن
 را نمی‌گیرد. وقتی کنترل‌های محلی و CI ضروری همه موفق‌اند، شواهد را به‌روز کنید و
-با **Ready for review** در GitHub (یا `gh pr ready <number>`) Draft را تبدیل کنید.
+با **Ready for review** (صرفاً وضعیت UI گیت‌هاب، نه الزام Reviewer انسانی) در GitHub (یا `gh pr ready <number>`) Draft را تبدیل کنید.
 اگر CI در انتظار است، مرحله را `Draft / CI pending` ثبت کنید و نتیجهٔ تست ضروری
 اجرانشده را PASS اعلام نکنید. تست ضروری FAIL/BLOCKED/NOT_RUN مانع Ready است.
 
-۴. برای Review، مالک مخزن یک نفر مستقل از نویسنده با دسترسی لازم برای approval
-تعیین کند. CODEOWNERS مسئولیت مسیرها را معرفی می‌کند و درخواست review ممکن است
-تا تبدیل Draft ارسال نشود. این فایل به‌تنهایی approval را اجباری نمی‌کند.
-اگر reviewer واجد دسترسی تعیین نشده، مرحلهٔ review در انتظار است و Merge متوقف
-می‌ماند. [وضعیت مالکیت و محافظت](GITHUB_GOVERNANCE.md)
+۴. Codex یا توسعه‌دهنده می‌تواند Diff و ریسک‌ها را بررسی کند و یافته‌ها را در PR
+ثبت کند؛ **هیچ Approval انسانی، Reviewer مستقل یا Code Owner Review اجباری نیست**.
+بازبینی Codex در وضعیت فعلی Check اجباری GitHub نیست. برای کدهای حساس، شواهد
+تست‌های ضروری و مجوز جداگانه عملیات حساس همچنان لازم‌اند. PR با CI ناقص/ناموفق
+یا گفتگوهای حل‌نشده قابل Merge نیست. [Governance](GITHUB_GOVERNANCE.md).
 
 ### Pre-Merge — پس از Push و GitHub Actions
 
 این مرحله را فقط فرد دارای مجوز Merge و در checkout همان PR انجام می‌دهد؛ داشتن
 prompt ثابت Codex/Claude مجوز Merge نیست.
 
-- شماره PR را صریح وارد کنید. Head و Base کاملِ ثبت‌شده در شواهد review و تست
+- شماره PR را صریح وارد کنید. Head و Base کاملِ ثبت‌شده در شواهد بررسی Diff و تست
   را با پاسخ تازهٔ GitHub مقایسه کنید. بلوک Git Bash زیر فقط می‌خواند و fetch
   می‌کند؛ روی هیچ شاخه‌ای Merge اجرا نمی‌کند:
 
@@ -258,19 +261,19 @@ prompt ثابت Codex/Claude مجوز Merge نیست.
   `Stable PR branch boundary` برای PR به `main` لازم است.
 - بعد از آخرین تست، commit جدید، حل conflict یا تغییر base مؤثر بر نتیجه نباید
   بدون تکرار تست مرتبط باقی مانده باشد. نتیجه و جدول شواهد را به‌روز کنید.
-- Review مستقل، approval معتبر و گفتگوهای باز را بررسی کنید؛ تغییر خارج از Scope،
+- نتیجه بررسی کد (Codex/دستی، اگر انجام شده)، CI و گفتگوهای باز را بررسی کنید؛ تغییر خارج از Scope،
   تست ضروری ناموفق/اجرا‌نشده یا خطر امنیتی مانع Merge است.
 - درست پیش از Merge مجاز، Head/Base را دوباره از GitHub بخوانید. با تغییر هر
   کدام بررسی متوقف می‌شود تا Diff و تست‌های متأثر، CI همان revision و، در صورت
-  تغییر Head یا تغییر Base مؤثر بر محتوای review، بازبینی مستقل تازه ثبت شوند.
-- READY FOR REVIEW فقط آمادگی برای Review است. تأیید و اختیار Merge جداگانه‌اند؛
+  تغییر Head یا تغییر Base مؤثر بر محتوای review، بررسی Diff و تست‌های متأثر دوباره انجام شوند.
+- READY FOR MERGE CHECK فقط آمادگی برای کنترل نهایی است؛ اختیار Merge جداگانه است؛
   هیچ نتیجه بررسی، سلامت کل CRM یا مجوز Deploy را خودکار صادر نمی‌کند.
 
 ## 16. پاسخ به Code Review
 
 هر نکته را با تغییر یا دلیل فنی پاسخ دهید. commit جدید روی همان branch push شود؛
 تست مرتبط دوباره اجرا گردد. discussion را پیش از رسیدگی resolve نکنید. تغییر جدید
-approval قدیمی را معتبر نگه نمی‌دارد؛ re-review لازم است.
+شواهد بررسی و تست قدیمی را معتبر نگه نمی‌دارد؛ بررسی مجدد لازم است.
 
 ## 17. Merge Conflict
 
@@ -294,34 +297,33 @@ Issue/branch/commit/PR، نتیجه رفتار، فایل‌های تغییرک�
 برای Syntax، Secret Scan، Security، Functional، Regression، Scope/Diff و
 API/DB/Role Compatibility ارائه کنید؛ docs/hygiene و CI مرتبط با SHA را هم ثبت کنید.
 قالب کامل در [TESTING_STANDARDS.md](TESTING_STANDARDS.md) و
-[قالب PR](../.github/PULL_REQUEST_TEMPLATE.md) است. صرف push پایان review و release نیست.
+[قالب PR](../.github/PULL_REQUEST_TEMPLATE.md) است. صرف Push پایان کنترل CI یا مجوز Release نیست.
 
 ## 20. ممنوعیت Merge
 
-CI ناموفق، review مستقل غایب، discussion باز، source نامعتبر، اطلاعات حساس، تغییر
+CI ناموفق، discussion باز، source نامعتبر، اطلاعات حساس، تغییر
 خارج از scope، migration/Role/API بدون مجوز یا تست ضروری اجرا‌نشده مانع merge است.
 Agent با prompt ثابت اختیار merge ندارد. وضعیت واقعی protection در
 [GITHUB_GOVERNANCE.md](GITHUB_GOVERNANCE.md) و گزارش تحویل مشخص می‌شود.
 
-مرحلهٔ گردش کار (محلی، Push‌شده، Draft، CI در انتظار، Ready، Review یا Merge
-مجاز) و دلیل هر مانع را جدا از وضعیت آمادگی ثبت کنید. مثلاً یک PR می‌تواند در
+مرحلهٔ گردش کار (محلی، Push‌شده، Draft، CI در انتظار، Ready، کنترل نهایی، Merge‌شده یا منتشرشده) و دلیل هر مانع را جدا از وضعیت آمادگی ثبت کنید. مثلاً یک PR می‌تواند در
 مرحلهٔ Draft و وضعیت `BLOCKED — MISSING REQUIRED TEST` به دلیل نبود WordPress
 ایزوله باشد. پنج وضعیت آمادگی:
 
-- `READY FOR REVIEW`
+- `READY FOR MERGE CHECK`
 - `BLOCKED — TEST FAILURE`
 - `BLOCKED — MISSING REQUIRED TEST`
 - `BLOCKED — UNRELATED CHANGES`
 - `BLOCKED — SECURITY RISK`
 
-**No verified tests, no approval. No approval, no merge.** تست ضروری اجرا‌نشده یا
+**No verified required tests, no merge. CI green alone is not runtime proof.** تست ضروری اجرا‌نشده یا
 ناموفق با اعتماد شخصی یا یک CI سبز نادیده گرفته نمی‌شود.
 
 ## 21. گزارش باگ
 
 رفتار مورد انتظار/واقعی، نسخه/commit، ماژول/مسیر، سناریوی قابل تکرار ساختگی، اثر و
 شواهد redacted بدهید. در پرونده امنیتی از کانال خصوصی مالک استفاده کنید. hotfix هم
-branch و review دارد؛ فوریت مجوز حذف history یا تست unsafe نیست.
+branch و PR و کنترل‌های ضروری دارد؛ فوریت مجوز حذف history یا تست unsafe نیست.
 
 ## 22. Release و Deployment
 
@@ -433,8 +435,8 @@ WordPress برای این تغییر صرفاً متنی N/A است.
 - تست‌های لازم با نتیجه واقعی و محدودیت ثبت شده‌اند.
 - امنیت، عملکرد و regression مسیرهای وابسته بررسی و تست‌های ضروری واقعاً اجرا شده‌اند.
 - جدول استاندارد شواهد و یکی از پنج وضعیت آمادگی در گزارش و PR وجود دارد.
-- اسناد و PR کامل و reviewer مستقل تعیین شده است.
-- پیش از Merge، آخرین Head/base/Diff، CI همان revision و approval/گفتگوهای باز دوباره بررسی می‌شوند.
+- اسناد و PR کامل‌اند؛ برای Merge تأیید انسانی اجباری نیست.
+- پیش از Merge، آخرین Head/base/Diff، CI همان revision و گفتگوهای باز دوباره بررسی می‌شوند.
 - هیچ merge، migration یا deployment از اختیار تسک فراتر نرفته است.
 
 ## Standard Task Execution Prompt
@@ -463,7 +465,7 @@ Syntax، docs، hygiene، Secret scan و تست‌های امنیتی، عملک
 مسیرهای وابسته را قبل از PR/Push اصلاحی اجرا کن؛ تست‌های موجود را شناسایی کن و
 برای رفتار جدید/باگ در صورت امکان تست regression اضافه کن.
 PASS فقط برای تست اجراشده؛ هر N/A دلیل نامرتبط‌بودن لازم دارد. نبود زیرساخت تست
-ضروری BLOCKED/NOT_RUN است. با تست ضروری FAIL/BLOCKED/NOT_RUN، PR را Ready معرفی نکن؛
+ضروری BLOCKED/NOT_RUN است. با تست ضروری FAIL/BLOCKED/NOT_RUN، PR را Ready برای Merge معرفی نکن؛
 اگر مالک صریحاً انتشار امن نسخه ناقص را برای بررسی مانع خواست، فقط Draft بساز.
 Diff و staged files را بازبینی و اسناد مرتبط را به‌روز کن.
 فقط در PR Delivery تغییر را با قالب استاندارد به مقصد مصوب تحویل بده.
@@ -472,11 +474,11 @@ Diff و staged files را بازبینی و اسناد مرتبط را به‌ر
 جدول Test/Status/Evidence، یکی از پنج وضعیت آمادگی، مرحله گردش کار و دلیل مانع
 را جدا ثبت کن. برای UNVERIFIED/UNASSIGNED نقش پیگیر و وضعیت را ثبت کن؛ نام یا
 مهلت حدسی نگذار. در PR Delivery پس از Push، Head/base/Diff و CI همان revision را دوباره
-بررسی کن؛ اگر کد عوض شد تست مرتبط را تکرار کن. Review مستقل و بحث‌های باز باید
-پیش از هر Merge جداگانه مجاز بررسی شوند؛ CI سبز تضمین سلامت کل CRM نیست.
+بررسی کن؛ اگر کد عوض شد تست مرتبط را تکرار کن. بررسی Diff و بحث‌های باز باید
+پیش از هر Merge مجاز تعیین تکلیف شوند؛ CI سبز تضمین سلامت کل CRM نیست.
 نوع فعالیت مجوز Merge، Push مستقیم به شاخه مشترک، Force Push، تغییر تنظیمات
 GitHub، Migration، اتصال Production، Deployment یا اعطای دسترسی نیست.
-No verified tests, no approval. No approval, no merge.
+No verified required tests, no merge. CI green alone is not runtime proof.
 
 Task: [قالب تکمیل‌شده docs/TASK_TEMPLATE.md با نوع فعالیت و Issue]
 ```

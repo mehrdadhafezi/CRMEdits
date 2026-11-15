@@ -18,11 +18,11 @@ The mandatory validation gates in AGENTS.md and
 - Before PR/revision delivery, run syntax, docs/hygiene, secret scans and relevant
   security, functional and dependent-path regression tests. N/A needs an explicit
   relevance reason; missing required infrastructure is BLOCKED/NOT_RUN.
-- Do not call a PR READY FOR REVIEW with a required failed, blocked or unrun test.
+- Do not call a PR READY FOR MERGE CHECK with a required failed, blocked or unrun test.
   Use an explicitly incomplete draft when needed. Rerun affected tests after fixes.
 - Before a separately authorized merge, recheck the exact latest head/base/diff,
-  corresponding GitHub CI, independent approval and open discussions.
+  corresponding required GitHub CI, final diff and open discussions; human approval is not mandatory.
 - Include the shared `Test | Status | Evidence` table and one of the five readiness
-  classifications in AGENTS.md. READY FOR REVIEW is not approval or merge authority.
+  classifications in AGENTS.md. READY FOR MERGE CHECK is not approval or merge authority.
 
-**No verified tests, no approval. No approval, no merge.**
+**No verified required tests, no merge. CI green alone is not runtime proof.**

@@ -5,7 +5,7 @@ Summary / acceptance criteria:
 Files changed and allowed scope:
 Approved base branch / base SHA:
 Latest PR head SHA and revision tested:
-Workflow stage (local / pushed / draft / CI pending / ready / review):
+Workflow stage (local / pushed / draft / CI pending / ready / final check / merged):
 Block reason and follow-up role/status, if applicable:
 For experimental promotion: owner approval link, approved scope and source SHAs:
 
@@ -49,11 +49,11 @@ sensitive exposure, secret scanning and privilege escalation. Record results or
 specific N/A reasons; static review is not a substitute for required runtime tests.
 
 Final task status (select one; explain all blockers):
-`READY FOR REVIEW` / `BLOCKED — TEST FAILURE` / `BLOCKED — MISSING REQUIRED TEST` /
+`READY FOR MERGE CHECK` / `BLOCKED — TEST FAILURE` / `BLOCKED — MISSING REQUIRED TEST` /
 `BLOCKED — UNRELATED CHANGES` / `BLOCKED — SECURITY RISK`
 
 Required failed, blocked or unrun tests prohibit READY FOR REVIEW. Use an explicitly
-incomplete Draft PR when needed. READY FOR REVIEW is not approval or merge authority.
+incomplete Draft PR when needed. READY FOR MERGE CHECK means readiness for final checks, not automatic merge authority.
 
 ## Pre-PR checklist
 
@@ -65,7 +65,7 @@ incomplete Draft PR when needed. READY FOR REVIEW is not approval or merge autho
 - [ ] API/DB/roles/permissions/business-logic compatibility assessed.
 - [ ] All results and N/A/NOT_RUN/BLOCKED reasons recorded; no required test gap hidden.
 
-## Pre-Merge reviewer checklist
+## Pre-Merge final-check checklist (no mandatory human reviewer)
 
 - [ ] Scope and module contract checked; unrelated edits excluded.
 - [ ] Backend authentication, nonce, capability and record scope checked.
@@ -74,8 +74,8 @@ incomplete Draft PR when needed. READY FOR REVIEW is not approval or merge autho
 - [ ] CI belongs to the exact latest PR head; tested merge-ref parents/base checked where relevant.
 - [ ] Final diff/head rechecked after push; no untested later changes, conflicts or effective base updates.
 - [ ] Relevant tests rerun after code changes; required failures/gaps and security risks resolved.
-- [ ] Independent authorized approval; sensitive owner approval where needed.
+- [ ] Latest diff checked (Codex or manual review, if performed); no mandatory human approval. Separate authorization for sensitive operations verified.
 - [ ] Conversations resolved; API/schema/role compatibility and rollback reviewed.
 - [ ] Merge authorization confirmed separately. This PR does not authorize deployment.
 
-**No verified tests, no approval. No approval, no merge.**
+**No verified required tests, no merge. CI green alone is not runtime proof.**

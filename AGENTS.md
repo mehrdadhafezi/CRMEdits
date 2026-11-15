@@ -3,7 +3,7 @@
 This repository is the shared source for the existing Sales Network WordPress CRM,
 not a request to build a new CRM. Accepted baseline: `sales-network.php` version
 2.0.235, owner-approved ZIP dated 2026-11-12. Production parity has not been tested.
-Canonical remote: https://github.com/mehrdadhafezi/CRMEdits (private).
+Canonical remote: https://github.com/mehrdadhafezi/CRMEdits (public; active PR/CI rulesets).
 
 ## Before changing anything
 
@@ -51,7 +51,7 @@ Use OBSERVED, INFERRED, PROPOSED and UNVERIFIED accurately.
 
 ## Validation and delivery
 
-**No verified tests, no approval. No approval, no merge.** These rules apply to
+**No verified required tests, no merge. CI green alone is not runtime proof.** These rules apply to
 human developers, Codex and Claude. Follow the detailed applicability, evidence and
 decision rules in [testing standards](docs/TESTING_STANDARDS.md).
 
@@ -86,7 +86,9 @@ safe to push. If new code is added
 after testing, rerun the affected tests before claiming readiness.
 
 Before any separately authorized merge, fetch and inspect the latest PR head,
-base, final diff, independent review and unresolved discussions. Verify successful
+base, final diff, required checks and unresolved discussions. Human approval is
+not required by the current rulesets (required approvals: 0; code owner review: off).
+Codex review is optional until verified as an enforced check. Verify successful
 required GitHub checks belong to that exact current head; for a tested merge ref,
 verify its head/base parents match the PR. Revalidate after new commits, conflicts
 or base updates that affect the tested result. Old green CI is not evidence for a
@@ -100,21 +102,21 @@ PASS requires a real completed check; N/A requires a change-specific reason. End
 with exactly one readiness classification. Record workflow stage and block reasons
 separately:
 
-- `READY FOR REVIEW`
+- `READY FOR MERGE CHECK`
 - `BLOCKED — TEST FAILURE`
 - `BLOCKED — MISSING REQUIRED TEST`
 - `BLOCKED — UNRELATED CHANGES`
 - `BLOCKED — SECURITY RISK`
 
-READY FOR REVIEW requests review; it is neither approval nor merge authorization.
-Never fabricate approvals or substitute confidence for unverified required tests.
+READY FOR MERGE CHECK requests final verification; it is not merge authorization.
+Never invent Codex checks or substitute confidence for unverified required tests.
 
 Follow [Git workflow](docs/GIT_WORKFLOW.md): push only your task branch and open
 a PR to the selected target. Port only owner-approved experimental changes onto
 a fresh branch from current `main`. Never merge `experimental` or `experiment/*`
 into `main` as a delivery method. Review compatibility on both tracks for changes
-to schema, API, roles, permissions or stored data. Independent review and current
-CI are required. No direct push to a shared branch, shared force push, automatic
+to schema, API, roles, permissions or stored data. Required GitHub CI and final diff verification
+are required; independent human approval is not. No direct push to a shared branch, shared force push, automatic
 merge or deployment authorization is granted by this file.
 
 Deliver: problem and resulting behavior; paths changed; API/DB/role/security

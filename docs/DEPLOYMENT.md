@@ -53,8 +53,8 @@ guardهای [استاندارد تست](TESTING_STANDARDS.md) اجرا شود. S
 | مرحله | مسئول | شرط خروج |
 |---|---|---|
 | Development / PR | توسعه‌دهنده | scope، معیار پذیرش، diff، تست و مستندات |
-| Review / CI | reviewer مستقل و مالک بخش حساس | approval معتبر، CI سبز، discussion حل‌شده |
-| Merge | فرد مجاز تعیین‌شده مالک | CI، review و مجوز مالک، همراه با ruleset در صورت فعال‌بودن |
+| PR / CI | توسعه‌دهنده و فرد دارای دسترسی Merge | Approval انسانی اجباری نیست؛ CI معتبر، Diff بررسی‌شده و گفتگوهای حل‌شده |
+| Merge | فرد دارای دسترسی Merge | CI، کنترل نهایی، Ruleset فعال؛ بدون نیاز به Approval انسانی |
 | Staging | مسئول release که مالک تعیین می‌کند | محیط ایزوله، smoke و regression مرتبط |
 | Release approval | مالک محصول و مالک فنی/مالی مرتبط | نسخه، migration، ریسک و rollback مصوب |
 | Production | اپراتور مجاز و تأییدشده | backup معتبر، artifact مشخص، نظارت و زمان‌بندی |
