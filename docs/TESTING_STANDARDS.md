@@ -1,6 +1,6 @@
 # Testing standards — mandatory security and regression validation
 
-**No verified tests, no approval. No approval, no merge.**
+**No verified required tests, no merge. CI green alone is not runtime proof.**
 
 این الزامات برای انسان، Codex و Claude یکسان‌اند. پس از هر تغییر کد، از جمله اصلاح
 Review یا حل conflict، تست‌های مرتبط دوباره اجرا شوند؛ برای تغییرات جدید به نتیجه
@@ -98,12 +98,13 @@ Secret Scan و scope review حتی برای تغییر مستندات انجام
 بخوانید و تأیید کنید required CI موفق به همان Head فعلی مرتبط است. اگر job روی
 merge ref تست می‌کند، parentهای head/base آزموده‌شده هم با PR فعلی تطبیق داده شوند.
 بعد از commit جدید، حل conflict یا تغییر base مؤثر بر نتیجه، تست مربوط دوباره اجرا
-و evidence تازه ثبت شود. Review مستقل، approval معتبر و گفتگوهای باز کنترل شوند.
-READY FOR REVIEW یعنی درخواست Review، نه تأیید یا اختیار Merge.
+و evidence تازه ثبت شود. نتیجه بررسی Diff (Codex یا دستی)، گفتگوهای باز و وضعیت Checkها کنترل شوند.
+Approval انسانی در Rulesetهای فعلی لازم نیست و Codex Review هنوز Gate اجباری
+نیست. READY FOR MERGE CHECK یعنی آمادگی کنترل نهایی، نه اختیار Merge.
 
 | وضعیت نهایی تسک | شرط |
 |---|---|
-| READY FOR REVIEW | تمام تست‌های ضروری این مرحله و کنترل scope/سازگاری موفق؛ N/Aها مستدل؛ بدون blocker شناخته‌شده |
+| READY FOR MERGE CHECK | تمام تست‌های ضروری این مرحله و کنترل scope/سازگاری موفق؛ N/Aها مستدل؛ بدون blocker شناخته‌شده |
 | BLOCKED — TEST FAILURE | حداقل یک تست ضروری FAIL است |
 | BLOCKED — MISSING REQUIRED TEST | تست ضروری غایب، BLOCKED یا NOT_RUN است؛ از جمله زیرساخت ناقص |
 | BLOCKED — UNRELATED CHANGES | تغییر خارج از scope هنوز رفع/تعیین تکلیف نشده است |
@@ -114,7 +115,8 @@ READY FOR REVIEW یعنی درخواست Review، نه تأیید یا اختی�
 فقط با درخواست صریح مالک، Push ایمن و Draft با توضیح نقص مجاز است.
 مرحلهٔ گردش کار و علت مانع را جداگانه ثبت کنید. ترتیب بررسی محلی، Draft و CI در
 [راهنمای PR](DEVELOPER_HANDBOOK.md#15-pull-request) آمده است.
-موفقیت سه Check فعلی تضمین سلامت کل CRM نیست و approval را خودکار صادر نمی‌کند.
+موفقیت Checkهای فعلی (سه Check عمومی، به‌علاوه مرز شاخه برای main)
+تضمین سلامت کل CRM نیست و تست runtime موردنیاز را جایگزین نمی‌کند.
 
 ## جدول اجباری تحویل و PR
 
@@ -132,7 +134,7 @@ READY FOR REVIEW یعنی درخواست Review، نه تأیید یا اختی�
 | Regression | PASS/FAIL/BLOCKED/NOT_RUN/N/A | تست موجود/جدید و ماژول‌های وابسته؛ دلیل شکاف |
 | Scope/Diff | PASS/FAIL | base، فایل‌های مقایسه‌شده، staged/unstaged/new و انحراف‌ها |
 | API/DB/Role Compatibility | PASS/FAIL/BLOCKED/NOT_RUN/N/A | اثر روی قرارداد، permissions و business logic یا دلیل عدم اثر |
-| GitHub CI / Pre-Merge | PASS/FAIL/BLOCKED/NOT_RUN | Head SHA و run مرتبط؛ review/approval و بحث‌های باز جداگانه |
+| GitHub CI / Pre-Merge | PASS/FAIL/BLOCKED/NOT_RUN | Head SHA و run مرتبط؛ بررسی Diff و بحث‌های باز جداگانه |
 
 ## زیرساخت موجود و محدودیت واقعی CI
 
