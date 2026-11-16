@@ -117,13 +117,16 @@ sudo mv "$runtime/candidate-plugin" "$runtime/wordpress/wp-content/plugins/sales
 run_php tests/payments/integration/verify.php restored | tee "$output/restored.txt"
 run_php tests/payments/gateway-inquiry.php | tee "$output/gateway.txt"
 run_php tests/payments/receipt-last4.php | tee "$output/last4.txt"
-run_test env PHP_CLI_SERVER_WORKERS=4 php8.3 -d sendmail_path=/bin/false -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$runtime/server.log" 2>&1 &
+server_log=$(mktemp /tmp/sn-approval-server-XXXXXXXX.log)
+run_test env PHP_CLI_SERVER_WORKERS=4 php8.3 -d sendmail_path=/bin/false -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$server_log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+server_ready=0
 for attempt in $(seq 1 40); do
-  if curl --silent --fail http://127.0.0.1:8877/wp-login.php > /dev/null; then break; fi
+  if curl --silent --fail http://127.0.0.1:8877/wp-login.php > /dev/null; then server_ready=1; break; fi
   sleep 1
 done
+test "$server_ready" -eq 1 || { echo 'Disposable loopback PHP server did not become ready'; exit 1; }
 run_test node tests/payments/integration/browser.cjs | tee "$output/browser.txt"
 run_php tests/payments/integration/verify.php final | tee "$output/final.txt"
 printf 'Tested exact artifact: %s\n' "$(basename "$candidate")"
