@@ -83,7 +83,7 @@ async function pollMoney(page, selector, expected) {
       const page = pages[who] = await contexts[who].newPage();
       page.on('pageerror', error => pageErrors.push({role:who,message:error.message}));
       await page.goto(base + fixture.pages[who], {waitUntil:'domcontentloaded'});
-      const tab = page.locator(who === 'senior' ? '[data-tab="ss-invoices"]' : '[data-tab="invoices"]').first();
+      const tab = page.locator(who === 'senior' ? '[data-sn-tab-target="ss-invoices"]' : '[data-tab="invoices"]').first();
       await tab.click();
       if (who === 'seller') {
         await page.locator('.sn-invoice-status-tabs [data-status="all"]').first().click();
@@ -131,5 +131,11 @@ async function pollMoney(page, selector, expected) {
     ok(pageErrors.length === 0, 'seller/supervisor/senior panels have no uncaught browser errors');
     fs.writeFileSync(path.join(output,'browser-summary.json'), JSON.stringify({assertions:checks,chromium:browser.version(),synthetic:true},null,2));
     console.log('TOTAL ' + checks);
+  } catch (error) {
+    fs.writeFileSync(path.join(output,'browser-errors.json'), JSON.stringify(pageErrors,null,2));
+    for (const [who,page] of Object.entries(pages)) {
+      if (!page.isClosed()) await page.screenshot({path:path.join(output,who + '-failure.png'),fullPage:true}).catch(() => {});
+    }
+    throw error;
   } finally { await browser.close(); }
 })().catch(error => { console.error(error.stack); process.exitCode = 1; });
