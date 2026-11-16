@@ -31,6 +31,8 @@ Coverage:
   unchanged wallet count on repeated decisions.
 - Actual seller/supervisor/senior shortcodes with desktop/mobile screenshots,
   RTL, table scrolling, keyboard focus, uncaught errors and refresh after Finance.
+- Visible seller dashboard received-money and settled-count text must occupy
+  separate lines inside the KPI card at desktop and mobile widths.
 - Existing gateway inquiry (stubbed provider) and receipt last-four regressions.
 
 Each run uploads safe synthetic assertion logs, runtime summaries, screenshots,

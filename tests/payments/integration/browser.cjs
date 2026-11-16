@@ -94,7 +94,7 @@ async function pollMoney(page, selector, expected) {
       ok(!(await page.locator(target).innerText()).includes('SYN-FOREIGN'), 'rendered list preserves scope ' + who);
       ok(await page.locator(target).evaluate(el => getComputedStyle(el).direction === 'rtl'), 'actual invoice panel has RTL direction ' + who);
       ok(await page.evaluate(() => !window.__snFixtureXss), 'synthetic customer markup cannot execute ' + who);
-      const moneySelector = who === 'seller' ? '#sn-seller-kpi-cards .sn-kpi-money em:last-child' : '#sn-supervisor-invoice-kpi-received-amount';
+      const moneySelector = who === 'seller' ? '#sn-seller-kpi-cards .sn-seller-received-amount' : '#sn-supervisor-invoice-kpi-received-amount';
       await pollMoney(page, moneySelector, 1500000);
       ok(true, 'rendered approved-receipt KPI ' + who);
       for (const [label,width,height] of [['desktop',1440,1000],['mobile',390,844]]) {
@@ -107,6 +107,24 @@ async function pollMoney(page, selector, expected) {
       await page.locator(who === 'seller' ? '#sn-seller-invoice-search' : '#sn-supervisor-invoice-search').focus();
       await page.keyboard.press('Tab');
       ok(await page.evaluate(() => document.activeElement !== document.body), 'invoice controls retain keyboard focus ' + who);
+      if (who === 'seller') {
+        await page.locator('[data-tab="leads"]').first().click();
+        const kpi = page.locator('#sn-seller-kpi-cards');
+        await kpi.waitFor({state:'visible'});
+        for (const [label,width,height] of [['desktop',1440,1000],['mobile',390,844]]) {
+          await page.setViewportSize({width,height});
+          await pollMoney(page, moneySelector, 1500000);
+          ok(await kpi.evaluate(el => {
+            const settled = el.querySelector('.sn-seller-settled-count')?.getBoundingClientRect();
+            const received = el.querySelector('.sn-seller-received-amount')?.getBoundingClientRect();
+            const card = el.querySelector('.sn-kpi-money')?.getBoundingClientRect();
+            return !!(settled && received && card && settled.height > 0 && received.height > 0
+              && received.top >= settled.bottom - 1 && received.bottom <= card.bottom + 1);
+          }), 'visible seller receipt amount and settled count never overlap at ' + label + ' width');
+          await kpi.screenshot({path:path.join(output, 'seller-kpi-' + label + '.png'), animations:'disabled'});
+        }
+        await page.setViewportSize({width:1440,height:1000});
+      }
     }
     // Real concurrent AJAX requests, MySQL advisory/row locks and decision history.
     const concurrent = await Promise.all([post('finance','sn_receipt_review',approveInput),post('finance','sn_receipt_review',approveInput)]);
@@ -115,7 +133,7 @@ async function pollMoney(page, selector, expected) {
     ok(already.success && already.already, 'repeat approved receipt is explicitly idempotent');
     for (const who of ['seller','supervisor','senior']) {
       await pages[who].evaluate(() => window.dispatchEvent(new Event('focus')));
-      await pollMoney(pages[who], who === 'seller' ? '#sn-seller-kpi-cards .sn-kpi-money em:last-child' : '#sn-supervisor-invoice-kpi-received-amount', 1800000);
+      await pollMoney(pages[who], who === 'seller' ? '#sn-seller-kpi-cards .sn-seller-received-amount' : '#sn-supervisor-invoice-kpi-received-amount', 1800000);
       ok(true, 'browser return replaces stale receipt totals ' + who);
     }
     const completed = await post('finance','sn_receipt_review',{...approveInput,payment_id:String(fixture.payments.decide_last)});

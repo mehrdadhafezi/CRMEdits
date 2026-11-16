@@ -512,7 +512,7 @@
         '<div class="sn-kpi-card"><span class="sn-kpi-icon">📞</span><small>کل شماره‌ها</small><strong>' + snFormatNumber(totalLeads) + '</strong><em>شماره‌های تخصیص‌یافته</em></div>' +
         '<div class="sn-kpi-card"><span class="sn-kpi-icon">✅</span><small>پیگیری‌شده</small><strong>' + snFormatNumber(statusDone) + '</strong><em>' + snPercent(statusDone, totalLeads) + ' از کل شماره‌ها</em></div>' +
         '<div class="sn-kpi-card"><span class="sn-kpi-icon">🧾</span><small>پیش‌فاکتور</small><strong>' + snFormatNumber(invoiceCount) + '</strong><em>تبدیل: ' + snPercent(invoiceCount, totalLeads) + '</em></div>' +
-        '<div class="sn-kpi-card sn-kpi-money"><span class="sn-kpi-icon">💰</span><small>فروش تاییدشده</small><strong>' + snFormatMoney(revenue) + '</strong><em>' + snFormatNumber(paidCount) + ' فاکتور تسویه‌شده</em><em>واریزی تأییدشده: ' + snFormatMoney(sellerReceivedAmount) + '</em></div>' +
+        '<div class="sn-kpi-card sn-kpi-money"><span class="sn-kpi-icon">💰</span><small>فروش تاییدشده</small><strong>' + snFormatMoney(revenue) + '</strong><em><span class="sn-seller-settled-count">' + snFormatNumber(paidCount) + ' فاکتور تسویه‌شده</span><br><span class="sn-seller-received-amount">واریزی تأییدشده: ' + snFormatMoney(sellerReceivedAmount) + '</span></em></div>' +
       '</div>';
       var $target = $('#sn-seller-kpi-cards');
       if (!$target.length) {
