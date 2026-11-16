@@ -1,0 +1,51 @@
+name: Finance approval integration
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'sales-network.php'
+      - 'includes/**'
+      - 'assets/js/**'
+      - 'tests/payments/**'
+      - 'scripts/test-finance-integration.sh'
+      - '.github/workflows/finance-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: finance-integration-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  wordpress-mysql:
+    name: WordPress MySQL / upgrade from ${{ matrix.baseline }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        baseline: ['2.0.235', '2.0.236']
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Isolated WordPress, MySQL, AJAX and Chromium regression
+        env:
+          SN_TEST_BASELINE: ${{ matrix.baseline }}
+        run: bash scripts/test-finance-integration.sh
+      - name: Upload synthetic evidence and exact installation candidate
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: finance-integration-${{ matrix.baseline }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            test-results/finance/**
+            dist/*.zip
+            dist/*.zip.sha256
+          if-no-files-found: error
+          retention-days: 14

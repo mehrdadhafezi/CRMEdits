@@ -1781,6 +1781,7 @@
   }
   function statusClass(i){
     if(i.finance_bucket==='rejected')return 'is-rejected';
+    if(i.finance_bucket==='approved')return 'is-approved';
     var s=String(i.status||i.payment_status||i.invoice_status||'').toLowerCase();
     if(/approved|paid/.test(s)) return 'is-approved'; if(/reject|cancel/.test(s)) return 'is-rejected'; return 'is-pending';
   }

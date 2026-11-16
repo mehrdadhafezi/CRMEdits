@@ -40,6 +40,8 @@ Rules:
 - Seller read/list scope: seller sees own records.
 - Invoice code is plain text; no public URL/token in seller panel.
 - Pre-invoice success message should show invoice code and SMS status, then optionally switch to invoice tab.
+- `sn_seller_invoices` adds `received_amount` to both list and `summary_only` responses and to individual rows. It is the approved amount (including partial receipts) for the existing seller/visibility scope, excluding cancelled/archived invoices. Existing `paid_amount` and paid-invoice counters keep their completed-sales meaning. Pending proofs and old approval dates alone do not establish a received amount.
+- Financial status labels distinguish a saved receipt approval from completion of its invoice/stage; a persisted final invoice decision takes precedence over stale compatibility status columns.
 
 ## Supervisor / senior supervisor actions
 Known actions include:
@@ -55,6 +57,7 @@ Rules:
 - Senior supervisor panel should use HR descendant seller scope.
 - Current Phase panels are read-only unless explicitly using existing legacy actions.
 - No public invoice links/tokens in supervisor/senior supervisor panels.
+- Supervisor invoice rows add `received_amount` and, for native `paid`/`approved`/`partial_paid` states, `is_fully_settled`. Legacy successful-status aliases retain their existing client fallback. The received KPI covers the displayed, filtered rows; it is separate from completed-sales totals. Returning to the panel/browser refreshes its financial state; explicitly reused list cache expires after 15 seconds.
 
 ## Sales manager actions
 Known actions include:

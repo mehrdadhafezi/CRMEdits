@@ -150,7 +150,8 @@ Approval انسانی در Rulesetهای فعلی لازم نیست و Codex Rev
 | MIS integration/DB/race | tests/mis | WordPress + PHP ZIP + InnoDB یک‌بارمصرف و guard اجباری |
 | Payment regression | tests/payments | WordPress test bootstrap؛ پاسخ HTTP ساختگی |
 | Auth/API واقعی | PARTIAL | fixture MIS نقش‌ها دارد؛ بقیه نیازمند سناریوی سایت ایزوله |
-| UI/mobile/RTL/accessibility | NOT_IMPLEMENTED | browser harness قابل حمل در ZIP نیست |
+| UI/mobile/RTL/accessibility | PARTIAL | پنل‌های تأیید مالی فروشنده/سرپرست/ارشد در tests/payments/integration؛ سایر مسیرها NOT_IMPLEMENTED |
+| Finance approval native integration | tests/payments/integration | workflow مستقل Finance approval integration؛ WordPress/MySQL واقعی و داده ساختگی، ارتقا/برگشت از دو مبنا |
 | Migration/upgrade | PARTIAL | fixture MIS setup؛ کل upgrade نیازمند snapshot ساختگی |
 | Dependency audit | Composer/npm manifest موجود نیست؛ audit خودکار جامع NOT_IMPLEMENTED | WP/WooCommerce و provider جدا بررسی شوند؛ تست ضروری مرتبطِ اجرا‌نشده BLOCKED/NOT_RUN است |
 
@@ -187,11 +188,18 @@ php tests/payments/receipt-last4.php
 stub می‌کند و فایل دوم فیش آپلود نمی‌کند؛ خود راه‌اندازی WordPress همچنان side effect
 دارد و بدون محیط ایزوله مجاز نیست.
 
+برای اصلاح نمایش تأیید مالی، [آزمون یکپارچه اختصاصی](../tests/payments/integration/README.md)
+با workflow `Finance approval integration` روی شاخه تسک اجرا می‌شود. runner فقط VM
+یک‌بارمصرف GitHub را می‌پذیرد و پیش از bootstrap، خروجی شبکه حساب PHP/مرورگر را
+می‌بندد. نتیجه واقعی head، runtime، assertionها، تصاویر ساختگی و ZIP آزموده‌شده در
+artifact همان اجرا ثبت می‌شود؛ وجود workflow به‌تنهایی شاهد PASS نیست.
+
 برای هر ماژول سناریوهای مثبت، منفی، permission/scope، failure و رگرسیون در بخش ۸
 [قرارداد آن ماژول](modules/README.md) آمده است. برای تغییر UI، صفحه واقعی shortcode،
 عرض موبایل/دسکتاپ، RTL، ارقام فارسی، focus و console بررسی شوند. برای پول و history،
 تکرار/همزمانی، rollback خطای SQL و عدم double-credit ضروری‌اند.
 
 شواهد PR باید runtime، commit، دستور دقیق، نتیجه، assertionهای معنادار و دلیل
-NOT_RUN را ثبت کند. CI این مخزن فقط Syntax/Secret/Documentation/Hygiene است؛ سبز
-شدن آن جایگزین معیار پذیرش، regression مالی یا تأیید release نیست.
+NOT_RUN را ثبت کند. workflow عمومی CRM CI، Syntax/Secret/Documentation/Hygiene و مرز
+شاخه را بررسی می‌کند؛ workflow اختصاصی بالا پوشش runtime تأیید مالی را اضافه می‌کند.
+سبزشدن آنها جایگزین معیار پذیرش ماژول‌های خارج از پوشش یا تأیید release نیست.
