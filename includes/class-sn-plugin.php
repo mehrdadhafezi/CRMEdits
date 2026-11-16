@@ -37215,12 +37215,17 @@ class SN_Plugin
 				$online_paid = "(i.pay_method IN ('online','gateway','zibal','zarinpal') AND COALESCE(i.status,'') IN ('paid','approved','partial_paid') AND NOT {$pending} AND NOT {$rejected} AND NOT {$cancelled})";
 
 				if ($join_payments && in_array('proof_data', $this->sn_table_columns($payment_table), true)) {
-					// Older independent rejections updated the ledger but left the invoice in the review queue.
-					$stage_payments = "rp.invoice_id=i.id AND rp.payment_stage_no=i.current_payment_stage AND COALESCE(rp.authority,'')=''";
-					$rejected = "({$rejected} OR ({$pending} AND NOT {$closed} AND i.current_due_amount>0
-						AND EXISTS (SELECT 1 FROM {$payment_table} rp WHERE {$stage_payments} AND rp.status='rejected' AND TRIM(COALESCE(rp.proof_data,''))<>'')
-						AND NOT EXISTS (SELECT 1 FROM {$payment_table} rp WHERE rp.invoice_id=i.id AND rp.payment_stage_no=i.current_payment_stage
-							AND ((rp.status='pending' AND COALESCE(rp.authority,'')='') OR (rp.status='verified' AND COALESCE(rp.authority,'')<>'')))))";
+					$stage_payments = "rp.invoice_id=i.id AND rp.payment_stage_no=i.current_payment_stage";
+					$independent_deposit = "COALESCE(rp.authority,'')='' AND TRIM(COALESCE(rp.proof_data,''))<>''";
+					$has_unreviewed_payment = "EXISTS (SELECT 1 FROM {$payment_table} rp WHERE {$stage_payments}
+						AND ((rp.status='pending' AND COALESCE(rp.authority,'')='') OR (rp.status='verified' AND COALESCE(rp.authority,'')<>'')))";
+					// With a balance still due and no payment to review, the ledger supplies the outcome.
+					// A fully funded stage pending finalization stays visible in the review queue.
+					$reviewed_deposit = "({$pending} AND NOT {$closed} AND i.current_due_amount>0 AND NOT {$has_unreviewed_payment})";
+					$rejected = "({$rejected} OR ({$reviewed_deposit}
+						AND EXISTS (SELECT 1 FROM {$payment_table} rp WHERE {$stage_payments} AND {$independent_deposit} AND rp.status='rejected')))";
+					$approved = "({$approved} OR ({$reviewed_deposit}
+						AND EXISTS (SELECT 1 FROM {$payment_table} rp WHERE {$stage_payments} AND {$independent_deposit} AND rp.status='approved' AND rp.amount>0)))";
 				}
 
 				// One authoritative bucket per invoice: outcome first, then pending evidence.
@@ -37378,7 +37383,10 @@ class SN_Plugin
 					$effective_status = (string) (($r['payment_status'] ?? '') ?: (($r['invoice_status'] ?? '') ?: ($r['status'] ?? '')));
 					$status_blob = (string) ($r['status'] ?? '') . ' ' . (string) ($r['payment_status'] ?? '') . ' ' . (string) ($r['invoice_status'] ?? '');
 					$is_pending_review = (in_array($effective_status, ['pending_financial_approval','receipt_uploaded'], true) || (bool) preg_match('/pending_financial_approval|receipt_uploaded/', $status_blob)) && ! (bool) preg_match('/\b(approved|paid|rejected|cancelled|payment_archived)\b/', $status_blob);
-					$is_pending_review = $is_pending_review && ! $is_rejected;
+					if ($r['finance_bucket'] === 'approved' && $is_pending_review) {
+						$r['status_label'] = 'واریز تأیید شده؛ در انتظار تکمیل واریزی';
+					}
+					$is_pending_review = $is_pending_review && in_array($r['finance_bucket'], ['needs_review','receipt_uploaded','manual_deposit'], true);
 					$is_online_paid = in_array((string) ($r['pay_method'] ?? ''), ['online','gateway','zarinpal','zibal'], true) && (bool) preg_match('/\b(paid|approved)\b/', $status_blob) && ! (bool) preg_match('/\b(rejected|cancelled)\b/', $status_blob);
 					$r['can_review'] = $is_pending_review || $is_online_paid;
 					$r['can_approve_payment'] = $is_pending_review && $can_approve;
