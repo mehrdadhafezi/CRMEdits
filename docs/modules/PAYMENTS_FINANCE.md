@@ -68,6 +68,14 @@ DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.m
 
 ## 8. Testing & Preview
 
+Read-only approval visibility regression: `php tests/payments/approval-visibility.php`
+requires PHP CLI with SQLite3 and uses an in-memory synthetic schema, without a
+WordPress bootstrap, real provider, migration or financial writes. It checks stale
+compatibility statuses, partial approvals, seller scope/nonce rejection and the
+existing successful-payment report's ledger/fallback deduplication. Browser-state
+regression: `node tests/payments/approval-visibility-ui.cjs`. These checks do not
+replace WordPress/MySQL integration or validation of a production invoice.
+
 سناریوهای ضروری این ماژول: استعلام ساختگی؛ مبلغ/order mismatch؛ ثبت دستی همزمان با callback؛ فیش چندگانه؛ MIME جعلی؛ last4 اختیاری با صفر اول؛ تأیید/رد بدون cap.
 
 Syntax و Secret Scan در CI فعال‌اند. [ماتریس تست](../TESTING_STANDARDS.md) وضعیت زیرساخت را مشخص می‌کند. تست MIS فقط در محیط disposable با guard مجاز است؛ سایر سناریوها که fixture ندارند NOT_IMPLEMENTED هستند. پیش‌نمایش UI و تست authorization واقعی نیازمند سایت آزمایشی ایزوله است.

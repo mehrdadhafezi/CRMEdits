@@ -66,6 +66,12 @@ DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.m
 
 ## 8. Testing & Preview
 
+Approval visibility regression: `php tests/payments/approval-visibility.php`
+(standalone CLI, SQLite3, synthetic memory only). A stale pending compatibility
+column must not hide the final decision; receipt approval with an unpaid balance
+must remain distinct from invoice settlement. No stored status is repaired by a
+read request. See also `node tests/payments/approval-visibility-ui.cjs`.
+
 سناریوهای ضروری این ماژول: فاکتور بدون/با توکن؛ کد قدیمی؛ پیش‌فاکتور؛ جمع اقلام؛ تغییر همزمان؛ سابقه بازبینی؛ واحد ریال/تومان.
 
 Syntax و Secret Scan در CI فعال‌اند. [ماتریس تست](../TESTING_STANDARDS.md) وضعیت زیرساخت را مشخص می‌کند. تست MIS فقط در محیط disposable با guard مجاز است؛ سایر سناریوها که fixture ندارند NOT_IMPLEMENTED هستند. پیش‌نمایش UI و تست authorization واقعی نیازمند سایت آزمایشی ایزوله است.

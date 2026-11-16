@@ -6817,6 +6817,34 @@ class SN_Plugin
 			|| in_array($position, ['seller','converter','supervisor','senior_supervisor','sales_manager','sales_deputy'], true);
 	}
 
+	/** Read-only receipt total; an approved instalment is not a completed invoice. */
+	private function sn_invoice_received_amount($invoice): float
+	{
+		$inv = (object) $invoice;
+		$status = (string) ($inv->status ?? '');
+		if (in_array($status, ['cancelled','payment_archived'], true) || ($inv->payment_workflow_status ?? '') === 'archived') { return 0.0; }
+		if ((float) ($inv->paid_total_amount ?? 0) <= 0 && ! in_array($status, ['paid','approved','partial_paid'], true)) { return 0.0; }
+		return (float) $this->sn_invoice_payment_totals($inv)['paid'];
+	}
+
+	/** Same read-only amount as sn_invoice_received_amount(), for scoped aggregates. */
+	private function sn_invoice_received_amount_sql(string $alias = ''): string
+	{
+		global $wpdb;
+		$alias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias);
+		$p = $alias !== '' ? $alias . '.' : '';
+		$cols = $this->sn_table_columns($wpdb->prefix . 'sn_invoices');
+		$column = static fn(string $name, string $fallback = '0'): string => in_array($name, $cols, true) ? $p . $name : $fallback;
+		$stored = $column('paid_total_amount');
+		$status = $column('status', "''");
+		$workflow = $column('payment_workflow_status', "''");
+		$final = $column('final_total');
+		$remaining = $column('remaining_amount', 'NULL');
+		$total = "CASE WHEN TRIM(COALESCE(" . $column('catalog_discounts_snapshot', "''") . ",''))<>'' AND COALESCE(NULLIF(" . $column('discount_total') . ",0)," . $column('discount_amount') . ",0)>0 AND {$final}>0 THEN {$final} ELSE COALESCE(NULLIF(" . $column('payment_total_amount') . ",0),NULLIF({$final},0)," . $column('product_price') . ",0) END";
+		$paid = "CASE WHEN COALESCE({$stored},0)>0 THEN {$stored} WHEN {$status} IN ('paid','approved') AND COALESCE({$workflow},'')<>'awaiting_assignment' THEN ({$total}) WHEN {$status}='partial_paid' AND {$remaining} IS NOT NULL AND CAST({$remaining} AS CHAR)<>'' AND GREATEST(0,{$remaining})<({$total})-0.5 THEN GREATEST(0,({$total})-GREATEST(0,{$remaining})) ELSE 0 END";
+		return "CASE WHEN {$status} IN ('cancelled','payment_archived') OR {$workflow}='archived' THEN 0 ELSE LEAST(GREATEST(0,({$total})),GREATEST(0,({$paid}))) END";
+	}
+
 	private function sn_invoice_payment_totals($invoice): array
 	{
 		$inv = is_object($invoice) ? $invoice : (object) $invoice;
@@ -15980,9 +16008,9 @@ class SN_Plugin
 			</div>
 			<div class="sn-kpi-grid sn-supervisor-invoice-kpis">
 				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-total">۰</strong><span>کل فاکتورها</span></div>
-				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-count">۰</strong><span>تأیید/پرداخت شده</span></div>
+				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-count">۰</strong><span>فاکتور تسویه‌شده</span></div>
 				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-amount">۰ تومان</strong><span>جمع مبلغ فاکتورها</span></div>
-				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-amount">۰ تومان</strong><span>جمع فروش تأییدشده</span></div>
+				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-amount">۰ تومان</strong><span>جمع فروش تأییدشده</span><small>واریزی تأییدشدهٔ این فهرست: <span id="sn-supervisor-invoice-kpi-received-amount">۰ تومان</span></small></div>
 			</div>
 		</div>
 		<div class="sn-subtabs sn-supervisor-invoice-tabs">
@@ -27442,10 +27470,26 @@ class SN_Plugin
 				};
 				$stored_status = (string) ($get('status') ?: '');
 				$effective_status = (string) ($get('payment_status') ?: ($get('invoice_status') ?: $stored_status));
+				// A stale compatibility column must not hide the persisted final decision.
+				if (in_array($stored_status, ['paid','approved'], true)) {
+					return $this->sn_invoice_payment_totals($invoice)['remaining'] > 0.5
+						? 'پیش‌پرداخت تأیید شده؛ مانده فاکتور تسویه نشده'
+						: SN_Helpers::status_label($stored_status);
+				}
+				if (in_array($stored_status, ['rejected','cancelled','payment_archived'], true)) {
+					return SN_Helpers::status_label($stored_status);
+				}
 				$is_review = in_array($effective_status, ['pending_financial_approval', 'receipt_uploaded'], true)
 					|| in_array($stored_status, ['pending_financial_approval', 'receipt_uploaded'], true);
 				if (! $is_review) {
 					return SN_Helpers::status_label($stored_status ?: $effective_status);
+				}
+				$received = $this->sn_invoice_received_amount($invoice);
+				if ($received > 0) {
+					$totals = $this->sn_invoice_payment_totals($invoice);
+					return $totals['remaining'] <= 0.5
+						? 'واریزی‌ها تأیید شده؛ تکمیل مرحله در انتظار است'
+						: 'بخشی از واریزی تأیید شده؛ مانده فاکتور تسویه نشده';
 				}
 				$receipt = trim((string) ($get('receipt_url') ?: $get('receipt_file')));
 				$manual = trim(implode(' ', array_filter([
@@ -27528,8 +27572,10 @@ class SN_Plugin
 					'staged_incomplete' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$invoice_table} WHERE seller_id=%d AND {$seller_visibility_condition} AND {$staged_incomplete_condition}", ...$base_args)),
 				];
 				$paid_amount = (float) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(product_price),0) FROM {$invoice_table} WHERE seller_id=%d AND {$seller_visibility_condition} AND {$paid_condition}", ...$base_args));
+				$received_amount_sql = $this->sn_invoice_received_amount_sql();
+				$received_amount = (float) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM({$received_amount_sql}),0) FROM {$invoice_table} WHERE seller_id=%d AND {$seller_visibility_condition}", ...$base_args));
 				if ($summary_only) {
-					SN_Helpers::send_json(true, '', ['invoices'=>[], 'items'=>[], 'page'=>$page, 'limit'=>$limit, 'total'=>0, 'summary'=>$summary, 'paid_amount'=>$paid_amount, 'summary_only' => true]);
+					SN_Helpers::send_json(true, '', ['invoices'=>[], 'items'=>[], 'page'=>$page, 'limit'=>$limit, 'total'=>0, 'summary'=>$summary, 'paid_amount'=>$paid_amount, 'received_amount'=>$received_amount, 'summary_only' => true]);
 					return;
 				}
 				$sql_where = implode(' AND ', array_map(function($w){ return '(' . $w . ')'; }, $where));
@@ -27545,6 +27591,7 @@ class SN_Plugin
 					$row['product_name'] = $this->sn_invoice_items_label((int)$row['id'], (int)$row['product_id']);
 					$row['amount_fmt'] = SN_Helpers::format_price((float)$row['product_price']);
 					$row['payment_summary'] = $this->sn_invoice_payment_totals((object) $row);
+					$row['received_amount'] = $this->sn_invoice_received_amount($row);
 					$row['can_issue_next_stage'] = $this->sn_can_issue_invoice_next_stage((object) $row, get_current_user_id());
 					$row['status_label'] = $this->sn_invoice_review_status_label($row);
 					$row['review_status_label'] = $row['status_label'];
@@ -27565,7 +27612,7 @@ class SN_Plugin
 					$row['project'] = $project_results[(int) $row['id']] ?? null;
 					unset($row['access_token']);
 				}
-				SN_Helpers::send_json(true, '', ['invoices'=>$rows, 'items'=>$rows, 'page'=>$page, 'limit'=>$limit, 'total'=>$total, 'summary'=>$summary, 'paid_amount'=>$paid_amount]);
+				SN_Helpers::send_json(true, '', ['invoices'=>$rows, 'items'=>$rows, 'page'=>$page, 'limit'=>$limit, 'total'=>$total, 'summary'=>$summary, 'paid_amount'=>$paid_amount, 'received_amount'=>$received_amount]);
 			}
 
 
@@ -34167,11 +34214,15 @@ class SN_Plugin
 					}
 					$r['can_upload_receipt'] = $this->sn_supervisor_can_upload_receipt_for_status($r);
 					$r['can_submit_manual_payment'] = $r['can_upload_receipt'];
-					$r['status_label'] = SN_Helpers::status_label($effective_status);
+					$r['status_label'] = $this->sn_invoice_review_status_label($r);
 					$r['pay_method_label'] = SN_Helpers::pay_method_label((string) ($r['pay_method'] ?? ''));
 					$r['payment_source_label'] = SN_Helpers::payment_source_label((string) ($r['payment_source'] ?? ($r['receipt_source'] ?? '')));
 					$r['amount_fmt'] = SN_Helpers::format_price((float) (($r['final_total'] ?? 0) ?: ($r['product_price'] ?? 0)));
 					$r['payment_summary'] = $this->sn_invoice_payment_totals((object) $r);
+					$r['received_amount'] = $this->sn_invoice_received_amount($r);
+					if (in_array((string) ($r['status'] ?? ''), ['paid','approved','partial_paid'], true)) {
+						$r['is_fully_settled'] = in_array((string) $r['status'], ['paid','approved'], true) && $r['payment_summary']['remaining'] <= 0.5;
+					}
 					$r['can_issue_next_stage'] = $this->sn_can_issue_invoice_next_stage((object) $r, get_current_user_id());
 					if (isset($conversion_kinds[(int) $r['id']]) || ($r['payment_purpose'] ?? '') === 'subscription_plus_cash') {
 						$r['pre_payment_edit_note'] = SN_Dot_Flow::INVOICE_CONVERSION_EDIT_NOTICE;
