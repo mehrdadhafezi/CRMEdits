@@ -12,12 +12,12 @@ repo=$(pwd -P)
 runtime=$(mktemp -d /tmp/sn-approval-XXXXXXXX)
 output="$repo/test-results/finance"
 mkdir -p "$output"
+printf 'Disposable integration provisioning\nBaseline: %s\n' "$SN_TEST_BASELINE" > "$output/provisioning.txt"
 sudo apt-get update -qq
-sudo apt-get install -y --no-install-recommends php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml php8.3-zip php8.3-curl php8.3-sqlite3 mysql-server
+sudo apt-get install -y --no-upgrade --no-install-recommends acl php8.3-cli php8.3-mysql php8.3-mbstring php8.3-xml php8.3-zip php8.3-curl php8.3-sqlite3 mysql-server
 sudo service mysql start
 sudo useradd --system --home-dir "$runtime" --shell /bin/bash sn-approval-test
 uid=$(id -u sn-approval-test)
-sudo chown sn-approval-test "$runtime"
 sudo chmod 755 "$runtime"
 db="sn_approval_${GITHUB_RUN_ID}_${SN_TEST_BASELINE//./}_test"
 dbpass=$(openssl rand -hex 24)
@@ -80,7 +80,8 @@ CSS
 cat > "$runtime/wordpress/wp-content/themes/sn-synthetic/index.php" <<'PHP'
 <!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><?php wp_head(); ?></head><body><main><?php while(have_posts()){the_post();the_content();} ?></main><?php wp_footer(); ?></body></html>
 PHP
-sudo chown -R sn-approval-test "$runtime" "$output"
+sudo chown -R sn-approval-test "$runtime"
+sudo setfacl -m u:sn-approval-test:rwx "$output"
 sudo chmod 600 "$runtime/wordpress/wp-config.php"
 # Deny external IPv4 and IPv6 for the actual PHP/browser OS account before any WP bootstrap.
 sudo iptables -I OUTPUT 1 -m owner --uid-owner "$uid" ! -d 127.0.0.0/8 -j REJECT
@@ -93,12 +94,12 @@ export PLAYWRIGHT_BROWSERS_PATH="$HOME/.cache/ms-playwright"
 sudo chmod o+x "$HOME" "$HOME/.cache"
 sudo chmod -R a+rX "$PLAYWRIGHT_BROWSERS_PATH"
 run_test() { sudo --preserve-env=SN_APPROVAL_ROOT,SN_APPROVAL_OUTPUT,SN_APPROVAL_ALLOW_SYNTHETIC,SN_PAYMENT_TEST_BOOTSTRAP,SN_PLAYWRIGHT_MODULE,PLAYWRIGHT_BROWSERS_PATH -u sn-approval-test "$@"; }
-run_php() { run_test php -d sendmail_path=/bin/false "$@"; }
+run_php() { run_test php8.3 -d sendmail_path=/bin/false "$@"; }
 run_php -r '$s=@stream_socket_client("tcp://1.1.1.1:443",$e,$m,2);if($s)exit(1);echo "PASS OS-level external egress blocked before bootstrap\n";'
 run_php tests/payments/integration/install.php | tee "$output/install.txt"
 run_php tests/payments/integration/fixtures.php | tee "$output/fixtures.txt"
-mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/baseline-plugin"
-python3 - "$candidate" "$runtime/wordpress/wp-content/plugins" <<'PY'
+sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/baseline-plugin"
+sudo python3 - "$candidate" "$runtime/wordpress/wp-content/plugins" <<'PY'
 import pathlib,sys,zipfile
 target=pathlib.Path(sys.argv[2]).resolve()
 with zipfile.ZipFile(sys.argv[1]) as z:
@@ -108,15 +109,15 @@ with zipfile.ZipFile(sys.argv[1]) as z:
 PY
 sudo chown -R sn-approval-test "$runtime/wordpress/wp-content/plugins/sales-network-v4"
 run_php tests/payments/integration/verify.php upgrade | tee "$output/upgrade.txt"
-mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/candidate-plugin"
-mv "$runtime/baseline-plugin" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
+sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/candidate-plugin"
+sudo mv "$runtime/baseline-plugin" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
 run_php tests/payments/integration/verify.php rollback | tee "$output/rollback.txt"
-mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/baseline-plugin"
-mv "$runtime/candidate-plugin" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
+sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/baseline-plugin"
+sudo mv "$runtime/candidate-plugin" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
 run_php tests/payments/integration/verify.php restored | tee "$output/restored.txt"
 run_php tests/payments/gateway-inquiry.php | tee "$output/gateway.txt"
 run_php tests/payments/receipt-last4.php | tee "$output/last4.txt"
-run_test env PHP_CLI_SERVER_WORKERS=4 php -d sendmail_path=/bin/false -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$runtime/server.log" 2>&1 &
+run_test env PHP_CLI_SERVER_WORKERS=4 php8.3 -d sendmail_path=/bin/false -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$runtime/server.log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 for attempt in $(seq 1 40); do
