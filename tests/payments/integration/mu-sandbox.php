@@ -7,6 +7,10 @@ if (!defined('SN_APPROVAL_TEST_SANDBOX') || !SN_APPROVAL_TEST_SANDBOX
 }
 add_filter('pre_http_request', static fn() => new WP_Error('synthetic_network_blocked', 'Sandbox HTTP disabled'), 1);
 add_filter('pre_wp_mail', static fn() => false);
+if (PHP_SAPI === 'cli') {
+    ini_set('display_errors', 'stderr');
+    ini_set('zend.exception_ignore_args', '1');
+}
 add_action('init', static function (): void {
     if (!isset($_GET['sn_test_nonce'])) { return; }
     if (!is_user_logged_in()) { wp_send_json(['success'=>false], 403); }

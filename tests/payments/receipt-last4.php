@@ -1,7 +1,7 @@
 <?php
 // Read-only CLI regression; never uploads a file or mutates financial data.
 if(PHP_SAPI!=='cli')exit(2);
-$bootstrap=getenv('SN_PAYMENT_TEST_BOOTSTRAP');if(!$bootstrap||!is_file($bootstrap))throw new RuntimeException('WordPress bootstrap required');require_once $bootstrap;if(function_exists('sn_bootstrap_load_core'))sn_bootstrap_load_core();require_once dirname(__DIR__,2).'/includes/class-sn-payment-batch.php';
+$bootstrap=getenv('SN_PAYMENT_TEST_BOOTSTRAP');if(!$bootstrap||!is_file($bootstrap))throw new RuntimeException('WordPress bootstrap required');require_once $bootstrap;if(function_exists('sn_bootstrap_load_core'))sn_bootstrap_load_core();if(!class_exists('SN_Payment_Batch',false))require_once dirname(__DIR__,2).'/includes/class-sn-payment-batch.php';
 $checks=0;function card195_ok($value,$name){global $checks;if(!$value)throw new RuntimeException('FAIL '.$name);$checks++;echo 'PASS '.$name.PHP_EOL;}
 $callback=static function(){throw new RuntimeException('Receipt must not use info callbacks');};$base=['amount'=>'100000','entry_mode'=>'receipt','receipt_count'=>1];
 $r=SN_Payment_Batch::fields($base+['card_from'=>'۰۰۱۲','card_to'=>'٠٠٣٤'],true,$callback,$callback);card195_ok(($r['fields']['manual_card_from']??'')==='0012'&&($r['fields']['manual_card_to']??'')==='0034','normalize digits and preserve leading zeros');
