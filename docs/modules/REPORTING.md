@@ -73,6 +73,10 @@ Its existing successful-status contract is unchanged. Panel received totals are
 separate from completed sales and retain the existing visibility scope. This is
 query regression evidence, not a WordPress/MySQL or production audit.
 
+The [native payment integration suite](../../tests/payments/integration/README.md)
+also executes these queries on actual MySQL and checks live scoped panel totals
+before/after synthetic receipt approval. Results are tied to its Actions head.
+
 سناریوهای ضروری این ماژول: سطح self/team/manager/all؛ بازه تاریخ؛ مجوز export؛ totals با ردیف‌ها؛ UTF-8/RTL؛ XLSX formula safety.
 
 Syntax و Secret Scan در CI فعال‌اند. [ماتریس تست](../TESTING_STANDARDS.md) وضعیت زیرساخت را مشخص می‌کند. تست MIS فقط در محیط disposable با guard مجاز است؛ سایر سناریوها که fixture ندارند NOT_IMPLEMENTED هستند. پیش‌نمایش UI و تست authorization واقعی نیازمند سایت آزمایشی ایزوله است.
