@@ -22,7 +22,8 @@ sudo chmod 755 "$runtime"
 db="sn_approval_${GITHUB_RUN_ID}_${SN_TEST_BASELINE//./}_test"
 dbpass=$(openssl rand -hex 24)
 printf '::add-mask::%s\n' "$dbpass"
-sudo mysql <<SQL
+# GitHub's disposable Ubuntu image documents root/root for its local MySQL.
+sudo env MYSQL_PWD=root mysql --user=root --protocol=socket <<SQL
 CREATE DATABASE \`$db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'sn_approval'@'localhost' IDENTIFIED BY '$dbpass';
 GRANT ALL PRIVILEGES ON \`$db\`.* TO 'sn_approval'@'localhost';
