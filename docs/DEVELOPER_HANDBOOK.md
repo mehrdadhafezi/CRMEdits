@@ -139,6 +139,11 @@ DDL کد، schema واقعی سرور نیست. PK/index با relation منطق�
 
 ## 12. تست
 
+برای خلاصهٔ اثر Diff کامل PR و پیشنهاد تست، گزارش **Fast-Track** را در Actions
+ببینید یا دستور [انتخاب‌گر ریسک](TESTING_STANDARDS.md#fast-track-risk-report)
+را با Head و Base واقعی اجرا کنید. این مرحله مشورتی است و الزام تست را تغییر
+نمی‌دهد. نتیجهٔ UNKNOWN/BLOCKED نیازمند بررسی وابستگی پیش از انتخاب مسیر سریع است.
+
 `python3 scripts/check.py all` و تست معنادار رفتار تغییرکرده اجرا شود؛ Secret scan
 worktree و history نیز طبق [TESTING_STANDARDS.md](TESTING_STANDARDS.md) لازم است.
 پس از هر تغییر کد، اصلاح Review یا حل conflict، تست امنیتی، عملکردی و رگرسیون
