@@ -6,6 +6,7 @@ test "${RUNNER_ENVIRONMENT:-}" = github-hosted
 case "${SN_TEST_BASELINE:-}" in
   2.0.235) baseline=bd9a68b4d03bf55ee4b9e33a44fc529d94a3268d ;;
   2.0.236) baseline=19ea18d ;;
+  2.0.237-installed) baseline=ebed298fa21c2cd91731ae050fe295b105d213df ;;
   *) echo 'Unsupported synthetic upgrade baseline'; exit 2 ;;
 esac
 repo=$(pwd -P)
@@ -19,7 +20,9 @@ sudo service mysql start
 sudo useradd --system --home-dir "$runtime" --shell /bin/bash sn-approval-test
 uid=$(id -u sn-approval-test)
 sudo chmod 755 "$runtime"
-db="sn_approval_${GITHUB_RUN_ID}_${SN_TEST_BASELINE//./}_test"
+baseline_id=${SN_TEST_BASELINE//./}
+baseline_id=${baseline_id//-/_}
+db="sn_approval_${GITHUB_RUN_ID}_${baseline_id}_test"
 dbpass=$(openssl rand -hex 24)
 printf '::add-mask::%s\n' "$dbpass"
 # GitHub's disposable Ubuntu image documents root/root for its local MySQL.
@@ -28,7 +31,10 @@ CREATE DATABASE \`$db\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'sn_approval'@'localhost' IDENTIFIED BY '$dbpass';
 GRANT ALL PRIVILEGES ON \`$db\`.* TO 'sn_approval'@'localhost';
 SQL
-wp_version=7.1.4
+case "${SN_TEST_WORDPRESS:-7.1.4}" in
+  7.1.4|6.9.11) wp_version=${SN_TEST_WORDPRESS:-7.1.4} ;;
+  *) echo 'Unsupported synthetic WordPress version'; exit 2 ;;
+esac
 curl --fail --silent --show-error --location --retry 3 "https://wordpress.org/wordpress-$wp_version.tar.gz" -o "$runtime/wordpress.tar.gz"
 curl --fail --silent --show-error --location --retry 3 "https://wordpress.org/wordpress-$wp_version.tar.gz.sha1" -o "$runtime/wordpress.sha1"
 expected=$(tr -d '[:space:]' < "$runtime/wordpress.sha1")
@@ -115,6 +121,9 @@ run_php tests/payments/integration/verify.php rollback | tee "$output/rollback.t
 sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/baseline-plugin"
 sudo mv "$runtime/candidate-plugin" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
 run_php tests/payments/integration/verify.php restored | tee "$output/restored.txt"
+run_php tests/reporting/date-filters.php | tee "$output/reporting-memory.txt"
+run_test node tests/reporting/manager-refresh.cjs | tee "$output/manager-refresh.txt"
+run_php tests/payments/integration/reporting.php | tee "$output/reporting-mysql.txt"
 run_php tests/payments/gateway-inquiry.php | tee "$output/gateway.txt"
 run_php tests/payments/receipt-last4.php | tee "$output/last4.txt"
 server_log=$(mktemp /tmp/sn-approval-server-XXXXXXXX.log)

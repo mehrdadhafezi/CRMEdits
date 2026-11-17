@@ -14,5 +14,5 @@ if (PHP_SAPI === 'cli') {
 add_action('init', static function (): void {
     if (!isset($_GET['sn_test_nonce'])) { return; }
     if (!is_user_logged_in()) { wp_send_json(['success'=>false], 403); }
-    wp_send_json(['success'=>true, 'nonce'=>wp_create_nonce('sn_public'), 'user_id'=>get_current_user_id()]);
+    wp_send_json(['success'=>true, 'nonce'=>wp_create_nonce('sn_public'), 'report_nonce'=>wp_create_nonce('sn_reporting_export'), 'user_id'=>get_current_user_id()]);
 }, 99999);
