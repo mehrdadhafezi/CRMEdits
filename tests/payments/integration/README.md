@@ -5,9 +5,10 @@ branch. `scripts/test-finance-integration.sh` refuses other hosts; it provisions
 new database and OS user on a disposable GitHub-hosted Ubuntu VM. It never accepts
 an existing site URL, database credentials or customer-data snapshot.
 
-The two matrix jobs install WordPress 7.1.4 (official archive/checksum), PHP 8.3,
-native MySQL and Chromium through pinned Playwright 1.58.2. They activate the
-unmodified repository 2.0.235 or owner-supplied 2.0.236 baseline, create synthetic
+The four matrix jobs install WordPress 7.1.4 or 6.9.11 (official archive/checksum),
+PHP 8.3, native MySQL and Chromium through pinned Playwright 1.58.2. They activate
+the unmodified repository 2.0.235, owner-supplied 2.0.236, or reconciled installed
+2.0.237 baseline (`ebed298fa21c2cd91731ae050fe295b105d213df`), create synthetic
 accounts/HR descendants/invoices/payments, and install the exact candidate ZIP
 produced by `scripts/package.py`. Code rollback and reinstallation must preserve
 the original financial rows and role/capability definitions.
@@ -34,6 +35,16 @@ Coverage:
 - Visible seller dashboard received-money and settled-count text must occupy
   separate lines inside the KPI card at desktop and mobile widths.
 - Existing gateway inquiry (stubbed provider) and receipt last-four regressions.
+- Preserved report date validation, scoped totals, pagination, hierarchy and asof
+  queries on native MySQL; every report query preserves financial fixture rows.
+- Real reporting shortcodes and CSV export share the seller/team scope. Invalid
+  ranges, invalid nonce and unrelated roles are rejected; customer markup and
+  spreadsheet formulas stay safe; the report form retains its panel anchor.
+- Preserved manager AJAX date validation and request cancellation behavior.
+
+`php tests/reporting/date-filters.php` separately runs 34 memory-only assertions;
+`node tests/reporting/manager-refresh.cjs` runs 10 deterministic transport/UI
+assertions. Neither bootstraps WordPress nor connects to an existing database.
 
 Each run uploads safe synthetic assertion logs, runtime summaries, screenshots,
 and the exact install ZIP/checksum. It excludes wp-config, fixture/admin JSON,

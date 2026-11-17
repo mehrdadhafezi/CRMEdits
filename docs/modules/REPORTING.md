@@ -73,6 +73,14 @@ Its existing successful-status contract is unchanged. Panel received totals are
 separate from completed sales and retain the existing visibility scope. This is
 query regression evidence, not a WordPress/MySQL or production audit.
 
+The reconciled 2.0.238 candidate preserves the installed report-date validation,
+Tehran day boundaries for manager leads, report-panel form anchor, invalid-range
+errors and manager request cancellation. `php tests/reporting/date-filters.php`
+executes 34 memory-only date, scope, money, pagination, invalid-input and read-only
+regressions. `node tests/reporting/manager-refresh.cjs` executes 10 transport and
+escaping regressions. The native integration suite also exercises the actual
+reporting shortcode, hierarchy-scoped CSV export, nonces and formula safety.
+
 The [native payment integration suite](../../tests/payments/integration/README.md)
 also executes these queries on actual MySQL and checks live scoped panel totals
 before/after synthetic receipt approval. Results are tied to its Actions head.
@@ -94,5 +102,13 @@ NOT_APPLICABLE برای endpoint literal مستقل در این فایل‌ها�
 مجوز جاری از handler، SN_HR_Service/SN_Scope_Service و capabilityهای ثبت‌شده خوانده می‌شود. مخفی‌کردن دکمه مجوز backend نیست. تغییر cap، role، نگاشت HR یا scope نیازمند تسک مستقل و تأیید مالک است. ماتریس تست‌شده نقش‌ها در Production: UNVERIFIED. درخواست فاقد احراز هویت، nonce لازم یا scope باید با الگوی موجود رد شود.
 
 ## 11. Compatibility & Change History
+
+2.0.238 combines the installed reporting changes with the previously tested
+finance visibility fix. The reporting service, executive service and manager
+JavaScript remain byte-for-byte equal to the captured installed baseline.
+No report permission, schema, assignment or financial-write contract is added.
+See [reconciliation evidence](../audit/INSTALLED_SOURCE_2.0.237.md) and the latest
+[PR #13 acceptance record](https://github.com/mehrdadhafezi/CRMEdits/pull/13).
+Final-head checks and exact-artifact Staging acceptance remain required.
 
 R1 در 2026-11-12 فقط کد موجود نسخه 2.0.235 را مستند کرده است؛ کد PHP/JS/CSS تغییر نکرده است. Header: WordPress >=6.0 و PHP >=8.0؛ سازگاری runtime تمام نسخه‌ها در این جلسه UNVERIFIED. تاریخچه Releaseهای قدیمی شواهد تاریخی است و به معنی PASS این نسخه نیست. Merge و Deployment این مأموریت انجام نمی‌شود.

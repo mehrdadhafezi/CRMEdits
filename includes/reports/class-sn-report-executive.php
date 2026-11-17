@@ -39,10 +39,11 @@ final class SN_Report_Executive {
 
 	public static function filters( array $input ): array {
 		$base = SN_Report_Service::filters( $input );
-		$asof = SN_Report_Service::filters( [ 'date_from' => $input['asof_date'] ?? '', 'time_from' => $input['asof_time'] ?? '' ] );
+		$asof = SN_Report_Service::date_filters( [ 'date_from' => $input['asof_date'] ?? '', 'time_from' => $input['asof_time'] ?? '' ] );
 		$base['asof_date'] = $asof['date_from'];
 		$base['asof_time'] = $asof['time_from'];
 		$base['mode'] = ( ( $input['sn_center_mode'] ?? $input['mode'] ?? '' ) === 'asof' ) ? 'asof' : 'period';
+		if ( $base['mode'] === 'asof' ) { $base['date_error'] = $asof['date_error']; }
 		$scalar = static fn( $value ): string => is_scalar( $value ) ? sanitize_text_field( wp_unslash( (string)$value ) ) : '';
 		$base['report_search'] = $scalar( $input['sn_report_search'] ?? '' );
 		$base['report_status'] = sanitize_key( $scalar( $input['sn_report_status'] ?? '' ) );
@@ -200,14 +201,14 @@ final class SN_Report_Executive {
 	public function query( string $type, array $filters, int $page = 1, int $size = 50, bool $include_breakdown = true ): array {
 		$def = self::definitions()[$type] ?? null;
 		if ( ! $def ) { throw new InvalidArgumentException( 'Unknown report' ); }
-		[ $source, $args, $error ] = $this->source( $type, $filters );
+		[ $source, $args, $error ] = empty( $filters['date_error'] ) ? $this->source( $type, $filters ) : [ '', [], $filters['date_error'] ];
 		$page = max( 1, $page ); $size = max( 1, min( 500, $size ) );
 		$result = [ 'title' => $def['title'], 'headers' => $def['headers'], 'note' => $error ?: $def['note'], 'available' => $error === '', 'total' => 0, 'amount' => null, 'rows' => [], 'breakdown' => [], 'page' => $page, 'page_size' => $size ];
 		if ( ! $error && in_array( $type, [ 'finance_pending', 'finance_rejected' ], true ) && $filters['mode'] === 'period' && $filters['date_from'] ) {
 			$baseline = (string) get_option( 'sn_report_state_baseline_at', '' );
 			if ( $baseline && $this->timestamp( $filters['date_from'], $filters['time_from'] ?: '00:00' ) < $baseline ) { $result['note'] .= ' بخش پیش از فعال‌سازی تاریخچه در این شمارش موجود نیست.'; }
 		}
-		if ( $filters['mode'] === 'asof' && $filters['asof_date'] === '' ) { $result['available'] = false; $result['note'] = 'برای وضعیت در لحظه، تاریخ مشخص کنید.'; return $result; }
+		if ( empty( $filters['date_error'] ) && $filters['mode'] === 'asof' && $filters['asof_date'] === '' ) { $result['available'] = false; $result['note'] = 'برای وضعیت در لحظه، تاریخ مشخص کنید.'; return $result; }
 		if ( $error ) { return $result; }
 		$base = $this->prepared( $source, $args );
 		$stats = $this->db->get_row( "SELECT COUNT(*) total,COALESCE(SUM(q.amount),0) amount FROM ({$base}) q", ARRAY_A );

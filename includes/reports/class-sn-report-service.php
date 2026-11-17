@@ -24,13 +24,30 @@ final class SN_Report_Service {
 
 	public static function filters( array $input ): array {
 		$scalar = static fn( $value ): string => is_scalar( $value ) ? (string) $value : '';
-		$parse_day = static function ( $value ): string {
-			$value = sanitize_text_field( wp_unslash( is_scalar( $value ) ? (string) $value : '' ) );
-			if ( preg_match( '/^\d{4}\/\d{2}\/\d{2}$/', $value ) ) { $value = SN_Helpers::jalali_to_gregorian_date( $value ); }
-			return preg_match( '/^\d{4}-\d{2}-\d{2}$/', (string) $value ) && checkdate( (int) substr( $value, 5, 2 ), (int) substr( $value, 8, 2 ), (int) substr( $value, 0, 4 ) ) ? $value : '';
-		};
-		$time = static function ( $value ): string { $value = sanitize_text_field( wp_unslash( is_scalar( $value ) ? (string) $value : '' ) ); return preg_match( '/^(?:[01]\d|2[0-3]):[0-5]\d$/', $value ) ? $value : ''; };
-		return [ 'date_from' => $parse_day( $input['date_from'] ?? '' ), 'date_to' => $parse_day( $input['date_to'] ?? '' ), 'time_from' => $time( $input['time_from'] ?? '' ), 'time_to' => $time( $input['time_to'] ?? '' ), 'seller_id' => absint( $scalar( $input['seller_id'] ?? 0 ) ), 'status' => sanitize_text_field( wp_unslash( $scalar( $input['status'] ?? '' ) ) ), 'province' => sanitize_text_field( wp_unslash( $scalar( $input['province'] ?? '' ) ) ), 'city' => sanitize_text_field( wp_unslash( $scalar( $input['city'] ?? '' ) ) ), 'pay_method' => sanitize_key( wp_unslash( $scalar( $input['pay_method'] ?? '' ) ) ), 'product_id' => absint( $scalar( $input['product_id'] ?? 0 ) ) ];
+		return self::date_filters( $input ) + [ 'seller_id' => absint( $scalar( $input['seller_id'] ?? 0 ) ), 'status' => sanitize_text_field( wp_unslash( $scalar( $input['status'] ?? '' ) ) ), 'province' => sanitize_text_field( wp_unslash( $scalar( $input['province'] ?? '' ) ) ), 'city' => sanitize_text_field( wp_unslash( $scalar( $input['city'] ?? '' ) ) ), 'pay_method' => sanitize_key( wp_unslash( $scalar( $input['pay_method'] ?? '' ) ) ), 'product_id' => absint( $scalar( $input['product_id'] ?? 0 ) ) ];
+	}
+
+	public static function date_filters( array $input ): array {
+		$filters = [ 'date_error' => '' ];
+		foreach ( [ 'date_from', 'date_to', 'time_from', 'time_to' ] as $key ) {
+			$raw = $input[$key] ?? '';
+			$value = is_scalar( $raw ) ? trim( SN_Helpers::to_english_nums( wp_unslash( (string) $raw ) ) ) : '';
+			$is_date = str_starts_with( $key, 'date_' );
+			if ( $is_date ) {
+				$filters[$key] = SN_Helpers::jalali_to_gregorian_date( $value );
+			} else {
+				$filters[$key] = preg_match( '/^(?:[01]\d|2[0-3]):[0-5]\d$/D', $value ) ? $value : '';
+			}
+			if ( ! is_scalar( $raw ) || ( $value !== '' && $filters[$key] === '' ) ) {
+				$filters['date_error'] = 'تاریخ یا ساعت واردشده معتبر نیست.';
+			}
+		}
+		if ( ! $filters['date_error'] && $filters['date_from'] && $filters['date_to'] ) {
+			$from = $filters['date_from'] . ' ' . ( $filters['time_from'] ?: '00:00' );
+			$to = $filters['date_to'] . ' ' . ( $filters['time_to'] ?: '23:59' );
+			if ( $from > $to ) { $filters['date_error'] = 'ابتدای بازه باید پیش از پایان بازه یا برابر با آن باشد.'; }
+		}
+		return $filters;
 	}
 
 	private function sql( string $type, array $filters ): array {

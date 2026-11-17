@@ -65,7 +65,7 @@ $makeInvoice('foreign', ['seller_id'=>$fixtures['users']['other']['id'], 'issued
     'status'=>'approved', 'invoice_status'=>'approved', 'payment_status'=>'approved', 'paid_total_amount'=>999000, 'remaining_amount'=>1000]);
 $makeInvoice('cancelled', ['status'=>'cancelled', 'invoice_status'=>'cancelled', 'payment_status'=>'cancelled', 'paid_total_amount'=>100000, 'remaining_amount'=>900000]);
 foreach (['decide','failure'] as $key) {
-    $id = $makeInvoice($key);
+    $id = $makeInvoice($key, $key === 'failure' ? ['customer_name'=>'=1+1'] : []);
     $makePayment($key . '_first', $id, 300000);
     $makePayment($key . '_last', $id, 700000);
 }
@@ -73,6 +73,8 @@ foreach (['seller'=>'sn_seller_panel', 'supervisor'=>'sn_supervisor_panel', 'sen
     $id = wp_insert_post(['post_type'=>'page', 'post_status'=>'publish', 'post_title'=>'آزمون ' . $key, 'post_content'=>'[' . $shortcode . ']']);
     $fixtures['pages'][$key] = '/?page_id=' . $id;
 }
+$fixtures['pages']['reports'] = '/?page_id=' . wp_insert_post(['post_type'=>'page', 'post_status'=>'publish', 'post_title'=>'گزارش آزمایشی', 'post_content'=>'[sn_reports_panel]']);
+$fixtures['users']['admin'] = ['id'=>(int)$admin['id'], 'login'=>'sn_test_admin', 'password'=>$admin['password']];
 $fixtures['baseline_version'] = SN_VERSION;
 $fixtures['financial_hash'] = sn_test_financial_hash();
 $fixtures['roles_hash'] = hash('sha256', wp_json_encode(wp_roles()->roles));

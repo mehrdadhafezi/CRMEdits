@@ -28,9 +28,9 @@ async function pollMoney(page, selector, expected) {
   const { chromium } = await import(pathToFileURL(process.env.SN_PLAYWRIGHT_MODULE).href);
   const browser = await chromium.launch({ headless: true, args: ['--disable-dev-shm-usage'] });
   const contexts = {}, pages = {}, pageErrors = [];
-  const nonces = {};
+  const nonces = {}, reportNonces = {};
   try {
-    for (const key of ['seller','supervisor','senior','finance','subscriber','revoked']) {
+    for (const key of ['seller','supervisor','senior','finance','subscriber','revoked','admin']) {
       const context = contexts[key] = await browser.newContext({ viewport: { width:1440, height:1000 } });
       await context.request.get(base + '/wp-login.php');
       const u = fixture.users[key];
@@ -38,6 +38,7 @@ async function pollMoney(page, selector, expected) {
       const session = await responseJson(await context.request.get(base + '/?sn_test_nonce=1'));
       ok(session.success && session.user_id === u.id, 'real WordPress cookie session ' + key);
       nonces[key] = session.nonce;
+      reportNonces[key] = session.report_nonce;
     }
     const post = async (who, action, fields = {}) => responseJson(await contexts[who].request.post(base + '/wp-admin/admin-ajax.php', { form:{ action, nonce:nonces[who], ...fields } }));
     const guest = await browser.newContext();
@@ -126,6 +127,49 @@ async function pollMoney(page, selector, expected) {
         await page.setViewportSize({width:1440,height:1000});
       }
     }
+    for (const who of ['seller','supervisor','senior']) {
+      const page = pages['reports-' + who] = await contexts[who].newPage();
+      page.on('pageerror', error => pageErrors.push({role:'reports-' + who,message:error.message}));
+      const url = new URL(base + fixture.pages.reports);
+      url.searchParams.set('sn_center_type','invoices_register');
+      url.searchParams.set('date_from','۱۴۰۵/۰۸/۱۰');
+      url.searchParams.set('date_to','۱۴۰۵/۰۸/۱۰');
+      await page.goto(url.href,{waitUntil:'domcontentloaded'});
+      const panel = page.locator('#sn-reports-panel');
+      await panel.getByText('SYN-FINAL',{exact:true}).waitFor();
+      ok(!(await panel.innerText()).includes('SYN-FOREIGN'), 'report page preserves real HR scope ' + who);
+      ok(await panel.locator('[name="date_from"]').inputValue() === '1405/08/10', 'report form retains the selected Jalali date ' + who);
+      ok(new URL(await panel.locator('form.sn-report-filters').getAttribute('action')).hash === '#sn-reports-panel', 'report form returns to the reporting panel ' + who);
+      ok(await page.evaluate(() => !window.__snFixtureXss), 'report customer markup cannot execute ' + who);
+      const exportLink = await panel.locator('a[href*="action=sn_reporting_export"]').getAttribute('href');
+      const exported = await contexts[who].request.get(exportLink);
+      const csv = await exported.text();
+      ok(exported.status() === 200 && csv.includes('SYN-FINAL') && !csv.includes('SYN-FOREIGN'), 'CSV and report page use the same scope ' + who);
+      ok(csv.includes("'=1+1"), 'report CSV neutralizes a synthetic spreadsheet formula ' + who);
+      ok(fixture.tokens.every(token => !csv.includes(token)), 'CSV excludes invoice access tokens ' + who);
+      const invalidNonce = new URL(exportLink); invalidNonce.searchParams.set('_wpnonce','invalid-synthetic-nonce');
+      ok((await contexts[who].request.get(invalidNonce.href)).status() === 403, 'report export requires its valid nonce ' + who);
+      const invalidRange = new URL(exportLink); invalidRange.searchParams.set('date_from','2026-02-30');
+      const rejected = await contexts[who].request.get(invalidRange.href);
+      ok(rejected.status() === 400 && !(await rejected.text()).includes('SYN-FINAL'), 'invalid export date cannot expand to all invoices ' + who);
+      if (who === 'seller') {
+        const unrelatedExport = new URL(exportLink); unrelatedExport.searchParams.set('_wpnonce',reportNonces.subscriber);
+        ok((await contexts.subscriber.request.get(unrelatedExport.href)).status() === 403, 'unrelated role cannot export even with its own valid reporting nonce');
+        const forgedScope = new URL(exportLink); forgedScope.searchParams.set('sn_hierarchy_role','seller'); forgedScope.searchParams.set('sn_hierarchy_user',String(fixture.users.other.id));
+        const forgedResult = await contexts.seller.request.get(forgedScope.href);
+        ok(forgedResult.status() === 200 && !(await forgedResult.text()).includes('SYN-FOREIGN'), 'forged hierarchy selector never expands export scope');
+      }
+      const invalidPage = new URL(url); invalidPage.searchParams.set('date_from','<img src=x onerror=window.__snFixtureXss=1>');
+      await page.goto(invalidPage.href,{waitUntil:'domcontentloaded'});
+      ok(!(await panel.innerText()).includes('SYN-FINAL') && await page.evaluate(() => !window.__snFixtureXss), 'invalid report date is escaped and displays no rows ' + who);
+      await page.screenshot({path:path.join(output,'reports-invalid-' + who + '.png'),fullPage:true});
+    }
+    const managerRange = await post('admin','sn_sales_manager_leads',{date_from:'1405/08/10',date_to:'1405/08/10'});
+    ok(managerRange.success, 'native manager report accepts the preserved Jalali date filters');
+    const invalidManagerRange = await post('admin','sn_sales_manager_leads',{date_from:'2026-02-30'});
+    ok(!invalidManagerRange.success && String(invalidManagerRange.message).includes('معتبر'), 'native manager report rejects an invalid date');
+    ok(!(await post('admin','sn_sales_manager_leads',{nonce:''})).success, 'manager report requires a valid nonce');
+    ok(!(await post('subscriber','sn_sales_manager_leads',{})).success, 'unrelated role cannot access manager report AJAX');
     // Real concurrent AJAX requests, MySQL advisory/row locks and decision history.
     const concurrent = await Promise.all([post('finance','sn_receipt_review',approveInput),post('finance','sn_receipt_review',approveInput)]);
     ok(concurrent.filter(r => r.success).length === 1, 'concurrent receipt approval succeeds exactly once');
