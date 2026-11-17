@@ -139,10 +139,10 @@ DDL کد، schema واقعی سرور نیست. PK/index با relation منطق�
 
 ## 12. تست
 
-برای خلاصهٔ اثر Diff کامل PR و پیشنهاد تست، گزارش **Fast-Track** را در Actions
-ببینید یا دستور [انتخاب‌گر ریسک](TESTING_STANDARDS.md#fast-track-risk-report)
-را با Head و Base واقعی اجرا کنید. این مرحله مشورتی است و الزام تست را تغییر
-نمی‌دهد. نتیجهٔ UNKNOWN/BLOCKED نیازمند بررسی وابستگی پیش از انتخاب مسیر سریع است.
+برای خلاصهٔ اثر Diff کامل PR و نتیجهٔ اجرای تست‌ها، **Fast-Track** را در
+Summary اجرای CRM CI ببینید یا دستور [انتخاب‌گر ریسک](TESTING_STANDARDS.md#fast-track-risk-report)
+را با Head و Base واقعی اجرا کنید. UNKNOWN/BLOCKED نیازمند بررسی اثر و
+تکمیل تست‌های ضروری است.
 
 `python3 scripts/check.py all` و تست معنادار رفتار تغییرکرده اجرا شود؛ Secret scan
 worktree و history نیز طبق [TESTING_STANDARDS.md](TESTING_STANDARDS.md) لازم است.
@@ -205,9 +205,9 @@ Push بررسی کنید. شکست تست یا کنترل ضروری مسیر ع
 gh pr create --draft --base main --head docs/123-clarify-handbook --title "docs(handbook): clarify setup (#123)" --body-file /tmp/crm-pr.md
 ```
 
-۳. CI شاخه ممکن است با Push شروع شود. پس از ایجاد Draft، نتیجهٔ workflow رویداد
-`pull_request` را برای Head/Base واقعی بررسی کنید. موفقیت run روی Push جای آن
-را نمی‌گیرد. وقتی کنترل‌های محلی و CI ضروری همه موفق‌اند، شواهد را به‌روز کنید و
+۳. برای شاخهٔ کاری، CI با ایجاد Draft PR شروع می‌شود. نتیجهٔ workflow رویداد
+`pull_request` را برای Head/Base واقعی بررسی کنید. اجرا روی Push برای شاخه‌های
+اشتراکی باقی است. وقتی کنترل‌های محلی و CI ضروری همه موفق‌اند، شواهد را به‌روز کنید و
 با **Ready for review** (صرفاً وضعیت UI گیت‌هاب، نه الزام Reviewer انسانی) در GitHub (یا `gh pr ready <number>`) Draft را تبدیل کنید.
 اگر CI در انتظار است، مرحله را `Draft / CI pending` ثبت کنید و نتیجهٔ تست ضروری
 اجرانشده را PASS اعلام نکنید. تست ضروری FAIL/BLOCKED/NOT_RUN مانع Ready است.

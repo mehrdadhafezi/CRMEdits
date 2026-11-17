@@ -46,7 +46,7 @@ regression دارای assertion اضافه کنید؛ دلیل و خطر نبو�
 
 ## Fast-Track risk report
 
-مرحلهٔ ۱ فقط گزارش می‌دهد. در checkout با history کامل، SHAها را از PR بردارید:
+انتخاب‌گر محلی فقط پیشنهاد تست می‌دهد. در checkout با history کامل، SHAها را از PR بردارید:
 
 ```bash
 python3 -B scripts/risk_report.py --base <base-sha> --head <head-sha> --target main
@@ -66,10 +66,25 @@ python3 -B scripts/risk_report.py --base <base-sha> --head <head-sha> --target m
 وضعیت‌ها PASS، FAIL، BLOCKED و NOT_RUN هستند. انتخاب‌گر اعتبار محتوای URL را
 تأیید نمی‌کند؛ برای پذیرش نتیجه، CI و شواهد همان revision طبق قواعد فعلی بررسی شوند.
 
-Workflow مشورتی روی PRهای `main` و `experimental` در Summary گزارش را می‌نویسد.
-هر Check فعلی و تست امنیتی یا مالی به قوت خود باقی است. موفقیت Workflow مشورتی
-فقط یعنی تست انتخاب‌گر و ساخت گزارش انجام شده‌اند. BLOCKED در JSON خروجی موفق
-فرایند گزارش است و مجوز merge یا skip نمی‌دهد.
+در PRهای `main` و `experimental`، CRM CI خلاصهٔ Phase 2 را بعد از Jobها می‌نویسد
+و جزئیات را در Log نگه می‌دارد. نتیجه به Head، Base و والدهای Commit آزمایشی
+همان PR وابسته است. ورودی `--evidence` محلی در تصمیم CI استفاده نمی‌شود.
+ویرایش صرف توضیحات Checkهای فعلی را دوباره اجرا می‌کند و برنامه‌ریزی و Suiteهای
+اختیاری را دوباره اجرا نمی‌کند. تغییر مقصد یا Head اجرای کامل را شروع می‌کند.
+اگر Base بدون رویداد جدید تغییر کند، پیش از استفاده از نتیجه شاخهٔ PR را با
+Base جدید به‌روز کنید و CI تازه بگیرید.
+
+| ریسک | اجرای خودکار |
+| --- | --- |
+| LOW | Checkهای پایهٔ مقصد |
+| MEDIUM | Checkهای پایه و تست Chromium با دادهٔ ساختگی برای فاصله‌گذاری UI کمپین، در موبایل و RTL |
+| HIGH | Checkهای پایه و Jobهای دارای پوشش معتبر. اثر مالی یا مسیرهای تحت پوشش قبلی، هر چهار سناریوی Finance را اجرا می‌کند |
+| UNKNOWN | Checkهای پایه و ماتریس Finance به‌شکل محافظه‌کارانه. Summary تا تعیین اثر و تست‌های لازم BLOCKED است |
+
+Finance برای پرداخت و گزارش مالی پوشش دارد. برای تغییرهای گستردهٔ Role/Scope،
+Wallet/Commission، Schema، MIS یا UI، نبود پوشش معتبر مرتبط در Summary ثبت می‌شود.
+وضعیت READY FOR MERGE CHECK به‌معنی آمادگی برای بازبینی نهایی است و روند تأیید
+مخزن همچنان برقرار است.
 
 ## تست امنیتی اجباری بر اساس ارتباط با تغییر
 
@@ -178,7 +193,7 @@ Approval انسانی در Rulesetهای فعلی لازم نیست و Codex Rev
 | Payment regression | tests/payments | WordPress test bootstrap؛ پاسخ HTTP ساختگی |
 | Auth/API واقعی | PARTIAL | fixture MIS نقش‌ها دارد؛ بقیه نیازمند سناریوی سایت ایزوله |
 | UI/mobile/RTL/accessibility | PARTIAL | پنل‌های تأیید مالی فروشنده/سرپرست/ارشد در tests/payments/integration؛ سایر مسیرها NOT_IMPLEMENTED |
-| Finance approval native integration | tests/payments/integration | workflow مستقل Finance approval integration؛ WordPress/MySQL واقعی و داده ساختگی، ارتقا/برگشت از دو مبنا |
+| Finance approval native integration | tests/payments/integration | workflow قابل استفاده در CRM CI یا اجرای دستی؛ WordPress/MySQL واقعی و داده ساختگی، چهار ترکیب نسخه و مبنای ارتقا/برگشت |
 | Migration/upgrade | PARTIAL | fixture MIS setup؛ کل upgrade نیازمند snapshot ساختگی |
 | Dependency audit | Composer/npm manifest موجود نیست؛ audit خودکار جامع NOT_IMPLEMENTED | WP/WooCommerce و provider جدا بررسی شوند؛ تست ضروری مرتبطِ اجرا‌نشده BLOCKED/NOT_RUN است |
 
@@ -216,9 +231,9 @@ stub می‌کند و فایل دوم فیش آپلود نمی‌کند؛ خود
 دارد و بدون محیط ایزوله مجاز نیست.
 
 برای اصلاح نمایش تأیید مالی، [آزمون یکپارچه اختصاصی](../tests/payments/integration/README.md)
-با workflow `Finance approval integration` روی شاخه تسک اجرا می‌شود. runner فقط VM
+با workflow `Finance approval integration` روی Commit آزمایشی PR اجرا می‌شود. runner فقط VM
 یک‌بارمصرف GitHub را می‌پذیرد و پیش از bootstrap، خروجی شبکه حساب PHP/مرورگر را
-می‌بندد. نتیجه واقعی head، runtime، assertionها، تصاویر ساختگی و ZIP آزموده‌شده در
+می‌بندد. نتیجهٔ Commit آزموده‌شده، runtime، assertionها، تصاویر ساختگی و ZIP آزموده‌شده در
 artifact همان اجرا ثبت می‌شود؛ وجود workflow به‌تنهایی شاهد PASS نیست.
 
 برای هر ماژول سناریوهای مثبت، منفی، permission/scope، failure و رگرسیون در بخش ۸

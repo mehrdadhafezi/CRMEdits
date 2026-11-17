@@ -8,6 +8,10 @@ import unittest
 
 
 SELECTOR = Path(__file__).resolve().parents[2] / "scripts" / "risk_report.py"
+sys.path.insert(0, str(SELECTOR.parent))
+from fast_track_ci import JOBS, make_plan, outcome  # noqa: E402
+
+
 CSS = "assets/css/campaign-analytics.css"
 CALLER = "includes/class-sn-campaign-tracking.php"
 
@@ -49,6 +53,15 @@ class RiskReportTest(unittest.TestCase):
     def suites(self, report, applicability="REQUIRED"):
         return {s["id"] for s in report["tests"] if s["applicability"] == applicability}
 
+    def orchestration(self, selection, jobs=None, matrix_verified=False):
+        expected = {
+            "pr": 1, "base": selection["base_sha"], "head": selection["head_sha"],
+            "target": selection["target"], "merge": "a" * 40,
+        }
+        plan = make_plan(expected, expected["merge"], selection)
+        return plan, outcome(plan, expected, expected, jobs or {},
+                             "https://github.com/example/repo/actions/runs/1", matrix_verified)
+
     def test_plain_docs(self):
         self.write("docs/glossary.md", "# Glossary\n\nRecord: One entry.\n")
         head = self.snapshot("docs")
@@ -59,6 +72,9 @@ class RiskReportTest(unittest.TestCase):
         self.assertEqual(self.suites(r), {"syntax", "docs-hygiene", "secrets", "stable-boundary"})
         self.assertNotIn("stable-boundary", self.suites(self.report(head, None, "experimental")))
         self.assertTrue(all(t["reason"] and t["evidence"] is None for t in r["tests"]))
+        plan, result = self.orchestration(r, {job: "success" for job in JOBS.values()})
+        self.assertFalse(plan["finance"] or plan["campaign_ui"])
+        self.assertEqual(result["status"], "READY FOR MERGE CHECK")
 
     def test_instruction_docs_are_high(self):
         self.write("docs/notes.md", "# Notes\n\n~~~bash\npython3 scripts/check.py all\n~~~\n")
@@ -79,6 +95,13 @@ class RiskReportTest(unittest.TestCase):
         self.assertIn(CALLER, r["changed_files"][0]["reason"])
         self.assertIn("ui", self.suites(r))
         self.assertNotIn("finance", self.suites(r))
+        base_jobs = {job: "success" for job in JOBS.values()}
+        plan, result = self.orchestration(r, base_jobs)
+        self.assertTrue(plan["campaign_ui"])
+        self.assertFalse(plan["finance"])
+        self.assertEqual(result["status"], "BLOCKED")
+        _, result = self.orchestration(r, {**base_jobs, "campaign-ui": "success"})
+        self.assertEqual(result["status"], "READY FOR MERGE CHECK")
 
     def test_ui_visibility_is_not_bounded(self):
         base = self.css_baseline()
@@ -122,6 +145,10 @@ class RiskReportTest(unittest.TestCase):
                 r = self.report(self.snapshot(case))
                 self.assertEqual(r["risk"], "HIGH")
                 self.assertLessEqual(expected, self.suites(r))
+                plan, result = self.orchestration(r, {job: "success" for job in JOBS.values()})
+                self.assertTrue(plan["finance"])
+                self.assertFalse(plan["campaign_ui"])
+                self.assertEqual(result["status"], "BLOCKED")
 
     def test_renaming_sensitive_asset_preserves_old_path(self):
         self.write("assets/css/payment-batch.css", ".pay { display: grid; }\n")
@@ -149,6 +176,20 @@ class RiskReportTest(unittest.TestCase):
         self.assertEqual((r["risk"], r["status"]), ("UNKNOWN", "BLOCKED"))
         self.assertEqual(len(r["changed_files"]), 2)
         self.assertTrue(all(f["risk"] == "UNKNOWN" for f in r["changed_files"]))
+        plan, result = self.orchestration(r, {job: "success" for job in JOBS.values()}, True)
+        self.assertTrue(plan["finance"])
+        self.assertEqual(result["status"], "BLOCKED")
+
+    def test_experimental_runs_full_finance_matrix(self):
+        self.write("includes/class-sn-receipt-review.php", "<?php\nreturn true;\n")
+        selection = self.report(self.snapshot("review change"), target="experimental")
+        jobs = {job: "success" for job in JOBS.values() if job != "stable-pr-boundary"}
+        plan, result = self.orchestration(selection, jobs, True)
+        self.assertEqual(plan["risk"], "HIGH")
+        self.assertTrue(plan["finance"])
+        statuses = {row["suite"]: row["status"] for row in result["tests"]}
+        self.assertEqual((statuses["finance"], statuses["stable-boundary"]), ("PASS", "SKIPPED"))
+        self.assertEqual((statuses["ledger"], result["status"]), ("BLOCKED", "BLOCKED"))
 
     def test_complete_diff_includes_changes_before_latest_commit(self):
         self.write("includes/class-sn-scope-service.php", "<?php\nreturn false;\n")

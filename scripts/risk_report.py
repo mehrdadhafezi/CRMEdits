@@ -43,7 +43,6 @@ CONTROL_DOCS = {
     "docs/DEVELOPMENT_STANDARDS.md", "docs/FORBIDDEN_PATHS.md",
     "docs/QA_CHECKLIST.md", "docs/PULL_REQUEST_TEMPLATE.md", "docs/CURRENT_TASKS.md",
 }
-REPORT_WORKFLOW = ".github/workflows/fast-track-risk.yml"
 CORE_FILES = {
     "sales-network.php", "includes/class-sn-plugin.php", "includes/class-sn-helpers.php",
     "assets/css/public.css", "assets/css/public-performance.css", "assets/js/public.js",
@@ -160,7 +159,8 @@ def assess(path, change, modes, oids, base, head):
         if name.startswith("tests/mis/"):
             domains.add("mis")
         is_shared_tooling = name.startswith((".github/workflows/", "tests/", "scripts/"))
-        advisory_code = (name in {REPORT_WORKFLOW, "scripts/risk_report.py", "scripts/check.py"}
+        advisory_code = (name in {".github/workflows/fast-track-risk.yml", "scripts/risk_report.py",
+                                  "scripts/fast_track_ci.py", "scripts/check.py"}
                          or name.startswith("tests/fast_track/"))
         if is_shared_tooling and domains == {"tooling"} and not advisory_code:
             domains.add("shared")
