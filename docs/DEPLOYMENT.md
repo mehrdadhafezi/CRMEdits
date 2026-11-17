@@ -9,18 +9,35 @@ Merge در GitHub فایل‌های WordPress را منتشر نمی‌کند. �
 | محیط | منبع و کاربرد |
 |---|---|
 | Production | سایت واقعی موجود. فقط همان ZIP پایدار تأییدشده در Staging، با مجوز جداگانهٔ مالک |
-| [Staging](https://staging.payasetareh.ir) | commit مشخص و ادغام‌شده در `main`. بررسی نسخهٔ نامزد انتشار با داده ساختگی |
+| Staging | صرفاً Artifact پایدار از `main` و دادهٔ ساختگی. دامنه تا زمان تأیید اپراتور UNVERIFIED است |
 | Experimental Preview | WordPress جداگانه در `preview.payasetareh.ir` پس از تأیید میزبان. فقط commit مشخص از `experimental` و داده ساختگی |
 
-برای هر مسیر از checkout تمیز روی SHA کامل و تأییدشده، `python3 scripts/package.py`
-را اجرا کنید. محیط، شاخه، SHA کامل، نام ZIP و SHA-256 را ثبت کنید. پیش از نصب،
-SHA-256 فایل تحویلی را با فایل `.zip.sha256` به‌دست‌آمده از همان ساخت مقایسه کنید
-(با `sha256sum -c` یا `Get-FileHash -Algorithm SHA256`). نتیجهٔ smoke، رگرسیون
-مرتبط و شواهد را به همان SHA و ZIP وصل کنید. ZIP Preview هرگز به Staging یا
-Production منتقل نمی‌شود. پس از [انتقال انتخابی قابلیت و Merge مجاز](GIT_WORKFLOW.md)،
-از commit جدید `main` یک ZIP پایدار بسازید و همان فایل را در Staging تست کنید.
-برای انتشار مصوب Production، از همان فایل موفق Staging استفاده کنید. آن را
-دوباره نسازید و تغییر ندهید.
+## Release Candidate پایدار
+
+فرد مجاز پس از Merge فقط روی آخرین `main`، در Actions گزینهٔ **Run workflow**
+را برای **Release Candidate** اجرا می‌کند و SHA کامل و شمارهٔ PR ادغام‌شده را
+می‌دهد. Workflow به Merge Commit دووالدی، درخت یکسان با Commit آزمایشی PR،
+چهار Check اجباری و Fast-Track Summary موفق در اجرای کامل PR، و سه Check پایهٔ
+موفق در Push همان SHA روی `main` نیاز دارد. نامزد در GitHub Actions با نگه‌داری
+۳۰روزه و شناسهٔ Artifact ثبت می‌شود. فرایند فقط ZIP، checksum، Manifest و
+گواهی منشأ CI می‌سازد. ZIP آزمایشی `experimental` فقط برای Preview است.
+
+از صفحهٔ همان اجرا، شناسهٔ Artifact را ثبت کنید و در Git Bash بستهٔ بیرونی
+دانلودشده را پیش از استخراج اعتبارسنجی کنید:
+
+```bash
+artifact_id=12345  # Replace with the Actions artifact ID.
+gh api "repos/mehrdadhafezi/CRMEdits/actions/artifacts/$artifact_id/zip" > candidate-bundle.zip
+python3 -B scripts/release_candidate.py verify --artifact-id "$artifact_id" --bundle candidate-bundle.zip
+```
+
+اعتبارسنجی، digest بستهٔ دانلودشده را با GitHub، نسخه و SHA را با منشأ و CI،
+و هش ZIP نصب و تک‌تک فایل‌ها را با Manifest تطبیق می‌دهد. نامزد منقضی، SHA
+قدیمی یا شواهد نامعتبر BLOCKED است. ZIP همان Artifact را با SHA-256 در شواهد
+Staging ثبت کنید و برای Production همان بایت‌ها را پیشنهاد دهید. اگر `main`
+یا شواهد معتبر عوض شد، وضعیت نامزد دوباره بررسی شود. برای یک SHA دارای نامزد
+موفق، Workflow از ساخت مجدد جلوگیری می‌کند. نگه‌داری بلندمدت فایل تأییدشده در
+محل مصوب اپراتور با GitHub Artifact ID و digest ثبت می‌شود.
 
 ## شرط استفاده از Staging و ساخت Preview
 
@@ -44,6 +61,39 @@ Production منتقل نمی‌شود. پس از [انتقال انتخابی ق
 5. برای هر محیط backup از فایل‌ها، پیکربندی و DB ساختگی با مسیر و دسترسی جدا
    و نگه‌داری خارج از DocumentRoot تعریف کنید. Restore را در محیط disposable
    با DB جدا آزمایش کنید و مسئول و زمان بازیابی را ثبت کنید.
+
+دامنهٔ `staging.payasetareh.ir` در راهنمای قبلی آمده و
+`crmstage.payasetareh.ir` نیز به‌عنوان نام دیگر مطرح شده است. تطابق این دو نام
+و مقصد واقعی vhost تا تأیید اپراتور UNVERIFIED است. وضعیت فعلی
+**STAGING DEPLOYMENT BLOCKED** است.
+
+اپراتور برای هر مورد در جدول زیر یک رکورد خصوصیِ قابل بازبینی شامل تاریخ،
+مسئول، روش مشاهده و نتیجه نگه می‌دارد. فایل محلی فقط با شناسهٔ آن رکورد پر شود.
+نمونهٔ یک ورودی `{"document_root":{"status":"VERIFIED","record":"ops-review-01"}}`.
+با `python3 -B scripts/release_candidate.py staging-evidence --file staging-evidence.json`
+وضعیت را بررسی کنید. گزارش فقط نام کنترل و نتیجه را می‌دهد. ابزار تأیید
+اپراتور را ثبت می‌کند و به سرور اتصال ندارد. مقدار VERIFIED فقط با شاهد واقعی
+ثبت شود. اطلاعات سرور، مسیرهای داخلی، credential و دادهٔ خام در GitHub ثبت نشوند.
+
+| شناسهٔ کنترل | شاهد خواندنی یا گزارش خصوصی اپراتور |
+|---|---|
+| `canonical_domain` | دامنهٔ canonical، aliasها و تطبیق با vhost مصوب |
+| `document_root`، `plugin_path` | DocumentRoot و مسیر واقعی افزونه، مستقل از Production |
+| `php_user_pool`، `database_user` | کاربر PHP و pool جدا، schema و کاربر DB مستقل با دسترسی محدود |
+| `symlinks_mounts`، `cache_sessions_uploads` | جداسازی Symlink، mount، cache، session و uploads و نداشتن دسترسی متقابل |
+| `sms_mail_payment_api_egress` | انسداد مقصد واقعی در شبکه و سرویس، شامل اتصال مستقیم افزونه |
+| `cron_workers`، `resource_limits` | WP-Cron، Cron میزبان، worker و سقف CPU، RAM و اتصال/منابع DB |
+| `synthetic_backup_restore_plan`، `disposable_restore_test` | طرح بازیابی snapshot ساختگی و گزارش موفق Restore در محیط disposable مستقل |
+| `wp_php_mariadb`، `woocommerce_dependencies` | نسخهٔ WordPress، PHP، MariaDB، WooCommerce و افزونه‌های لازم |
+
+### استفاده مجدد در Phase 3B
+
+اپراتور پس از تأیید ایزوله‌سازی و مجوز مستقل مالک، قفل انحصاری محیط را می‌گیرد،
+Artifact و SHA-256 را اعتبارسنجی می‌کند و Snapshot تمیز و Restore آزموده‌شده را
+پیش از نصب تأیید می‌کند. پس از نصب مجاز، Smoke و Regression مرتبط را با دادهٔ
+ساختگی اجرا و شواهد را برای همان Artifact ثبت می‌کند. محیط به Snapshot مصوب
+برمی‌گردد و قفل پس از کنترل وضعیت آزاد می‌شود. نبود هر شاهد ایزوله‌سازی یا
+Restore، یا نداشتن مجوز نصب، مانع شروع عملیات است.
 
 تست مخرب MIS فقط روی WordPress و DB **disposable** جداگانه با داده ساختگی و
 guardهای [استاندارد تست](TESTING_STANDARDS.md) اجرا شود. Staging و Preview مشترک
@@ -73,10 +123,18 @@ UNVERIFIED است. migration مجوز جدا، dry-run، تعداد/مدت/قف�
 rate پایش شود. هیچ smoke test با پرداخت یا SMS واقعی بدون مجوز انجام نشود.
 اگر اختلاف مبلغ، دسترسی یا history دیده شد release متوقف و حادثه خصوصی ثبت شود.
 
-Rollback کد به artifact قبلی commitشده برمی‌گردد؛ rollback داده جداست و ممکن است
-به forward fix یا restore با از دست رفتن تغییرات بعد از backup نیاز داشته باشد.
-هیچ تضمین بازگشت migration غیرقابل برگشت داده نمی‌شود. قبل از restore، writerها
-و jobها با هماهنگی اپراتور متوقف و وضعیت/بازه داده ثبت شود.
+### Rollback کد
+
+اپراتور با مجوز، SHA-256 نامزد قبلیِ تأییدشده را بررسی و سازگاری نسخهٔ قبل با
+Schema فعلی را تأیید می‌کند. سپس همان ZIP قبلی را بازمی‌گرداند و Smoke مرتبط را
+ثبت می‌کند.
+
+### Rollback داده
+
+اگر لازم است داده یا Schema برگردد، مالک جداگانه دربارهٔ forward fix یا Restore
+تصمیم می‌گیرد. اپراتور نقطهٔ بازیابی و تغییرات پس از آن را مشخص و قبل از Restore،
+writerها و jobها را با هماهنگی متوقف می‌کند. پس از بازیابی مصوب، سازگاری Schema
+و داده و Smoke مالی/دسترسی بررسی می‌شوند. بازگرداندن فایل افزونه داده را برنمی‌گرداند.
 
 **رفع تعارض با متن تاریخی پایین:** staging معمول توسعه فقط داده ساختگی/ایمن دارد.
 انتقال داده واقعی Production به محیط تست یا ابزار AI مجاز نیست. ابزار repair،

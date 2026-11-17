@@ -227,6 +227,18 @@ class RiskReportTest(unittest.TestCase):
                 self.assertEqual((plan["risk"], result["status"]), ("HIGH", "BLOCKED"))
                 self.assertTrue(all(plan["suites"][suite] == "REQUIRED" for suite in expected))
 
+    def test_release_scope_requires_package_parity_and_retains_mixed_runtime_coverage(self):
+        self.write("scripts/package.py", "print('new release package format')\n")
+        self.write("scripts/release_candidate.py", "print('release')\n")
+        plan, _ = self.orchestration(self.report(self.snapshot("release-only tooling")))
+        self.assertTrue(plan["tooling_only"] and plan["package_parity"] and plan["finance"])
+        self.assertEqual(plan["risk"], "HIGH")
+        self.write("includes/class-sn-mis.php", "<?php\nreturn true;\n")
+        jobs = {job: "success" for job in JOBS.values()}
+        plan, result = self.orchestration(self.report(self.snapshot("add an MIS change")), jobs, True)
+        self.assertFalse(plan["tooling_only"] or plan["package_parity"])
+        self.assertEqual((plan["suites"]["mis"], result["status"]), ("REQUIRED", "BLOCKED"))
+
     def test_complete_diff_includes_changes_before_latest_commit(self):
         self.write("includes/class-sn-scope-service.php", "<?php\nreturn false;\n")
         self.snapshot("scope change")

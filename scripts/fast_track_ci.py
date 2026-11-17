@@ -34,6 +34,11 @@ ORCHESTRATION_FILES = {
     "tests/fast_track/test_risk_report.py", "tests/fast_track/test_fast_track_ci.py", CAMPAIGN_TEST,
 }
 TOOLING_ONLY = ORCHESTRATION_FILES | POLICY_DOCS
+RELEASE_VALIDATION = {
+    ".github/workflows/release-candidate.yml", "scripts/release_candidate.py",
+    "tests/fast_track/test_release_candidate.py",
+}
+RELEASE_SCOPE = TOOLING_ONLY | RELEASE_VALIDATION | {"scripts/package.py", "docs/DEPLOYMENT.md", "docs/LOCAL_SETUP.md"}
 SUMMARY_JOB = "Fast-Track readiness summary"
 PLAN_JOB = "Fast-Track test plan"
 CAMPAIGN_JOB = "Campaign spacing browser regression"
@@ -84,13 +89,15 @@ def make_plan(pr, merge_sha, selection):
     )
     campaign_ui = not unknown and selection["risk"] == "MEDIUM" and set(domains) == {"campaign-ui", "ui"}
     paths = {change["path"] for change in files}
-    tooling_only = not unknown and selection["risk"] == "HIGH" and bool(paths) and paths <= TOOLING_ONLY
+    high = not unknown and selection["risk"] == "HIGH"
+    package_parity = high and bool(paths & RELEASE_VALIDATION) and paths <= RELEASE_SCOPE
+    tooling_only = high and (package_parity or bool(paths) and paths <= TOOLING_ONLY)
     reasons = sorted({change["reason"] for change in files})[:6]
     suites = {item["id"]: item["applicability"] for item in selection["tests"]}
     if tooling_only:
         # Keep validation of the orchestrator and its actual native suites. Do not
         # inherit broad plugin-runtime recommendations when all package inputs are untouched.
-        finance = finance or bool(paths & (ORCHESTRATION_FILES - {CAMPAIGN_TEST}))
+        finance = finance or package_parity or bool(paths & (ORCHESTRATION_FILES - {CAMPAIGN_TEST}))
         campaign_ui = CAMPAIGN_TEST in paths
         domains = ["tooling"]
         if finance:
@@ -99,13 +106,18 @@ def make_plan(pr, merge_sha, selection):
             domains.extend(("campaign-ui", "ui"))
         suites.update({suite: "REQUIRED" if domain in domains else "NOT_SELECTED"
                        for suite, (domain, _) in SUITES.items() if domain is not None})
-        reasons = ["Full diff is limited to named orchestration files; plugin package and native test inputs are unchanged"]
+        reasons = [
+            "Release tooling changed; require identical plugin payload, reproducible builds and native Finance"
+            if package_parity else
+            "Full diff is limited to named orchestration files; plugin package and native test inputs are unchanged"
+        ]
     if finance:
         suites["finance"] = "REQUIRED"
     return {
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
         "domains": domains, "files": len(files), "finance": finance,
-        "campaign_ui": campaign_ui, "tooling_only": tooling_only, "reasons": reasons, "suites": suites,
+        "campaign_ui": campaign_ui, "tooling_only": tooling_only, "package_parity": package_parity,
+        "reasons": reasons, "suites": suites,
     }
 
 

@@ -1,0 +1,67 @@
+name: Release Candidate
+run-name: Release Candidate ${{ inputs.commit }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Full current main SHA
+        required: true
+        type: string
+      pr:
+        description: Merged PR that produced this main SHA
+        required: true
+        type: number
+
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+
+concurrency:
+  group: release-candidate-main
+  cancel-in-progress: false
+
+jobs:
+  candidate:
+    name: Verify and store the main candidate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Require a manual main dispatch
+        run: test "$GITHUB_EVENT_NAME" = workflow_dispatch && test "$GITHUB_REF" = refs/heads/main
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify exact CI and prepare the candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT: ${{ inputs.commit }}
+          PR: ${{ inputs.pr }}
+        run: |
+          set -euo pipefail
+          python3 -B scripts/release_candidate.py prepare --commit "$COMMIT" --pr "$PR" \
+            --output "$RUNNER_TEMP/release-candidate"
+      - name: Store immutable candidate bundle
+        id: artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-main-${{ github.sha }}
+          path: ${{ runner.temp }}/release-candidate/
+          if-no-files-found: error
+          retention-days: 30
+          overwrite: false
+      - name: Publish the provenance summary
+        env:
+          ARTIFACT_ID: ${{ steps.artifact.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.artifact.outputs.artifact-digest }}
+        run: |
+          set -euo pipefail
+          test -n "$ARTIFACT_ID"
+          test -n "$ARTIFACT_DIGEST"
+          {
+            printf '### Artifact %s\n\nBundle SHA-256 `%s`\n\n~~~json\n' "$ARTIFACT_ID" "$ARTIFACT_DIGEST"
+            cat "$RUNNER_TEMP/release-candidate/candidate.json"
+            printf '~~~\n'
+          } >> "$GITHUB_STEP_SUMMARY"

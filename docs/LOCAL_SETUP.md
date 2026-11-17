@@ -58,4 +58,6 @@ python3 scripts/package.py
 
 خروجی در `dist/`، شامل `sales-network-v4/sales-network.php` و assets/includes/templates
 است؛ اسناد مهندسی، CI، تست‌ها و `.git` وارد ZIP نصب نمی‌شوند. SHA256 و commit در
-خروجی ثبت می‌شوند. ساخت package مجوز نصب یا انتشار نیست.
+Manifest همراه فهرست فایل‌ها و هش هر فایل ثبت می‌شوند. فایل `.zip.sha256` برای
+سازگاری ابزارها باقی است. نامزد پایدار از مسیر [Release Candidate](DEPLOYMENT.md#release-candidate-پایدار)
+تهیه می‌شود.
