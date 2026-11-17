@@ -1117,13 +1117,8 @@
   function num(v){ return Number(String(v||0).replace(/[^0-9.-]/g,'')) || 0; }
   function money(v){try{return num(v).toLocaleString('fa-IR')+' تومان';}catch(e){return String(v||0)+' تومان';}}
   function rawStatus(i){ return String((i&&i.payment_status)|| (i&&i.invoice_status) || (i&&i.status) || '').toLowerCase(); }
-  function isPaid(i){ if(i && typeof i.is_fully_settled !== 'undefined') return !!i.is_fully_settled; var st=rawStatus(i); return ['paid','approved','financial_approved','gateway_paid','online_paid','completed','success'].indexOf(st)!==-1; }
+  function isPaid(i){ var st=rawStatus(i); return ['paid','approved','financial_approved','gateway_paid','online_paid','completed','success'].indexOf(st)!==-1; }
   function amountOf(i){ return num((i&&i.final_total) || (i&&i.product_price) || (i&&i.paid_amount) || 0); }
-  function receivedOf(i){
-    if(i && i.received_amount != null) return num(i.received_amount);
-    if(['cancelled','payment_archived'].indexOf(rawStatus(i)) !== -1) return 0;
-    return i && i.payment_summary ? num(i.payment_summary.paid) : (isPaid(i) ? amountOf(i) : 0);
-  }
   function updateKpis(rows, summary){
     rows = rows || [];
     var total = summary && summary.total != null ? num(summary.total) : rows.length;
@@ -1134,7 +1129,6 @@
     $('#sn-supervisor-invoice-kpi-paid-count').text(paidCount.toLocaleString('fa-IR'));
     $('#sn-supervisor-invoice-kpi-amount').text(money(amount));
     $('#sn-supervisor-invoice-kpi-paid-amount').text(money(paidAmount));
-    $('#sn-supervisor-invoice-kpi-received-amount').text(money(rows.reduce(function(a,i){return a+receivedOf(i);},0)));
   }
   function receiptUrlOf(i){ return String((i&&i.receipt_url) || (i&&i.receipt_file) || ''); }
   function canSupervisorUploadReceipt(i){
@@ -1218,7 +1212,7 @@
     var sf = activeStatus();
     if(sf && sf !== 'all') { tab = sf; }
     var key=[tab,q,df,dt,sf].join('|');
-    if(!force && invoiceCache[key] && Date.now()-invoiceCache[key].fetchedAt < 15000){ render(invoiceCache[key].rows, invoiceCache[key].has_more, invoiceCache[key].summary); return; }
+    if(!force && invoiceCache[key]){ render(invoiceCache[key].rows, invoiceCache[key].has_more, invoiceCache[key].summary); return; }
     if(invoicePending && invoicePending.readyState!==4){ try{invoicePending.abort();}catch(e){} }
     $target.html('<div class="sn-loading">در حال بارگذاری فاکتورها...</div>');
     invoicePending=$.ajax({url:ajax,type:'POST',dataType:'json',timeout:30000,data:{action:'sn_supervisor_invoices',nonce:nonce,tab:tab,q:q,date_from:df,date_to:dt,status_filter:sf,limit:50}})
@@ -1227,7 +1221,7 @@
         if(!res || !res.success){ $target.html('<p class="sn-notice sn-error">'+esc((payload&&payload.message)||'خطا در دریافت فاکتورها')+'</p>'); return; }
         var rows=(payload&&payload.items)||[];
         var summary=(payload&&payload.summary)||{};
-        invoiceCache[key]={rows:rows,has_more:!!(payload&&payload.has_more),summary:summary,fetchedAt:Date.now()};
+        invoiceCache[key]={rows:rows,has_more:!!(payload&&payload.has_more),summary:summary};
         render(rows, !!(payload&&payload.has_more), summary);
       })
       .fail(function(xhr,status){ if(xhr&&xhr.statusText==='abort') return; var msg=status==='timeout'?'زمان پاسخ سرور تمام شد.':'خطای سرور در دریافت فاکتورها: '+esc((xhr&&xhr.status)||'نامشخص'); $target.html('<div class="sn-notice sn-error">'+msg+' <button type="button" class="sn-btn sn-btn-sm sn-supervisor-invoice-retry">تلاش مجدد</button></div>'); });
@@ -1325,13 +1319,7 @@
 	    });
 	});
   $(document).off('click.snSupInvRetry','.sn-supervisor-invoice-retry').on('click.snSupInvRetry','.sn-supervisor-invoice-retry',function(e){ e.preventDefault(); load(null,true); });
-  window.snLoadSupervisorInvoicesFinal = function(tab, force){ load(tab, force !== false); };
-  function refreshVisibleInvoices(){
-    if(document.hidden || !$('#sn-supervisor-invoices-list').is(':visible') || (invoicePending && invoicePending.readyState!==4)) return;
-    load(null, true);
-  }
-  $(window).on('focus.snSupInvoiceFresh', refreshVisibleInvoices);
-  $(document).on('visibilitychange.snSupInvoiceFresh', refreshVisibleInvoices);
+  window.snLoadSupervisorInvoicesFinal = load;
   $(document).off('click.snSupInv128','.sn-supervisor-invoice-tabs .sn-subtab').on('click.snSupInv128','.sn-supervisor-invoice-tabs .sn-subtab',function(){ $('.sn-supervisor-invoice-tabs .sn-subtab').removeClass('active'); $(this).addClass('active'); var st=String($(this).data('status')||'all'); $('#sn-supervisor-invoice-status-filter').val(st); load(st, true); });
   $(document).off('click.snSupInv128Filter','#sn-supervisor-invoice-apply-filter').on('click.snSupInv128Filter','#sn-supervisor-invoice-apply-filter',function(e){ e.preventDefault(); var sf=String($('#sn-supervisor-invoice-status-filter').val()||'all'); $('.sn-supervisor-invoice-tabs .sn-subtab').removeClass('active').filter('[data-status="'+sf+'"]').addClass('active'); if(!$('.sn-supervisor-invoice-tabs .sn-subtab.active').length){ $('.sn-supervisor-invoice-tabs .sn-subtab[data-status="all"]').addClass('active'); } load(sf, true); });
   $(document).off('keydown.snSupInv128Search input.snSupInv128Search','#sn-supervisor-invoice-search').on('keydown.snSupInv128Search input.snSupInv128Search','#sn-supervisor-invoice-search',function(e){ if(e.type==='keydown' && e.key!=='Enter') return; if(e.type==='keydown') e.preventDefault(); clearTimeout(window.snSupervisorInvoiceSearchTimer); window.snSupervisorInvoiceSearchTimer=setTimeout(function(){ load(null, true); }, e.type==='keydown'?10:450); });

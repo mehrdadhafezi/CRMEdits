@@ -16,7 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 define( 'SN_VERSION', '2.0.237' );
-define( 'SN_BUILD', '2026-11-16-finance-approval-visibility' );
+define( 'SN_BUILD', '2026-11-17-sales-report-date-filter' );
 // UI/API revisions do not rerun unchanged legacy schema/page repairs.
 define( 'SN_LEGACY_RUNTIME_VERSION', '2.0.188-receipt-corrections-dev' );
 define( 'SN_PERF_INDEX_VERSION', '2026-07-21-invoice-hierarchy-export-v1' );

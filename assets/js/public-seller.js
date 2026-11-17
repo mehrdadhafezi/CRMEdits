@@ -289,7 +289,6 @@
     let sellerInvoices  = [];
     let sellerInvoiceSummary = {};
     let sellerPaidAmount = 0;
-    let sellerReceivedAmount = 0;
     let sellerLeadPage = 1;
     let sellerLeadPerPage = 50;
     let sellerLeadSearch = '';
@@ -512,7 +511,7 @@
         '<div class="sn-kpi-card"><span class="sn-kpi-icon">📞</span><small>کل شماره‌ها</small><strong>' + snFormatNumber(totalLeads) + '</strong><em>شماره‌های تخصیص‌یافته</em></div>' +
         '<div class="sn-kpi-card"><span class="sn-kpi-icon">✅</span><small>پیگیری‌شده</small><strong>' + snFormatNumber(statusDone) + '</strong><em>' + snPercent(statusDone, totalLeads) + ' از کل شماره‌ها</em></div>' +
         '<div class="sn-kpi-card"><span class="sn-kpi-icon">🧾</span><small>پیش‌فاکتور</small><strong>' + snFormatNumber(invoiceCount) + '</strong><em>تبدیل: ' + snPercent(invoiceCount, totalLeads) + '</em></div>' +
-        '<div class="sn-kpi-card sn-kpi-money"><span class="sn-kpi-icon">💰</span><small>فروش تاییدشده</small><strong>' + snFormatMoney(revenue) + '</strong><em><span class="sn-seller-settled-count">' + snFormatNumber(paidCount) + ' فاکتور تسویه‌شده</span><br><span class="sn-seller-received-amount">واریزی تأییدشده: ' + snFormatMoney(sellerReceivedAmount) + '</span></em></div>' +
+        '<div class="sn-kpi-card sn-kpi-money"><span class="sn-kpi-icon">💰</span><small>فروش تاییدشده</small><strong>' + snFormatMoney(revenue) + '</strong><em>' + snFormatNumber(paidCount) + ' پرداخت موفق</em></div>' +
       '</div>';
       var $target = $('#sn-seller-kpi-cards');
       if (!$target.length) {
@@ -1363,25 +1362,17 @@
       }
     });
 
-    function updateInvoiceSummary(res) {
-      if (!res || !res.success) return;
-      sellerInvoiceSummary = res.summary || {};
-      sellerPaidAmount = Number(res.paid_amount || 0);
-      sellerReceivedAmount = Number(res.received_amount || 0);
-      renderSellerKpis();
-    }
-    $(document).on('sn:seller-invoices-loaded', function(event, res){ updateInvoiceSummary(res); });
     function loadInvoices() {
       $.post(ajax, { action: 'sn_seller_invoices', nonce: nonce, summary_only: 1 }, function (res) {
-        updateInvoiceSummary(res);
+        sellerInvoiceSummary = (res && res.summary) || {};
+        sellerPaidAmount = Number((res && res.paid_amount) || 0);
         sellerInvoices = [];
+        renderSellerKpis();
         if ($('#sn-tab-invoices').hasClass('active') && typeof window.snLoadSellerInvoices === 'function') {
           window.snLoadSellerInvoices();
         }
       });
     }
-    $(window).on('focus.snSellerInvoiceFresh', function(){ if (!document.hidden) loadInvoices(); });
-    $(document).on('visibilitychange.snSellerInvoiceFresh', function(){ if (!document.hidden) loadInvoices(); });
 
     // Create invoice
     $(document).on('click', '#sn-create-invoice', function () {
@@ -1576,7 +1567,6 @@
     sellerInvoiceRequestKey = requestKey;
     sellerInvoiceXhr = $.post(ajax,payload,function(res){
       $('#sn-invoices-loading').hide();
-      if (res && res.success) $(document).trigger('sn:seller-invoices-loaded', [res]);
       var rows = (res && (res.invoices || res.items)) || [];
       var total = Number((res && res.total) || rows.length || 0);
       var query = ($('#sn-seller-invoice-search').val()||'').trim();

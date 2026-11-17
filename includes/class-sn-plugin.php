@@ -2765,6 +2765,11 @@ class SN_Plugin
 			global $wpdb;
 			$table = $wpdb->prefix . 'sn_leads';
 			$filters = $this->get_sales_manager_filters($_POST);
+			$filters = array_replace($filters, SN_Report_Service::date_filters($filters));
+			if ($filters['date_error'] !== '') {
+				SN_Helpers::send_json(false, $filters['date_error']);
+				return;
+			}
 			[$where, $args] = $this->build_sales_manager_leads_where($filters);
 			$scope_decision = $this->sn_scope_decision('sales_manager_leads', get_current_user_id());
 			$legacy_seller_ids = array_map('intval', get_users(['role' => 'sn_seller', 'fields' => 'ID', 'number' => 2000]));
@@ -2837,7 +2842,12 @@ class SN_Plugin
 		if (! current_user_can('manage_options') || ! wp_verify_nonce(sanitize_text_field(wp_unslash($_GET['nonce'] ?? '')), 'sn_public')) {
 			wp_die('خروجی گزارش فقط برای مدیر کل مجاز است.');
 		}
-		$this->export_sales_manager_leads_csv($this->get_sales_manager_filters($_GET));
+		$filters = $this->get_sales_manager_filters($_GET);
+		$filters = array_replace($filters, SN_Report_Service::date_filters($filters));
+		if ($filters['date_error'] !== '') {
+			wp_die(esc_html($filters['date_error']), '', ['response' => 400]);
+		}
+		$this->export_sales_manager_leads_csv($filters);
 	}
 
 	public function ajax_save_seller_supervisor(): void
@@ -3220,25 +3230,31 @@ class SN_Plugin
 				$where[] = 'seller_id IS NOT NULL';
 			}
 		}
-		$date_from = SN_Helpers::jalali_to_gregorian_date((string) $f['date_from']);
-		$date_to = SN_Helpers::jalali_to_gregorian_date((string) $f['date_to']);
-		if ($date_from) {
-			$where[] = 'DATE(imported_at) >= %s';
-			$args[] = $date_from;
-		}
-		if ($date_to) {
-			$where[] = 'DATE(imported_at) <= %s';
-			$args[] = $date_to;
-		}
-		if (preg_match('/^\d{2}:\d{2}$/', $f['time_from'])) {
-			$where[] = 'TIME(imported_at) >= %s';
-			$args[] = $f['time_from'] . ':00';
-		}
-		if (preg_match('/^\d{2}:\d{2}$/', $f['time_to'])) {
-			$where[] = 'TIME(imported_at) <= %s';
-			$args[] = $f['time_to'] . ':59';
-		}
+		$this->sn_sales_manager_lead_date_conditions('imported_at', $f, $where, $args);
 		return [implode(' AND ', $where), $args];
+	}
+
+	private function sn_sales_manager_lead_date_conditions(string $column, array $filters, array &$where, array &$args): void
+	{
+		$tehran = SN_Helpers::tehran_timezone();
+		if ($filters['date_from'] !== '') {
+			$start = new DateTimeImmutable($filters['date_from'] . ' 00:00:00', $tehran);
+			$where[] = "{$column} >= %s";
+			$args[] = SN_Helpers::site_mysql_from_timestamp($start->getTimestamp());
+		}
+		if ($filters['date_to'] !== '') {
+			$end = new DateTimeImmutable($filters['date_to'] . ' 00:00:00', $tehran);
+			$where[] = "{$column} < %s";
+			$args[] = SN_Helpers::site_mysql_from_timestamp($end->modify('+1 day')->getTimestamp());
+		}
+		if ($filters['time_from'] !== '') {
+			$where[] = "TIME({$column}) >= %s";
+			$args[] = $filters['time_from'] . ':00';
+		}
+		if ($filters['time_to'] !== '') {
+			$where[] = "TIME({$column}) <= %s";
+			$args[] = $filters['time_to'] . ':59';
+		}
 	}
 
 	private function export_sales_manager_leads_csv(array $filters): void
@@ -6815,34 +6831,6 @@ class SN_Plugin
 			|| in_array('sn_supervisor', $roles, true)
 			|| in_array('sn_converter', $roles, true)
 			|| in_array($position, ['seller','converter','supervisor','senior_supervisor','sales_manager','sales_deputy'], true);
-	}
-
-	/** Read-only receipt total; an approved instalment is not a completed invoice. */
-	private function sn_invoice_received_amount($invoice): float
-	{
-		$inv = (object) $invoice;
-		$status = (string) ($inv->status ?? '');
-		if (in_array($status, ['cancelled','payment_archived'], true) || ($inv->payment_workflow_status ?? '') === 'archived') { return 0.0; }
-		if ((float) ($inv->paid_total_amount ?? 0) <= 0 && ! in_array($status, ['paid','approved','partial_paid'], true)) { return 0.0; }
-		return (float) $this->sn_invoice_payment_totals($inv)['paid'];
-	}
-
-	/** Same read-only amount as sn_invoice_received_amount(), for scoped aggregates. */
-	private function sn_invoice_received_amount_sql(string $alias = ''): string
-	{
-		global $wpdb;
-		$alias = preg_replace('/[^a-zA-Z0-9_]/', '', $alias);
-		$p = $alias !== '' ? $alias . '.' : '';
-		$cols = $this->sn_table_columns($wpdb->prefix . 'sn_invoices');
-		$column = static fn(string $name, string $fallback = '0'): string => in_array($name, $cols, true) ? $p . $name : $fallback;
-		$stored = $column('paid_total_amount');
-		$status = $column('status', "''");
-		$workflow = $column('payment_workflow_status', "''");
-		$final = $column('final_total');
-		$remaining = $column('remaining_amount', 'NULL');
-		$total = "CASE WHEN TRIM(COALESCE(" . $column('catalog_discounts_snapshot', "''") . ",''))<>'' AND COALESCE(NULLIF(" . $column('discount_total') . ",0)," . $column('discount_amount') . ",0)>0 AND {$final}>0 THEN {$final} ELSE COALESCE(NULLIF(" . $column('payment_total_amount') . ",0),NULLIF({$final},0)," . $column('product_price') . ",0) END";
-		$paid = "CASE WHEN COALESCE({$stored},0)>0 THEN {$stored} WHEN {$status} IN ('paid','approved') AND COALESCE({$workflow},'')<>'awaiting_assignment' THEN ({$total}) WHEN {$status}='partial_paid' AND {$remaining} IS NOT NULL AND CAST({$remaining} AS CHAR)<>'' AND GREATEST(0,{$remaining})<({$total})-0.5 THEN GREATEST(0,({$total})-GREATEST(0,{$remaining})) ELSE 0 END";
-		return "CASE WHEN {$status} IN ('cancelled','payment_archived') OR {$workflow}='archived' THEN 0 ELSE LEAST(GREATEST(0,({$total})),GREATEST(0,({$paid}))) END";
 	}
 
 	private function sn_invoice_payment_totals($invoice): array
@@ -14588,7 +14576,7 @@ class SN_Plugin
 			$where[] = '(di.current_owner_user_id IN (' . implode(',', array_fill(0, count($scope_user_ids), '%d')) . ') OR di.final_seller_user_id IN (' . implode(',', array_fill(0, count($scope_user_ids), '%d')) . '))';
 			$args = array_merge($args, $scope_user_ids, $scope_user_ids);
 		}
-		$excluded = ['archived','cancelled','duplicate','error'];
+		$excluded = ['archived','cancelled','duplicate','error','returned_to_mis'];
 		$where[] = "(di.status IS NULL OR di.status='' OR di.status NOT IN (" . implode(',', array_fill(0, count($excluded), '%s')) . '))';
 		$args = array_merge($args, $excluded);
 		if (! empty($filters['search'])) {
@@ -14622,6 +14610,7 @@ class SN_Plugin
 			$args[] = (int) $filters['seller_id'];
 			$args[] = (int) $filters['seller_id'];
 		}
+		$this->sn_sales_manager_lead_date_conditions('di.created_at', $filters, $where, $args);
 		$sql = "SELECT di.*, COALESCE(p.customer_name,r.customer_name) customer_name, COALESCE(p.customer_phone,r.customer_phone) customer_phone, COALESCE(p.normalized_phone,r.normalized_phone) normalized_phone, COALESCE(p.province,r.province) province, COALESCE(p.city,r.city) city, b.batch_code
 			FROM {$item_table} di
 			LEFT JOIN {$wpdb->prefix}sn_mis_lead_pool p ON p.id = COALESCE(NULLIF(di.pool_item_id,0), CASE WHEN di.source_type='mis_pool' THEN di.source_id ELSE NULL END)
@@ -14645,8 +14634,8 @@ class SN_Plugin
 				'import_code' => (string) ($row['batch_code'] ?? ''),
 				'supervisor_name' => $owner_id ? $this->sn_user_label($owner_id) : '—',
 				'seller_name' => $seller_id ? $this->sn_user_label($seller_id) : '—',
-				'imported_at' => (string) ($row['created_at'] ?? ''),
-				'assigned_at' => (string) ($row['updated_at'] ?? ''),
+				'imported_at' => SN_Helpers::gregorian_to_jalali_date($row['created_at'] ?? ''),
+				'assigned_at' => SN_Helpers::gregorian_to_jalali_date($row['updated_at'] ?? ''),
 			];
 		}
 		return $items;
@@ -16008,9 +15997,9 @@ class SN_Plugin
 			</div>
 			<div class="sn-kpi-grid sn-supervisor-invoice-kpis">
 				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-total">۰</strong><span>کل فاکتورها</span></div>
-				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-count">۰</strong><span>فاکتور تسویه‌شده</span></div>
+				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-count">۰</strong><span>تأیید/پرداخت شده</span></div>
 				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-amount">۰ تومان</strong><span>جمع مبلغ فاکتورها</span></div>
-				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-amount">۰ تومان</strong><span>جمع فروش تأییدشده</span><small>واریزی تأییدشدهٔ این فهرست: <span id="sn-supervisor-invoice-kpi-received-amount">۰ تومان</span></small></div>
+				<div class="sn-kpi"><strong id="sn-supervisor-invoice-kpi-paid-amount">۰ تومان</strong><span>جمع فروش تأییدشده</span></div>
 			</div>
 		</div>
 		<div class="sn-subtabs sn-supervisor-invoice-tabs">
@@ -23972,7 +23961,7 @@ class SN_Plugin
 			LEFT JOIN {$wpdb->prefix}sn_mis_lead_pool p ON p.id = COALESCE(NULLIF(di.pool_item_id,0), CASE WHEN di.source_type='mis_pool' THEN di.source_id ELSE NULL END)
 			LEFT JOIN {$wpdb->prefix}sn_mis_data_rows r ON (di.source_type='mis_data_row' AND r.id=di.source_id) OR (p.source_row_id IS NOT NULL AND r.id=p.source_row_id)
 			LEFT JOIN {$wpdb->prefix}sn_mis_import_batches b ON b.id = COALESCE(NULLIF(di.batch_id,0), r.batch_id, p.batch_id)";
-		$excluded_statuses = ['archived', 'cancelled', 'converted', 'lead_created', 'live_lead_created', 'duplicate', 'error'];
+		$excluded_statuses = ['archived', 'cancelled', 'converted', 'lead_created', 'live_lead_created', 'duplicate', 'error', 'returned_to_mis'];
 		$status_placeholders = implode(',', array_fill(0, count($excluded_statuses), '%s'));
 		if (current_user_can('manage_options')) {
 			return $wpdb->get_results($wpdb->prepare(
@@ -27470,26 +27459,10 @@ class SN_Plugin
 				};
 				$stored_status = (string) ($get('status') ?: '');
 				$effective_status = (string) ($get('payment_status') ?: ($get('invoice_status') ?: $stored_status));
-				// A stale compatibility column must not hide the persisted final decision.
-				if (in_array($stored_status, ['paid','approved'], true)) {
-					return $this->sn_invoice_payment_totals($invoice)['remaining'] > 0.5
-						? 'پیش‌پرداخت تأیید شده؛ مانده فاکتور تسویه نشده'
-						: SN_Helpers::status_label($stored_status);
-				}
-				if (in_array($stored_status, ['rejected','cancelled','payment_archived'], true)) {
-					return SN_Helpers::status_label($stored_status);
-				}
 				$is_review = in_array($effective_status, ['pending_financial_approval', 'receipt_uploaded'], true)
 					|| in_array($stored_status, ['pending_financial_approval', 'receipt_uploaded'], true);
 				if (! $is_review) {
 					return SN_Helpers::status_label($stored_status ?: $effective_status);
-				}
-				$received = $this->sn_invoice_received_amount($invoice);
-				if ($received > 0) {
-					$totals = $this->sn_invoice_payment_totals($invoice);
-					return $totals['remaining'] <= 0.5
-						? 'واریزی‌ها تأیید شده؛ تکمیل مرحله در انتظار است'
-						: 'بخشی از واریزی تأیید شده؛ مانده فاکتور تسویه نشده';
 				}
 				$receipt = trim((string) ($get('receipt_url') ?: $get('receipt_file')));
 				$manual = trim(implode(' ', array_filter([
@@ -27572,10 +27545,8 @@ class SN_Plugin
 					'staged_incomplete' => (int) $wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$invoice_table} WHERE seller_id=%d AND {$seller_visibility_condition} AND {$staged_incomplete_condition}", ...$base_args)),
 				];
 				$paid_amount = (float) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM(product_price),0) FROM {$invoice_table} WHERE seller_id=%d AND {$seller_visibility_condition} AND {$paid_condition}", ...$base_args));
-				$received_amount_sql = $this->sn_invoice_received_amount_sql();
-				$received_amount = (float) $wpdb->get_var($wpdb->prepare("SELECT COALESCE(SUM({$received_amount_sql}),0) FROM {$invoice_table} WHERE seller_id=%d AND {$seller_visibility_condition}", ...$base_args));
 				if ($summary_only) {
-					SN_Helpers::send_json(true, '', ['invoices'=>[], 'items'=>[], 'page'=>$page, 'limit'=>$limit, 'total'=>0, 'summary'=>$summary, 'paid_amount'=>$paid_amount, 'received_amount'=>$received_amount, 'summary_only' => true]);
+					SN_Helpers::send_json(true, '', ['invoices'=>[], 'items'=>[], 'page'=>$page, 'limit'=>$limit, 'total'=>0, 'summary'=>$summary, 'paid_amount'=>$paid_amount, 'summary_only' => true]);
 					return;
 				}
 				$sql_where = implode(' AND ', array_map(function($w){ return '(' . $w . ')'; }, $where));
@@ -27591,7 +27562,6 @@ class SN_Plugin
 					$row['product_name'] = $this->sn_invoice_items_label((int)$row['id'], (int)$row['product_id']);
 					$row['amount_fmt'] = SN_Helpers::format_price((float)$row['product_price']);
 					$row['payment_summary'] = $this->sn_invoice_payment_totals((object) $row);
-					$row['received_amount'] = $this->sn_invoice_received_amount($row);
 					$row['can_issue_next_stage'] = $this->sn_can_issue_invoice_next_stage((object) $row, get_current_user_id());
 					$row['status_label'] = $this->sn_invoice_review_status_label($row);
 					$row['review_status_label'] = $row['status_label'];
@@ -27612,7 +27582,7 @@ class SN_Plugin
 					$row['project'] = $project_results[(int) $row['id']] ?? null;
 					unset($row['access_token']);
 				}
-				SN_Helpers::send_json(true, '', ['invoices'=>$rows, 'items'=>$rows, 'page'=>$page, 'limit'=>$limit, 'total'=>$total, 'summary'=>$summary, 'paid_amount'=>$paid_amount, 'received_amount'=>$received_amount]);
+				SN_Helpers::send_json(true, '', ['invoices'=>$rows, 'items'=>$rows, 'page'=>$page, 'limit'=>$limit, 'total'=>$total, 'summary'=>$summary, 'paid_amount'=>$paid_amount]);
 			}
 
 
@@ -34214,15 +34184,11 @@ class SN_Plugin
 					}
 					$r['can_upload_receipt'] = $this->sn_supervisor_can_upload_receipt_for_status($r);
 					$r['can_submit_manual_payment'] = $r['can_upload_receipt'];
-					$r['status_label'] = $this->sn_invoice_review_status_label($r);
+					$r['status_label'] = SN_Helpers::status_label($effective_status);
 					$r['pay_method_label'] = SN_Helpers::pay_method_label((string) ($r['pay_method'] ?? ''));
 					$r['payment_source_label'] = SN_Helpers::payment_source_label((string) ($r['payment_source'] ?? ($r['receipt_source'] ?? '')));
 					$r['amount_fmt'] = SN_Helpers::format_price((float) (($r['final_total'] ?? 0) ?: ($r['product_price'] ?? 0)));
 					$r['payment_summary'] = $this->sn_invoice_payment_totals((object) $r);
-					$r['received_amount'] = $this->sn_invoice_received_amount($r);
-					if (in_array((string) ($r['status'] ?? ''), ['paid','approved','partial_paid'], true)) {
-						$r['is_fully_settled'] = in_array((string) $r['status'], ['paid','approved'], true) && $r['payment_summary']['remaining'] <= 0.5;
-					}
 					$r['can_issue_next_stage'] = $this->sn_can_issue_invoice_next_stage((object) $r, get_current_user_id());
 					if (isset($conversion_kinds[(int) $r['id']]) || ($r['payment_purpose'] ?? '') === 'subscription_plus_cash') {
 						$r['pre_payment_edit_note'] = SN_Dot_Flow::INVOICE_CONVERSION_EDIT_NOTICE;
@@ -35327,8 +35293,9 @@ class SN_Plugin
 				if ( $report ) { $report['rows'] = $this->sn_reporting_enrich_rows( $type, $report['rows'] ); }
 				$base = get_permalink() ?: ( $this->sn_portal_page_url( 'crm_dashboard' ) ?: home_url( '/crm-dashboard/' ) );
 				parse_str((string)wp_parse_url($base, PHP_URL_QUERY), $page_query);
+				$base .= '#sn-reports-panel';
 				$params = array_merge( $filters, [ 'sn_center_type' => $type, 'sn_center_mode' => $filters['mode'], 'sn_hierarchy_role' => $hierarchy_role, 'sn_hierarchy_user' => $hierarchy_user, 'sn_report_search' => $filters['report_search'], 'sn_report_status' => $filters['report_status'] ] );
-				unset($params['report_search'], $params['report_status']);
+				unset($params['report_search'], $params['report_status'], $params['date_error']);
 				$export = wp_nonce_url( add_query_arg( array_merge( $params, [ 'action' => 'sn_reporting_export' ] ), admin_url( 'admin-post.php' ) ), 'sn_reporting_export' );
 				ob_start(); ?>
 				<div id="sn-reports-panel" class="sn-portal sn-reports-panel" dir="rtl">
@@ -35338,12 +35305,18 @@ class SN_Plugin
 					<?php endif; ?>
 					<?php if (!$dashboard && $overview && $this->sn_can_assign_reporting_managers()) { $this->sn_render_reporting_assignments(); } ?>
 					<?php if ( ! $overview ) : ?><nav class="sn-report-nav" aria-label="بخش‌های گزارش"><a class="sn-btn sn-btn-secondary" href="<?php echo esc_url( add_query_arg( array_merge( $params, [ 'sn_center_type' => 'overview', 'sn_center_page' => 1 ] ), $base ) ); ?>">همهٔ گزارش‌ها</a><?php foreach ( $allowed as $key ) : ?><a class="sn-btn sn-btn-secondary <?php echo $key === $type ? 'is-active' : ''; ?>" href="<?php echo esc_url( add_query_arg( array_merge( $params, [ 'sn_center_type' => $key, 'sn_center_page' => 1 ] ), $base ) ); ?>"><?php echo esc_html( $definitions[$key]['title'] ); ?></a><?php endforeach; ?></nav><?php endif; ?>
-					<form method="get" class="sn-report-filters">
+					<form method="get" action="<?php echo esc_url($base); ?>" class="sn-report-filters">
 						<?php if (!empty($page_query['page_id'])) : ?><input type="hidden" name="page_id" value="<?php echo (int)$page_query['page_id']; ?>"><?php endif; ?>
 						<input type="hidden" name="sn_center_type" value="<?php echo esc_attr($overview ? 'overview' : $type); ?>">
 						<label>نوع گزارش<select name="sn_center_mode"><option value="period" <?php selected($filters['mode'], 'period'); ?>>کل دوره یا بازهٔ زمانی</option><option value="asof" <?php selected($filters['mode'], 'asof'); ?>>وضعیت در لحظه</option></select></label>
 						<?php foreach ( [ 'date_from' => 'از تاریخ', 'time_from' => 'از ساعت', 'date_to' => 'تا تاریخ', 'time_to' => 'تا ساعت', 'asof_date' => 'تاریخ لحظه', 'asof_time' => 'ساعت لحظه' ] as $key => $label ) : ?>
-						<?php $is_date = in_array($key, ['date_from','date_to','asof_date'], true); $value = $is_date && $filters[$key] ? SN_Helpers::gregorian_to_jalali_input_value((string)$filters[$key]) : (string)$filters[$key]; ?>
+						<?php
+						$is_date = in_array($key, ['date_from','date_to','asof_date'], true);
+						$value = $is_date && $filters[$key] ? SN_Helpers::gregorian_to_jalali_input_value($filters[$key]) : $filters[$key];
+						if ($is_date && $value === '' && is_scalar($_GET[$key] ?? null)) {
+							$value = sanitize_text_field(wp_unslash((string) $_GET[$key]));
+						}
+						?>
 						<label class="<?php echo esc_attr(str_starts_with($key, 'asof_') ? 'sn-asof-field' : 'sn-period-field'); ?>"><?php echo esc_html($label); ?><input name="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr($value); ?>" <?php echo $is_date ? 'type="text" class="sn-jalali-date" placeholder="1405/07/01"' : 'type="time"'; ?>></label>
 						<?php endforeach; ?>
 						<?php if ( in_array( $type, [ 'invoices_register', 'customer_profiles', 'customer_invoice_details' ], true ) && ! $overview ) : ?><label>جستجوی مشتری یا فاکتور<input type="search" name="sn_report_search" value="<?php echo esc_attr($filters['report_search']); ?>" placeholder="نام، شماره یا کد"></label><label>وضعیت<select name="sn_report_status"><option value="">همه</option><?php foreach ( [ 'pre_invoice'=>'پیش‌فاکتور', 'pending_financial_approval'=>'انتظار مالی', 'paid'=>'پرداخت‌شده', 'approved'=>'تأییدشده', 'rejected'=>'ردشده', 'cancelled'=>'لغوشده' ] as $status => $label ) : ?><option value="<?php echo esc_attr($status); ?>" <?php selected($filters['report_status'],$status); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></label><?php endif; ?>
@@ -35351,7 +35324,9 @@ class SN_Plugin
 						<label>فرد و زیرمجموعه<select name="sn_hierarchy_user"><option value="">همهٔ افراد مجاز</option><?php foreach ($people as $person) : ?><option value="<?php echo esc_attr((int)$person['user_id']); ?>" <?php selected($hierarchy_user,(int)$person['user_id']); ?>><?php echo esc_html((string)$person['display_name']); ?></option><?php endforeach; ?></select></label>
 						<button class="sn-btn" type="submit">نمایش گزارش</button>
 					</form>
-					<?php if ($overview) : ?><div class="sn-report-choices"><?php foreach ($allowed as $key) : ?><a class="sn-report-choice" href="<?php echo esc_url(add_query_arg(array_merge($params, ['sn_center_type' => $key, 'sn_center_page' => 1]), $base)); ?>"><span><?php echo esc_html($definitions[$key]['title']); ?></span><small>مشاهدهٔ آمار و ریزداده ←</small></a><?php endforeach; ?></div><p class="sn-report-hint">برای نمایش تعداد و جزئیات، یک گزارش را انتخاب کنید.</p><?php else : ?><div class="sn-card-grid sn-card-grid-4"><div class="sn-stat-card"><strong><?php echo esc_html($report['available'] ? number_format_i18n($report['total']) : '—'); ?></strong><span><?php echo esc_html($report['title']); ?></span></div><?php if ($report['amount'] !== null) : ?><div class="sn-stat-card"><strong><?php echo esc_html(SN_Helpers::format_price((float)$report['amount'])); ?></strong><span>مجموع مبلغ همین گزارش</span></div><?php endif; ?></div><?php endif; ?>
+					<?php if ($overview && $filters['date_error'] !== '') : ?>
+						<p class="sn-notice sn-error" role="alert"><?php echo esc_html($filters['date_error']); ?></p>
+					<?php elseif ($overview) : ?><div class="sn-report-choices"><?php foreach ($allowed as $key) : ?><a class="sn-report-choice" href="<?php echo esc_url(add_query_arg(array_merge($params, ['sn_center_type' => $key, 'sn_center_page' => 1]), $base)); ?>"><span><?php echo esc_html($definitions[$key]['title']); ?></span><small>مشاهدهٔ آمار و ریزداده ←</small></a><?php endforeach; ?></div><p class="sn-report-hint">برای نمایش تعداد و جزئیات، یک گزارش را انتخاب کنید.</p><?php else : ?><div class="sn-card-grid sn-card-grid-4"><div class="sn-stat-card"><strong><?php echo esc_html($report['available'] ? number_format_i18n($report['total']) : '—'); ?></strong><span><?php echo esc_html($report['title']); ?></span></div><?php if ($report['amount'] !== null) : ?><div class="sn-stat-card"><strong><?php echo esc_html(SN_Helpers::format_price((float)$report['amount'])); ?></strong><span>مجموع مبلغ همین گزارش</span></div><?php endif; ?></div><?php endif; ?>
 					<?php if (!$overview) : ?><p class="sn-note"><?php echo esc_html($report['note']); ?><?php if ($filters['mode'] === 'asof') : ?> برای وضعیت‌های مالی، تاریخچه فقط از زمان فعال‌سازی این نسخه معتبر است.<?php endif; ?></p>
 					<?php if ($report['breakdown']) : ?><div class="sn-card sn-section"><h3 class="sn-section-title">تفکیک به تفکیک فرد</h3><div class="sn-table-wrap"><table class="sn-table"><thead><tr><th>دریافت‌کننده / فروشنده</th><th>تعداد</th><th>مبلغ</th></tr></thead><tbody><?php foreach ($report['breakdown'] as $person) : ?><tr><td><?php echo esc_html((string)$person['person']); ?></td><td><?php echo esc_html(number_format_i18n((int)$person['total'])); ?></td><td><?php echo esc_html($report['amount'] === null ? '—' : SN_Helpers::format_price((float)$person['amount'])); ?></td></tr><?php endforeach; ?></tbody></table></div></div><?php endif; ?>
 					<div class="sn-card sn-section"><h3 class="sn-section-title">ریز داده‌ها</h3><?php if ($report['available'] && $this->sn_can_export_reporting()) : ?><a class="sn-btn sn-btn-secondary" href="<?php echo esc_url($export); ?>">خروجی CSV</a><?php endif; ?><div class="sn-table-wrap"><table class="sn-table"><thead><tr><?php foreach ($report['headers'] as $label) : ?><th><?php echo esc_html($label); ?></th><?php endforeach; ?></tr></thead><tbody><?php foreach ($report['rows'] as $row) : ?><tr><?php foreach (array_keys($report['headers']) as $key) : ?><td><?php if ( $type === 'customer_profiles' && $key === 'customer_phone' ) : ?><a href="<?php echo esc_url(add_query_arg(array_merge($params, ['sn_center_type'=>'customer_invoice_details', 'sn_report_search'=>(string)($row['customer_phone'] ?? ''), 'sn_center_page'=>1]), $base)); ?>"><?php echo esc_html($this->sn_reporting_cell($key, (string)($row[$key] ?? ''))); ?></a><?php else : echo esc_html($this->sn_reporting_cell($key, (string)($row[$key] ?? ''))); endif; ?></td><?php endforeach; ?></tr><?php endforeach; ?></tbody></table></div>

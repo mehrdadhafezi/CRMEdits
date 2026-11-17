@@ -403,14 +403,18 @@
       lead_status: $('#sn-manager-lead-status').val() || ''
     };
   }
+  var managerLeadsRequest = null;
   function snLoadManagerLeads(){
     if(!$('#sn-manager-leads-list').length) return;
+    if(managerLeadsRequest) managerLeadsRequest.abort();
+    $('#sn-manager-total').text('—');
     $('#sn-manager-leads-list').html('در حال بارگذاری...');
     var data = snManagerFilters();
     data.action = 'sn_sales_manager_leads';
     data.nonce = nonce;
     data.limit = 60; // 1.0.126: bounded for speed
-    $.ajax({url: ajax, type: 'POST', dataType: 'json', timeout: 25000, data: data}).done(function(res){
+    managerLeadsRequest = $.ajax({url: ajax, type: 'POST', dataType: 'json', timeout: 25000, data: data});
+    managerLeadsRequest.done(function(res){
       var payload = (res && res.data) ? res.data : (res || {});
       if(!res || !res.success){
         $('#sn-manager-leads-list').html('❌ ' + snEsc((payload && payload.message) || (res && res.message) || 'خطا در دریافت گزارش'));
@@ -437,10 +441,13 @@
         if (window.console && console.error) console.error('SN manager report render failed', renderErr);
         $('#sn-manager-leads-list').html('❌ خطا در نمایش گزارش: ' + snEsc(renderErr && renderErr.message ? renderErr.message : 'خطای نامشخص'));
       }
-    }).fail(function(xhr){
+    }).fail(function(xhr, status){
+      if(status === 'abort') return;
       var msg = 'خطای سرور: ' + (xhr && xhr.status ? xhr.status : 'نامشخص');
       if (xhr && xhr.responseJSON && xhr.responseJSON.message) msg = xhr.responseJSON.message;
       $('#sn-manager-leads-list').html('❌ ' + snEsc(msg));
+    }).always(function(){
+      managerLeadsRequest = null;
     });
   }
   $(document).on('click', '#sn-manager-filter', function(e){ e.preventDefault(); snLoadManagerLeads(); });
