@@ -45,22 +45,32 @@ The installed reporting behavior is preserved rather than reimplemented.
 | Syntax | PASS | `scripts/check.py all`: 85 PHP and 32 JS; explicit Node checks for CJS tests; 64 candidate/test PHP files also parse on actual PHP 8.1.34 and 8.3.36 |
 | Documentation / Hygiene | PASS | 2491 relative links and all module sections; operational-file hygiene passed |
 | Secret Scan | PASS | Captured runtime passed isolated Gitleaks 8.24.3; final code export (483 files) and available Git history passed 8.30.1; ignored-tool findings were verified checksums/public examples/synthetic control, without allowlist changes |
-| Security | BLOCKED | Local SQL-like input, array/date validation, scope, escaping and token omission pass; native cookie/nonce/role/CSV gates pending |
-| Functional | PASS | 47 PHP finance assertions and 34 memory-only reporting assertions |
-| Regression | PASS | 19 invoice UI assertions and 10 manager transport/escaping assertions |
+| Security | PASS | Native cookie sessions, missing/invalid/cross-user nonces, unrelated roles, forged role/seller/hierarchy IDs, SQL-like/array input, XSS, token omission and CSV formula safety pass; upload handlers are unchanged and N/A for this diff |
+| Functional | PASS | 47 PHP finance assertions, 34 memory-only reporting assertions and 279 native assertions per matrix job |
+| Regression | PASS | 19 invoice UI and 10 manager transport assertions; native partial/final approval, concurrency, idempotence, SQL-error rollback, wallet deduplication and reporting regressions pass |
 | Scope/Diff | PASS | Three reporting files remain identical; reversing only the finance patch reproduces all captured bytes for its three changed files; final diff is scoped to runtime integration and related tests/docs |
-| API/DB/Role Compatibility | BLOCKED | Legacy runtime/index versions and schema/role/financial-write code unchanged; native upgrade/rollback from all three baselines pending |
-| GitHub CI / Pre-Merge | NOT_RUN | Final head not published; current green main does not validate this candidate |
+| API/DB/Role Compatibility | PASS | Four native upgrade/rollback/reinstall jobs preserve financial rows and role definitions across all three baselines; legacy runtime/index and schema/financial-write code remain unchanged |
+| GitHub CI / Pre-Merge | PASS | Runtime/test head `d2680be1165a1d210b1eb08dcd014a727d34c806`: required CI and all four native jobs passed; latest final-head/discussion checks remain mandatory before merge |
+
+The completed evidence above is for the runtime/test revision `d2680be1165a1d210b1eb08dcd014a727d34c806`:
+[required CI](https://github.com/mehrdadhafezi/CRMEdits/actions/runs/44051488198)
+and [four native jobs](https://github.com/mehrdadhafezi/CRMEdits/actions/runs/44051488187).
+Each native job completed 279 assertions, including 127 real-browser assertions,
+on PHP 8.3.6/MySQL 8.0.46. All four installation ZIPs have identical bytes and
+their 116 runtime files match that Git revision. The two reporting services and
+manager JavaScript still match the installed baseline exactly.
 
 The four native matrix jobs cover WordPress 7.1.4 from 2.0.235, 2.0.236 and the
 installed 2.0.237 baseline, plus WordPress 6.9.11 from installed 2.0.237. The
 disposable-host, synthetic-data and egress guards remain mandatory. See
 [native integration](../../tests/payments/integration/README.md).
 
-Workflow stage: local candidate under verification. No Production installation is
-authorized. Hosted Staging acceptance follows the reviewed merge and exact ZIP.
+Workflow stage: runtime validation complete; the latest merge and hosted Staging
+acceptance record is maintained in [PR #13](https://github.com/mehrdadhafezi/CRMEdits/pull/13).
+No Production installation is authorized. Hosted Staging acceptance follows the
+reviewed merge and exact tested ZIP; this source audit is not a deployment log.
 The PHP 8.1/8.3 checks ran from a private temporary code directory with in-memory
 fixtures; they neither installed this candidate nor bootstrapped WordPress or
 connected to a database. They do not replace native WordPress/Staging acceptance.
 
-BLOCKED — MISSING REQUIRED TEST
+READY FOR MERGE CHECK

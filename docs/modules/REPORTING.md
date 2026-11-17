@@ -107,7 +107,8 @@ NOT_APPLICABLE برای endpoint literal مستقل در این فایل‌ها�
 finance visibility fix. The reporting service, executive service and manager
 JavaScript remain byte-for-byte equal to the captured installed baseline.
 No report permission, schema, assignment or financial-write contract is added.
-See [reconciliation evidence](../audit/INSTALLED_SOURCE_2.0.237.md); recorded
-NOT_RUN gates remain required before merge or Staging acceptance.
+See [reconciliation evidence](../audit/INSTALLED_SOURCE_2.0.237.md) and the latest
+[PR #13 acceptance record](https://github.com/mehrdadhafezi/CRMEdits/pull/13).
+Final-head checks and exact-artifact Staging acceptance remain required.
 
 R1 در 2026-11-12 فقط کد موجود نسخه 2.0.235 را مستند کرده است؛ کد PHP/JS/CSS تغییر نکرده است. Header: WordPress >=6.0 و PHP >=8.0؛ سازگاری runtime تمام نسخه‌ها در این جلسه UNVERIFIED. تاریخچه Releaseهای قدیمی شواهد تاریخی است و به معنی PASS این نسخه نیست. Merge و Deployment این مأموریت انجام نمی‌شود.
