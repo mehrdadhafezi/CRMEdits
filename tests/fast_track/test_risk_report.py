@@ -191,6 +191,42 @@ class RiskReportTest(unittest.TestCase):
         self.assertEqual((statuses["finance"], statuses["stable-boundary"]), ("PASS", "SKIPPED"))
         self.assertEqual((statuses["ledger"], result["status"]), ("BLOCKED", "BLOCKED"))
 
+    def test_tooling_only_pr_stays_high_and_requires_real_orchestration_evidence(self):
+        self.write(".github/workflows/ci.yml", "name: Updated CRM CI\n")
+        self.write("tests/fast_track/campaign-smoke.cjs", "console.log('fixture');\n")
+        selected = self.report(self.snapshot("CI and its campaign fixture"))
+        jobs = {job: "success" for job in JOBS.values()}
+        plan, missing = self.orchestration(selected, jobs, True)
+        self.assertTrue(plan["tooling_only"])
+        self.assertTrue(plan["finance"] and plan["campaign_ui"])
+        self.assertEqual((plan["risk"], missing["status"]), ("HIGH", "BLOCKED"))
+        _, complete = self.orchestration(selected, {**jobs, "campaign-ui": "success"}, True)
+        self.assertEqual(complete["status"], "READY FOR MERGE CHECK")
+        self.assertEqual(plan["suites"]["tooling"], "REQUIRED")
+        self.assertEqual(plan["suites"]["mis"], "NOT_SELECTED")
+
+    def test_runtime_mutations_in_tooling_pr_restore_their_required_suites(self):
+        self.write("scripts/fast_track_ci.py", "print('updated orchestrator')\n")
+        tooling = self.snapshot("orchestration change")
+        cases = [
+            ("includes/new-module.php", "<?php\napprove_invoice($record);\n", {"finance", "ledger"}),
+            ("includes/new-module.php", "<?php\nadd_cap('sn_view_finance');\n", {"access"}),
+            ("includes/new-module.php", "<?php\ndbDelta($sql);\n", {"schema", "mis"}),
+            ("includes/class-sn-mis.php", "<?php\nreturn true;\n", {"mis"}),
+            ("tests/mis/changed-fixture.php", "<?php\nreturn true;\n", {"mis"}),
+            ("scripts/package.py", "print('updated package')\n", {"schema", "mis"}),
+        ]
+        jobs = {job: "success" for job in JOBS.values()}
+        for file, content, expected in cases:
+            with self.subTest(file=file, required=expected):
+                self.git("checkout", "--quiet", "--detach", tooling)
+                self.write(file, content)
+                selected = self.report(self.snapshot("mutate tooling-only diff"))
+                plan, result = self.orchestration(selected, jobs, True)
+                self.assertFalse(plan["tooling_only"])
+                self.assertEqual((plan["risk"], result["status"]), ("HIGH", "BLOCKED"))
+                self.assertTrue(all(plan["suites"][suite] == "REQUIRED" for suite in expected))
+
     def test_complete_diff_includes_changes_before_latest_commit(self):
         self.write("includes/class-sn-scope-service.php", "<?php\nreturn false;\n")
         self.snapshot("scope change")
