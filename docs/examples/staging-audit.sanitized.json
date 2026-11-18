@@ -1,0 +1,170 @@
+{
+  "host": "crmstage.payasetareh.ir",
+  "deployment_status": "STAGING DEPLOYMENT BLOCKED",
+  "evidence_input": "NOT_SUPPLIED",
+  "local_vhost_metadata": "OFFLINE",
+  "versions": {
+    "wordpress_on_disk": {
+      "value": "7.1.4",
+      "evidence": [
+        "HIST-13",
+        "FS-01"
+      ]
+    },
+    "mariadb": {
+      "value": "10.11.19",
+      "evidence": [
+        "DB-01"
+      ]
+    }
+  },
+  "controls": [
+    {
+      "control_id": "canonical_domain",
+      "status": "VERIFIED",
+      "evidence": [
+        "WHM-01",
+        "CFG-01"
+      ],
+      "required_record": null,
+      "reason": "WHM and both WordPress URL settings identify the Staging vhost.",
+      "remaining_action": "Keep the evidence with the approved Staging record."
+    },
+    {
+      "control_id": "document_root",
+      "status": "VERIFIED",
+      "evidence": [
+        "WHM-01",
+        "ISO-01"
+      ],
+      "required_record": null,
+      "reason": "The resolved Staging and compared Production roots are distinct and not nested.",
+      "remaining_action": "Keep the evidence with the approved Staging record."
+    },
+    {
+      "control_id": "plugin_path",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "FS-01"
+      ],
+      "required_record": "FS-02",
+      "reason": "The default CRM path was inside the Staging root.",
+      "remaining_action": "Verify the effective plugin directory and access under the actual handler."
+    },
+    {
+      "control_id": "php_user_pool",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "CFG-01",
+        "NET-01"
+      ],
+      "required_record": "PHP-02",
+      "reason": "WHM recorded the PHP selection and FPM setting.",
+      "remaining_action": "Bind the vhost to its active handler, process identity and effective UID."
+    },
+    {
+      "control_id": "database_user",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "ISO-01",
+        "DB-01"
+      ],
+      "required_record": "DB-01-FINAL",
+      "reason": "DB-01 recorded the WordPress connection and sampled grants. Production isolation is unresolved.",
+      "remaining_action": "Have the DBA match the authenticated account and audit grants and roles on the applicable endpoints."
+    },
+    {
+      "control_id": "symlinks_mounts",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "ISO-01",
+        "FS-01"
+      ],
+      "required_record": "FS-02",
+      "reason": "Root separation and the shell mount sample were recorded.",
+      "remaining_action": "Review symlink targets, mounts and file access from the effective PHP and worker contexts."
+    },
+    {
+      "control_id": "cache_sessions_uploads",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "FS-01"
+      ],
+      "required_record": "CACHE-02",
+      "reason": "Prior checks did not establish the effective uploads path or storage separation.",
+      "remaining_action": "Compare effective cache namespaces, session and cookie scope, and uploads with Production."
+    },
+    {
+      "control_id": "sms_mail_payment_api_egress",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "NET-01"
+      ],
+      "required_record": "NET-02",
+      "reason": "NET-01 recorded a socket-UID rule. Its effect on application and intermediary routes is unresolved.",
+      "remaining_action": "Review effective routes and rules for PHP, workers and local services without network probes."
+    },
+    {
+      "control_id": "cron_workers",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "CFG-01",
+        "FS-01"
+      ],
+      "required_record": "JOB-02",
+      "reason": "The earlier audit recorded the WP-Cron flag and the account crontab.",
+      "remaining_action": "Review effective WP-Cron, all applicable system schedules and worker identities and destinations."
+    },
+    {
+      "control_id": "resource_limits",
+      "status": "UNVERIFIED",
+      "evidence": [],
+      "required_record": "RES-02",
+      "reason": "Effective workload and shared-host limits require evidence.",
+      "remaining_action": "Confirm limits against the workload, including host policies, storage and database capacity."
+    },
+    {
+      "control_id": "synthetic_backup_restore_plan",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "HIST-13"
+      ],
+      "required_record": "BAK-02",
+      "reason": "Historical evidence covers a code backup.",
+      "remaining_action": "Inspect the existing synthetic snapshot manifest and verify its identity and digest privately."
+    },
+    {
+      "control_id": "disposable_restore_test",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "HIST-13"
+      ],
+      "required_record": "RST-02",
+      "reason": "Historical evidence covers code rollback.",
+      "remaining_action": "Locate the existing successful disposable restore report for the same synthetic snapshot."
+    },
+    {
+      "control_id": "wp_php_mariadb",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "HIST-13",
+        "FS-01",
+        "DB-01"
+      ],
+      "required_record": "ENV-02",
+      "reason": "WordPress was observed on disk and DB-01 recorded MariaDB. Web PHP is unresolved.",
+      "remaining_action": "Record versions from WordPress files, the actual web handler and the matched MariaDB endpoint."
+    },
+    {
+      "control_id": "woocommerce_dependencies",
+      "status": "UNVERIFIED",
+      "evidence": [
+        "FS-01"
+      ],
+      "required_record": "ENV-02",
+      "reason": "The earlier default WooCommerce path check was inconclusive.",
+      "remaining_action": "Confirm effective WooCommerce availability or version and review active dependency versions privately."
+    }
+  ],
+  "remaining_authorization": "Independent Staging authorization and completion of all controls are required."
+}

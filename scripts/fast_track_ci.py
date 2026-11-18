@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
-from risk_report import LEVELS, SHA, SUITES, IncompleteDiff, git, report
+from risk_report import AUDIT_FILES, LEVELS, SHA, SUITES, IncompleteDiff, git, report
 
 
 JOBS = {
@@ -42,6 +42,10 @@ RELEASE_SCOPE = TOOLING_ONLY | RELEASE_VALIDATION | {"scripts/package.py", "docs
 SUMMARY_JOB = "Fast-Track readiness summary"
 PLAN_JOB = "Fast-Track test plan"
 CAMPAIGN_JOB = "Campaign spacing browser regression"
+AUDIT_STEPS = {
+    "Validate orchestration and the selector", "Validate read-only audit boundary",
+    "Verify package reproducibility and unchanged payload",
+}
 UNCOVERED = {
     "ui": "No verified browser suite for the affected view and viewport",
     "access": "Finance fixtures cover their own endpoints; review wider Roles and Scope coverage",
@@ -77,27 +81,42 @@ def legacy_finance_path(path):
 def make_plan(pr, merge_sha, selection):
     domains = selection["affected_domains"]
     files = selection["changed_files"]
+    paths = {change["path"] for change in files}
+    unbounded_audit = (
+        bool(paths & AUDIT_FILES) and not paths <= AUDIT_FILES | TOOLING_ONLY
+        and not set(domains) - {"tooling"}
+    )
     unknown = (
         selection["risk"] == "UNKNOWN"
         or selection["base_sha"] != pr["base"]
         or selection["head_sha"] != pr["head"]
         or selection["target"] != pr["target"]
+        or unbounded_audit
     )
     finance = (
         unknown or bool(FINANCE_DOMAINS.intersection(domains))
         or any(legacy_finance_path(change["path"]) for change in files)
     )
     campaign_ui = not unknown and selection["risk"] == "MEDIUM" and set(domains) == {"campaign-ui", "ui"}
-    paths = {change["path"] for change in files}
     high = not unknown and selection["risk"] == "HIGH"
-    package_parity = high and bool(paths & RELEASE_VALIDATION) and paths <= RELEASE_SCOPE
+    audit_only = (
+        high and bool(paths & AUDIT_FILES) and paths <= AUDIT_FILES | TOOLING_ONLY
+        and all(change["risk"] == "HIGH" and change["domains"] == ["tooling"]
+                for change in files if change["path"] in AUDIT_FILES)
+    )
+    release_parity = high and bool(paths & RELEASE_VALIDATION) and paths <= RELEASE_SCOPE
+    package_parity = release_parity or audit_only
     tooling_only = high and (package_parity or bool(paths) and paths <= TOOLING_ONLY)
     reasons = sorted({change["reason"] for change in files})[:6]
     suites = {item["id"]: item["applicability"] for item in selection["tests"]}
+    if unbounded_audit:
+        reasons.append("Audit tooling depends on changes outside the reviewed scope")
+        suites.update({suite: "REVIEW" for suite, (domain, _) in SUITES.items()
+                       if domain is not None and suites[suite] == "NOT_SELECTED"})
     if tooling_only:
         # Keep validation of the orchestrator and its actual native suites. Do not
         # inherit broad plugin-runtime recommendations when all package inputs are untouched.
-        finance = finance or package_parity or bool(paths & (ORCHESTRATION_FILES - {CAMPAIGN_TEST}))
+        finance = finance or release_parity or bool(paths & (ORCHESTRATION_FILES - {CAMPAIGN_TEST}))
         campaign_ui = CAMPAIGN_TEST in paths
         domains = ["tooling"]
         if finance:
@@ -107,8 +126,10 @@ def make_plan(pr, merge_sha, selection):
         suites.update({suite: "REQUIRED" if domain in domains else "NOT_SELECTED"
                        for suite, (domain, _) in SUITES.items() if domain is not None})
         reasons = [
+            "Reviewed audit scope; require safety/CLI proof and identical plugin payload for this revision"
+            if audit_only else
             "Release tooling changed; require identical plugin payload, reproducible builds and native Finance"
-            if package_parity else
+            if release_parity else
             "Full diff is limited to named orchestration files; plugin package and native test inputs are unchanged"
         ]
     if finance:
@@ -117,6 +138,7 @@ def make_plan(pr, merge_sha, selection):
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
         "domains": domains, "files": len(files), "finance": finance,
         "campaign_ui": campaign_ui, "tooling_only": tooling_only, "package_parity": package_parity,
+        "audit_only": audit_only,
         "reasons": reasons, "suites": suites,
     }
 
@@ -139,6 +161,13 @@ def finance_matrix_passed(jobs):
     return all(job.get("conclusion") == "success" and FINANCE_STEPS <= {
         step["name"] for step in job.get("steps", []) if step.get("conclusion") == "success"
     } for job in matrix)
+
+
+def audit_job_passed(jobs):
+    plans = [job for job in jobs if job.get("name") == PLAN_JOB]
+    return len(plans) == 1 and plans[0].get("conclusion") == "success" and AUDIT_STEPS <= {
+        step["name"] for step in plans[0].get("steps", []) if step.get("conclusion") == "success"
+    }
 
 
 def verify_native_output(wordpress, baseline, merge_sha, output, dist):
@@ -166,11 +195,17 @@ def verify_native_output(wordpress, baseline, merge_sha, output, dist):
         raise ValueError("Finance ZIP checksum mismatch")
 
 
-def outcome(plan, expected, live, results, run_url, matrix_verified=False, evidence_run=None, evidence_error=None):
+def outcome(plan, expected, live, results, run_url, matrix_verified=False, evidence_run=None, evidence_error=None,
+            audit_verified=False):
     problems = [evidence_error] if evidence_error else []
     plan_matches = (isinstance(plan, dict) and plan.get("risk") in (*LEVELS, "UNKNOWN")
                     and isinstance(plan.get("suites"), dict) and plan["suites"].keys() == SUITES.keys()
-                    and all(plan.get(key) == value for key, value in expected.items()))
+                    and all(plan.get(key) == value for key, value in expected.items())
+                    and type(plan.get("audit_only", False)) is bool
+                    and (not plan.get("audit_only") or (
+                        plan["risk"] == "HIGH" and plan.get("package_parity") is True
+                        and plan["suites"].get("tooling") == "REQUIRED"
+                    )))
     live_matches = live is not None and all(live.get(key) == value for key, value in expected.items())
     if not plan_matches:
         problems.append("Missing plan or plan revision mismatch")
@@ -201,6 +236,8 @@ def outcome(plan, expected, live, results, run_url, matrix_verified=False, evide
             status, reason = "FAIL", "GitHub job failed"
         elif not (plan_matches and live_matches):
             status, reason = "BLOCKED", "Base, Head or tested merge revision unverified"
+        elif suite == "tooling" and plan.get("audit_only") and not audit_verified:
+            status, reason = "BLOCKED", "Audit safety, offline CLI and package parity steps are unverified in this run attempt"
         elif result == "success" and job == "finance" and not matrix_verified:
             status, reason = "BLOCKED", "The four Finance jobs and their test steps were not verified in this run attempt"
         elif result == "success":
@@ -254,6 +291,13 @@ def verify_finance_run():
         return False
 
 
+def verify_audit_run():
+    try:
+        return audit_job_passed(run_jobs(os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_RUN_ATTEMPT"]))
+    except (URLError, OSError, ValueError, KeyError, TypeError):
+        return False
+
+
 def full_run_title(pr):
     return f"Fast-Track full PR #{pr['pr']} {pr['target']} @{pr['merge']}"
 
@@ -286,7 +330,8 @@ def read_optional_evidence(expected, run_url):
         results["finance"] = "success"
     if CAMPAIGN_JOB in successes:
         results["campaign-ui"] = "success"
-    return results, matrix_verified, f"{run_url.rsplit('/', 1)[0]}/{source['id']}/attempts/{source['run_attempt']}"
+    return (results, matrix_verified, f"{run_url.rsplit('/', 1)[0]}/{source['id']}/attempts/{source['run_attempt']}",
+            audit_job_passed(jobs))
 
 
 def markdown(result):
@@ -340,18 +385,21 @@ def main():
     expected = {**pr, "merge": merge_sha}
     evidence_run = evidence_error = None
     matrix_verified = False
+    audit_verified = False
     if os.environ.get("METADATA_ONLY") == "true":
         try:
             plan = plan_pr(pr, merge_sha)
-            optional, matrix_verified, evidence_run = read_optional_evidence(expected, run_url)
+            optional, matrix_verified, evidence_run, audit_verified = read_optional_evidence(expected, run_url)
             results.update(optional)
         except (URLError, OSError, ValueError, KeyError, TypeError, IncompleteDiff) as exc:
             print(f"Unable to reuse optional evidence ({type(exc).__name__})")
             evidence_error = "Latest exact full CI evidence is missing, pending, failed or unverified"
     elif results.get("finance") == "success":
         matrix_verified = verify_finance_run()
+    if os.environ.get("METADATA_ONLY") != "true" and isinstance(plan, dict) and plan.get("audit_only"):
+        audit_verified = verify_audit_run()
     result = outcome(plan, expected, live_revision(pr["pr"]), results, run_url,
-                     matrix_verified, evidence_run, evidence_error)
+                     matrix_verified, evidence_run, evidence_error, audit_verified)
     print(json.dumps(result, indent=2, ensure_ascii=True))
     Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(markdown(result), encoding="utf-8")
     return int(result["status"] == "BLOCKED")

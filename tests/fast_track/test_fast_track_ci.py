@@ -2,6 +2,7 @@
 import hashlib
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -10,7 +11,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from fast_track_ci import (  # noqa: E402
-    FINANCE_MATRIX, FINANCE_STEPS, IncompleteDiff, finance_matrix_passed, full_run_title,
+    AUDIT_STEPS, FINANCE_MATRIX, FINANCE_STEPS, IncompleteDiff, audit_job_passed, finance_matrix_passed, full_run_title,
     outcome, read_optional_evidence, reusable_run, verify_checkout, verify_native_output,
 )
 from risk_report import SUITES  # noqa: E402
@@ -93,6 +94,69 @@ class FastTrackCITest(unittest.TestCase):
         jobs[-1]["steps"][0]["conclusion"] = "skipped"
         self.assertFalse(finance_matrix_passed(jobs))
 
+    def test_audit_readiness_needs_successful_safety_cli_and_package_steps(self):
+        self.plan.update(risk="HIGH", audit_only=True, package_parity=True)
+        self.plan["suites"]["tooling"] = "REQUIRED"
+        self.jobs["plan"] = "success"
+        self.assertEqual(self.result(self.expected)["status"], "BLOCKED")
+        self.assertEqual(self.result(self.expected, audit_verified=True)["status"], "READY FOR MERGE CHECK")
+        self.jobs["plan"] = "skipped"
+        self.assertEqual(self.result(self.expected, audit_verified=True)["status"], "BLOCKED")
+        for key in ("base", "head", "merge"):
+            self.assert_no_pass(self.result({**self.expected, key: "f" * 40}, audit_verified=True))
+
+    def test_audit_job_proof_rejects_missing_failed_skipped_or_duplicate_steps(self):
+        job = {"name": "Fast-Track test plan", "conclusion": "success",
+               "steps": [{"name": name, "conclusion": "success"} for name in sorted(AUDIT_STEPS)]}
+        self.assertTrue(audit_job_passed([job]))
+        self.assertFalse(audit_job_passed([]))
+        self.assertFalse(audit_job_passed([job, job]))
+        for step in job["steps"]:
+            for status in ("failure", "skipped", "cancelled", None):
+                with self.subTest(step=step["name"], status=status):
+                    step["conclusion"] = status
+                    self.assertFalse(audit_job_passed([job]))
+            step["conclusion"] = "success"
+        self.assertFalse(audit_job_passed([{**job, "steps": job["steps"][:-1]}]))
+        self.assertFalse(audit_job_passed([{**job, "conclusion": "failure"}]))
+
+    def test_inconsistent_audit_plan_cannot_skip_its_required_proof(self):
+        self.plan.update(risk="HIGH", audit_only=True, package_parity=True)
+        self.plan["suites"]["tooling"] = "REQUIRED"
+        self.jobs["plan"] = "success"
+        for change in ({"package_parity": False}, {"audit_only": "true"}, {"risk": "LOW"}):
+            with patch.dict(self.plan, change):
+                self.assert_no_pass(self.result(self.expected, audit_verified=True))
+        self.plan["suites"]["tooling"] = "NOT_SELECTED"
+        self.assert_no_pass(self.result(self.expected, audit_verified=True))
+
+    def test_metadata_audit_proof_comes_from_the_exact_successful_attempt(self):
+        source = self.full_run(run_attempt=3)
+        plan_job = {"name": "Fast-Track test plan", "conclusion": "success",
+                    "steps": [{"name": name, "conclusion": "success"} for name in AUDIT_STEPS]}
+        summary = {"name": "Fast-Track readiness summary", "conclusion": "success"}
+        url = "https://github.com/example/repo/actions/runs/20"
+        with patch("fast_track_ci.github_read", return_value={"workflow_runs": [source]}):
+            with patch("fast_track_ci.run_jobs", return_value=[plan_job, summary]) as jobs:
+                _, _, link, verified = read_optional_evidence(self.expected, url)
+                jobs.assert_called_once_with(10, 3)
+            self.assertTrue(verified)
+            self.assertTrue(link.endswith("/10/attempts/3"))
+            plan_job["steps"].pop()
+            with patch("fast_track_ci.run_jobs", return_value=[plan_job, summary]):
+                self.assertFalse(read_optional_evidence(self.expected, url)[3])
+
+    def test_original_required_jobs_and_finance_workflow_are_byte_identical(self):
+        root = Path(__file__).resolve().parents[2]
+        baseline = "91d9fca40b107bd268399951cccc6b8fc8d0103d"
+        for file in (".github/workflows/ci.yml", ".github/workflows/finance-integration.yml"):
+            original = subprocess.check_output(["git", "-C", str(root), "show", f"{baseline}:{file}"])
+            current = (root / file).read_bytes().replace(b"\r\n", b"\n")
+            if file.endswith("/ci.yml"):
+                original = original.split(b"\n  plan:\n", 1)[0]
+                current = current.split(b"\n  plan:\n", 1)[0]
+            self.assertEqual(current, original)
+
     def full_run(self, **changes):
         return {"id": 10, "run_number": 12, "run_attempt": 1, "event": "pull_request",
                 "display_title": full_run_title(self.expected), "head_sha": self.expected["head"],
@@ -125,13 +189,14 @@ class FastTrackCITest(unittest.TestCase):
         url = "https://github.com/example/repo/actions/runs/20"
         with patch("fast_track_ci.github_read", return_value={"workflow_runs": [source]}):
             with patch("fast_track_ci.run_jobs", return_value=[plan_job, summary_job, *matrix]) as jobs:
-                results, verified, link = read_optional_evidence(self.expected, url)
+                results, verified, link, audit_verified = read_optional_evidence(self.expected, url)
                 jobs.assert_called_once_with(10, 2)
             self.assertTrue(verified)
+            self.assertFalse(audit_verified)
             self.assertIn("finance", results)
             self.assertTrue(link.endswith("/10/attempts/2"))
             with patch("fast_track_ci.run_jobs", return_value=[plan_job, summary_job, *matrix[:-1]]):
-                results, verified, _ = read_optional_evidence(self.expected, url)
+                results, verified, _, _ = read_optional_evidence(self.expected, url)
             self.assertNotIn("finance", results)
             self.assertFalse(verified)
             with patch("fast_track_ci.run_jobs", return_value=[plan_job, *matrix]):

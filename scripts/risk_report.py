@@ -1,6 +1,8 @@
 """Describe PR risk and test evidence without running or bypassing any check."""
 import argparse
+import ast
 import difflib
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -11,6 +13,21 @@ from urllib.parse import urlsplit
 MAX_BLOB = 256 * 1024
 LEVELS = ("LOW", "MEDIUM", "HIGH")
 STATUSES = {"PASS", "FAIL", "BLOCKED", "NOT_RUN"}
+
+# Content reviewed together with the command/file-access safety tests. These pins
+# bound this one standalone collector; they are not a general shell/JSON analyzer.
+# Any source/harness change needs renewed review and actual CI proof before use.
+AUDIT_PINS = {
+    "scripts/staging-audit.sh": "a9788273ed7f14b942f85a6bef8ef79271c0796f80045c98e462a08463bdfa55",
+    "tests/fast_track/test_staging_audit.py": "7d384f9a49cc39b27ed133cd66b4a4f25b587dba211ba3070108f6360ff0dab5",
+    "docs/examples/staging-audit.sanitized.json": "97e0fa3f1979673da825f3a200b05ca84b8a8598fff75a5f90c0aba2d65de654",
+}
+AUDIT_FILES = set(AUDIT_PINS) | {"docs/STAGING_READ_ONLY_AUDIT.md", "docs/DEPLOYMENT.md"}
+AUDIT_CONSUMERS = {
+    "scripts/risk_report.py", "scripts/fast_track_ci.py", ".github/workflows/ci.yml",
+    "tests/fast_track/test_staging_audit.py", "tests/fast_track/test_risk_report.py",
+    "tests/fast_track/test_fast_track_ci.py",
+}
 
 # Follow the module contracts, including the consumers of money and scoped data.
 DEPENDENCIES = {
@@ -141,11 +158,56 @@ def verified_campaign_caller(revision):
     return result.returncode == 0 and result.stdout == f"{revision}:{CAMPAIGN_CALLER}\0".encode()
 
 
+def audit_consumers_bounded(revision, path):
+    result = subprocess.run(
+        ["git", "grep", "-z", "-l", "-F", "-e", path.rsplit("/", 1)[-1], revision,
+         "--", ".", ":(exclude,glob)**/*.md", ":(exclude,glob)*.md"],
+        capture_output=True, check=False, timeout=30,
+    )
+    if result.returncode not in (0, 1):
+        raise IncompleteDiff("Unable to bound audit consumers")
+    consumers = {name.decode().split(":", 1)[1] for name in result.stdout.split(b"\0") if name}
+    return consumers <= AUDIT_CONSUMERS | {path}
+
+
+def previous_audit_pin(base, path):
+    # Read the accepted base's literal review record without importing its code.
+    oid = git("rev-parse", "--verify", f"{base}:scripts/risk_report.py").decode().strip()
+    try:
+        tree = ast.parse(read_side("100644", oid))
+        for node in tree.body:
+            if isinstance(node, ast.Assign) and any(
+                isinstance(target, ast.Name) and target.id == "AUDIT_PINS" for target in node.targets
+            ):
+                pins = ast.literal_eval(node.value)
+                return pins.get(path) if isinstance(pins, dict) else None
+    except (SyntaxError, ValueError, TypeError, RecursionError):
+        return None
+    return None
+
+
 def assess(path, change, modes, oids, base, head):
     """Return risk, affected test domains and one concise reason."""
     name = path.lower()
     if any(mode not in {"000000", "100644", "100755"} for mode in modes):
         return "UNKNOWN", set(), "Non-regular Git object; manual impact review required"
+    if path in AUDIT_PINS:
+        before, after = (read_side(mode, oid) for mode, oid in zip(modes, oids))
+        expected_mode = "100755" if path == "scripts/staging-audit.sh" else "100644"
+        if modes[1] != expected_mode or not after or hashlib.sha256(after.encode()).hexdigest() != AUDIT_PINS[path]:
+            return "UNKNOWN", {"tooling", "shared"}, "Audit artifact differs from the reviewed read-only boundary"
+        if before:
+            previous = hashlib.sha256(before.encode()).hexdigest()
+            if previous != AUDIT_PINS[path] and previous != previous_audit_pin(base, path):
+                return "UNKNOWN", {"tooling", "shared"}, "Previous audit behavior needs review before changing test scope"
+        if not all(audit_consumers_bounded(revision, path) for revision in (base, head)):
+            return "UNKNOWN", {"tooling", "shared"}, "Audit artifact has a consumer outside the reviewed tooling boundary"
+        return "HIGH", {"tooling"}, "Reviewed audit content; require safety tests, offline CLI and unchanged package proof"
+    if path in AUDIT_FILES:
+        before, after = (read_side(mode, oid) for mode, oid in zip(modes, oids))
+        if modes[1] != "100644" or not after:
+            return "UNKNOWN", {"tooling"}, "Audit guidance is missing or has an unsupported file mode"
+        return "HIGH", {"tooling"}, "Audit operator guidance; require review and unchanged plugin payload"
     if path in CORE_FILES or name.startswith("templates/"):
         return "HIGH", {"shared"}, "Shared bootstrap, helper or UI affects multiple operational modules"
     if (name.startswith((".github/", "scripts/", "tests/"))
