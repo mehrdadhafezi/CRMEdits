@@ -164,6 +164,17 @@ def private_records(path):
 
 
 def output(program, *args):
+    commands = {
+        "whmapi1": ("--output=json", "domainuserdata", "domain=" + HOST),
+        "ps": ("-eo", "pid=,euid=,comm="),
+        "nft": ("-j", "list", "ruleset"),
+    }
+    if program == "id":
+        if (len(args) != 3 or args[:2] != ("-u", "--")
+                or not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,31}", args[2])):
+            return None
+    elif program not in commands or args != commands[program]:
+        return None
     executable = shutil.which(program)
     if program == "whmapi1" and not executable and os.access("/usr/local/cpanel/bin/whmapi1", os.X_OK):
         executable = "/usr/local/cpanel/bin/whmapi1"
@@ -334,15 +345,16 @@ def report(records, input_status, observed):
                     status, reason = "UNVERIFIED", "The restore report lacks a matching verified snapshot."
                 if control == "wp_php_mariadb":
                     keys = ("wordpress", "php", "mariadb")
-                    if all(key in env_versions for key in keys):
-                        versions.update({key: {"value": env_versions[key], "evidence": ["ENV-02"]} for key in keys})
-                    else:
+                    if not all(key in env_versions for key in keys):
                         status, reason = "UNVERIFIED", "The effective version record is incomplete."
                 if control == "woocommerce_dependencies":
-                    if "woocommerce" in env_versions:
-                        versions["woocommerce"] = {"value": env_versions["woocommerce"], "evidence": ["ENV-02"]}
-                    else:
+                    if "woocommerce" not in env_versions:
                         status, reason = "UNVERIFIED", "WooCommerce status or version is missing."
+        if evidence_id is not None and status == "VERIFIED":
+            # Integrity and claimed checks do not authenticate the review's author
+            # or observations. No trusted authenticity source is configured here.
+            status = "UNVERIFIED"
+            reason = "Review integrity and coverage match; operator evidence authenticity remains unverified."
         note = observed.get(notes.get(control))
         if note:
             reason += " " + note

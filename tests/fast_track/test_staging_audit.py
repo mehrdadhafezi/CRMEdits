@@ -17,10 +17,15 @@ from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "scripts" / "staging-audit.sh"
-BODY = SCRIPT.read_text(encoding="utf-8").split("<<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]
+SOURCE = SCRIPT.read_bytes()
+BODY = SOURCE.decode("utf-8").split("<<'PY'\n", 1)[1].rsplit("\nPY", 1)[0]
+sys.path.insert(0, str(ROOT / "scripts"))
+from risk_report import AUDIT_PINS  # noqa: E402
 
 
 def audit():
+    if hashlib.sha256(SOURCE).hexdigest() != AUDIT_PINS["scripts/staging-audit.sh"]:
+        raise ValueError("Refusing to execute unreviewed audit source")
     module = {"__name__": "staging_audit_test"}
     exec(compile(BODY, str(SCRIPT), "exec"), module)
     return module
@@ -85,7 +90,11 @@ class AuditReportTest(unittest.TestCase):
 
     def test_attested_controls_still_do_not_enable_deployment_or_leak_references(self):
         result = self.report(records_reviewed(self.audit), "ACCEPTED", {"vhost": "MATCH"})
-        self.assertEqual({row["status"] for row in result["controls"]}, {"VERIFIED"})
+        rows = rows_by_id(result)
+        self.assertEqual({key for key, row in rows.items() if row["status"] == "VERIFIED"},
+                         {"canonical_domain", "document_root"})
+        self.assertTrue(all(row["status"] == "UNVERIFIED" for row in result["controls"]
+                            if row["required_record"]))
         self.assertEqual(result["deployment_status"], "STAGING DEPLOYMENT BLOCKED")
         data = json.dumps(result)
         self.assertNotIn("PRIVATE-FIXTURE", data)
@@ -113,7 +122,7 @@ class AuditReportTest(unittest.TestCase):
         records = records_reviewed(self.audit)
         records["RST-02"]["snapshot_sha256"] = "b" * 64
         rows = rows_by_id(self.report(records, "ACCEPTED", {}))
-        self.assertEqual(rows["synthetic_backup_restore_plan"]["status"], "VERIFIED")
+        self.assertEqual(rows["synthetic_backup_restore_plan"]["status"], "UNVERIFIED")
         self.assertEqual(rows["disposable_restore_test"]["status"], "UNVERIFIED")
         records["BAK-02"].pop("snapshot_sha256")
         rows = rows_by_id(self.report(records, "ACCEPTED", {}))
@@ -154,6 +163,10 @@ class AuditSafetyTest(unittest.TestCase):
     def setUp(self):
         self.audit = audit()
 
+    def test_unreviewed_source_is_rejected_before_the_test_loader_executes_it(self):
+        with patch.dict(globals(), {"SOURCE": b"unreviewed executable source"}), self.assertRaises(ValueError):
+            audit()
+
     def parse(self, payload, reviews=None):
         if reviews is None:
             reviews = {"PRIVATE-FIXTURE-" + key + ".review.txt": review_bytes(key)
@@ -179,6 +192,21 @@ class AuditSafetyTest(unittest.TestCase):
             self.assertEqual(self.parse(payload, {ref: content}), ({}, "REJECTED"))
         records["DB-01-FINAL"].pop("review_sha256")
         self.assertEqual(self.parse(json.dumps(envelope(self.audit, records)).encode()), ({}, "REJECTED"))
+
+    def test_recomputed_digest_cannot_authenticate_fabricated_operator_claims(self):
+        records = records_reviewed(self.audit)
+        fake = b"A fabricated review with a freshly recomputed digest."
+        records["DB-01-FINAL"]["review_sha256"] = hashlib.sha256(fake).hexdigest()
+        reviews = {"PRIVATE-FIXTURE-" + key + ".review.txt": review_bytes(key)
+                   for key in self.audit["RECORD_FIELDS"]}
+        reviews["PRIVATE-FIXTURE-DB-01-FINAL.review.txt"] = fake
+        parsed, state = self.parse(json.dumps(envelope(self.audit, records)).encode(), reviews)
+        self.assertEqual(state, "ACCEPTED")
+        result = self.audit["report"](parsed, state, {"vhost": "MATCH"})
+        row = rows_by_id(result)["database_user"]
+        self.assertEqual(row["status"], "UNVERIFIED")
+        self.assertIn("authenticity", row["reason"])
+        self.assertNotIn("php", result["versions"])
 
     def test_input_schema_blocks_sensitive_fields_duplicate_keys_and_fake_statuses(self):
         valid = envelope(self.audit, records_reviewed(self.audit))
@@ -247,6 +275,20 @@ class AuditSafetyTest(unittest.TestCase):
                 with contextlib.redirect_stdout(out):
                     self.assertEqual(self.audit["main"](), code)
                 self.assertEqual(json.loads(out.getvalue())["evidence_input"], state)
+
+    def test_supplied_commands_and_mutating_or_injected_arguments_are_never_executed(self):
+        commands = [
+            ("sh", "-c", "touch /private-fixture/changed"),
+            ("curl", "https://fixture.invalid"), ("mysql", "-e", "DELETE FROM fixture"),
+            ("systemctl", "restart", "fixture"), ("nft", "flush", "ruleset"),
+            ("whmapi1", "--output=json", "restartservice", "service=fixture"),
+            ("id", "-u", "--", "fixture; touch changed"), ("ps", "--arbitrary"),
+        ]
+        with patch("shutil.which", side_effect=AssertionError("unexpected executable lookup")), \
+                patch("subprocess.check_output", side_effect=AssertionError("unexpected execution")):
+            for command in commands:
+                with self.subTest(command=command):
+                    self.assertIsNone(self.audit["output"](*command))
 
     def test_live_probes_use_only_expected_metadata_commands_and_sanitize_outputs(self):
         calls = []
