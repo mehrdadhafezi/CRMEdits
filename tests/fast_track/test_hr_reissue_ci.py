@@ -21,6 +21,9 @@ class HRProofTests(unittest.TestCase):
     def setUpClass(cls):
         cls.before = committed_members(ROOT, hr.BASE)
         cls.after = committed_members(ROOT, "58fca1ad8de49ec1cf296cdcb4edad1df26b7ac7")
+        # Exercise the reviewed scoped CSS fix before committing it; other runtime
+        # blobs remain those of the original feature. The explicit pin still binds it.
+        cls.after["sales-network-v4/assets/css/hr-invoice-reissue.css"] = (ROOT / "assets/css/hr-invoice-reissue.css").read_bytes()
 
     def test_exact_reviewed_runtime_and_unchanged_existing_files(self):
         self.assertTrue(hr.bounded_payload(self.before, self.after))

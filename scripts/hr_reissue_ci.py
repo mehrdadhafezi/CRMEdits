@@ -8,7 +8,7 @@ from risk_report import git
 
 BASE = "3660fe46dcb79f7a96f0b3f04326f119a4d78441"
 RUNTIME = {
-    "assets/css/hr-invoice-reissue.css": "210c8564f9b6f2cea94b143af5d757b9eb6c93edf43d39cb21bf2ee6c8deea17",
+    "assets/css/hr-invoice-reissue.css": "478e472cee6117bd3335b240ead011067e61dd475040584a8798253e3a7738da",
     "assets/js/hr-invoice-reissue.js": "72457535ef370ea1d3395dad9188ce5625186ae31f0c4ff72de672780a090b98",
     "includes/class-sn-hr-front-panel.php": "d582359f022c3b631944a56f8b1f5e7484614e1e92aa89241203761a9b7d3ed9",
     "includes/class-sn-hr-invoice-reissue.php": "1ad645e71cfdaeb63fb9bb81d12646515d2ee626b947099930f88ba7dfb683d8",

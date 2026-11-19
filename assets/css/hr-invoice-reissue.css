@@ -13,7 +13,11 @@
 .sn-hr-reissue .sn-hr-reissue-denied { color: #9f1239; font-weight: 700; }
 .sn-hr-reissue .sn-hr-reissue-dirty { display: block; margin-top: 5px; color: #92400e; font-size: 12px; }
 .sn-hr-reissue button:focus-visible, .sn-hr-reissue select:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+/* The portal's full-width theme wrapper must include its own padding. */
+html body.sn-portal-page main:has(#sn-hr-panel[data-sn-active-tab="hr-invoice-reissue"]) { box-sizing: border-box !important; }
 /* Override the legacy sticky sidebar only while this tab uses the mobile drawer. */
-@media (max-width: 900px) { html body #sn-hr-panel[data-sn-active-tab="hr-invoice-reissue"] > .sn-panel-toolbar { position: fixed !important; } }
+@media (max-width: 900px) {
+  html body #sn-hr-panel[data-sn-active-tab="hr-invoice-reissue"] > .sn-panel-toolbar { position: fixed !important; }
+}
 @media (max-width: 950px) { .sn-hr-reissue .sn-hr-reissue-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 540px) { .sn-hr-reissue .sn-hr-reissue-filters { grid-template-columns: minmax(0, 1fr); } }

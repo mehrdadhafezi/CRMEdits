@@ -87,7 +87,9 @@ module.exports=async function({base,output}){
   await page.keyboard.press('Escape');
   ok(await page.locator('#sn-hr-panel').evaluate(el=>!el.classList.contains('sn-mobile-sidebar-open')),'mobile sidebar closes with keyboard Escape');
   ok(await root.locator('.sn-hr-reissue-filters').evaluate(el=>getComputedStyle(el).gridTemplateColumns.split(' ').length)===1,'mobile selector grid has one column');
-  ok(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth+2),'mobile page has no horizontal overflow');
+  const overflow=await page.evaluate(()=>({viewport:innerWidth,document:document.documentElement.scrollWidth,elements:Array.from(document.querySelectorAll('body,body *')).filter(el=>{const box=el.getBoundingClientRect();return box.width>0&&(box.right>innerWidth+2||box.left < -2);}).slice(0,45).map(el=>{const box=el.getBoundingClientRect(),css=getComputedStyle(el);return {tag:el.tagName,id:el.id,class:el.className,left:box.left,right:box.right,width:box.width,overflowX:css.overflowX,display:css.display,minWidth:css.minWidth,position:css.position,parent:el.parentElement?.className};})}));
+  if(overflow.document>overflow.viewport+2){fs.writeFileSync(path.join(output,'overflow-diagnostic.json'),JSON.stringify(overflow,null,2)+'\n');await page.screenshot({path:path.join(output,'hr-reissue-mobile-overflow.png'),fullPage:true});}
+  ok(overflow.document<=overflow.viewport+2,'mobile page has no horizontal overflow');
   ok(await root.locator('.sn-table-wrap').evaluate(el=>el.scrollWidth>el.clientWidth),'wide policy table scrolls within its mobile container');
   await select('manager').focus();ok(await select('manager').evaluate(el=>el===document.activeElement),'policy selector supports keyboard focus');
   await page.screenshot({path:path.join(output,'hr-reissue-mobile.png'),fullPage:true});
