@@ -10,6 +10,9 @@ test "${SN_TEST_BASELINE:-}" = 2.0.237-installed
 source scripts/test-finance-integration.sh
 test "$(pwd -P)" = "$repo"
 case "$runtime" in /tmp/sn-approval-????????) ;; *) exit 2 ;; esac
+# Provisioning hands this generated directory to PHP's isolated OS account.
+# The hosted runner needs its own scratch entries; private files stay mode 600.
+sudo setfacl -m "u:$(id -un):rwx" "$runtime"
 output="$repo/test-results/hr"
 mkdir -p "$output"
 sudo setfacl -m u:sn-approval-test:rwx "$output"
@@ -25,6 +28,7 @@ run_php() { run_test php8.3 -d sendmail_path=/bin/false -d zend.exception_ignore
 phase() {
   local label="$1"; shift
   printf 'RUNNING %s\n' "$label"
+  (umask 077; : > "$runtime/hr-$label.private.log")
   if ! "$@" > "$runtime/hr-$label.private.log" 2>&1; then
     printf 'FAIL %s; detailed synthetic diagnostics stay inside the disposable VM\n' "$label"
     python3 - "$runtime/hr-$label.private.log" <<'PY'
