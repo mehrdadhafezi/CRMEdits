@@ -46,6 +46,14 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Owner-approved 2.0.239 adds HR-controlled reissue permission for the existing
+ordinary-seller duplicate check: same seller + normalized customer phone,
+independent of existing invoice status/product. Default prevention is preserved;
+nearest explicit HR inherit/allow/deny policy can allow reissue. Existing admin
+and controlled-workflow exceptions, ownership, manual-issuance permission,
+product eligibility, tokens, prices and payment state are unchanged. See
+[HR policy](HR_HIERARCHY_SCOPE.md) and [tests](../../tests/hr/README.md).
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features

@@ -86,6 +86,7 @@ final class SN_HR_Front_Panel {
     public static function enqueue_assets(): void {
         wp_enqueue_style( 'sn-hr-front', SN_PLUGIN_URL . 'assets/css/hr-front.css', [ 'sn-public', 'sn-public-performance' ], SN_VERSION );
         if ( class_exists( 'SN_HR_Workforce_Filters' ) ) { SN_HR_Workforce_Filters::assets(); }
+        if ( class_exists( 'SN_HR_Invoice_Reissue' ) ) { SN_HR_Invoice_Reissue::assets(); }
     }
 
     public static function maybe_enqueue_assets(): void {
@@ -114,6 +115,7 @@ final class SN_HR_Front_Panel {
         if ( is_admin() ) { return ''; }
         $descriptions = [
             'hr-workforce' => 'جستجو، ویرایش اطلاعات نیروها و مدیریت دسترسی و همکاری.',
+            'hr-invoice-reissue' => 'مدیریت مجوز صدور مجدد برای یک شماره، با ارث‌بری در زنجیره فروش و استثنای فردی.',
             'hr-manual-add' => 'ثبت نیروی جدید همراه با سمت، سطح و مدیر مستقیم.',
             'hr-csv' => 'ورود گروهی نیروها از فایل و دریافت خروجی اطلاعات کاربران.',
             'hr-bulk' => 'اعمال تغییرات یکسان روی نیروهای انتخاب‌شده.',

@@ -6,6 +6,37 @@
 - Public/customer errors should be safe and not reveal internal state.
 - Internal/admin endpoints must use nonce + capability/role checks.
 
+## HR invoice reissue policy (2.0.239)
+
+Additive authenticated AJAX action: `sn_hr_invoice_reissue`, nonce action of
+the same name, in `includes/class-sn-hr-invoice-reissue.php`. Guests receive 401;
+non-HR/non-admin or staff-view impersonation receives 403. It reuses the existing
+HR permission predicate; it grants no new role/capability. A nonce is a separate
+check. The `nopriv` hook only returns the explicit guest denial.
+
+- POST `operation=list|save`, scalar `nonce`, `manager_id` (0 for initial list),
+  and arrays `senior_ids[]`, `supervisor_ids[]`, `seller_ids[]` (max 100 each).
+  IDs are strictly validated; selected people must belong to that manager's
+  active current HR branch and selected ancestor filters.
+- List returns `selection`, manager/child option lists, and only explicitly
+  selected `rows`: `id`, escaped-on-render plain-text `label`/`position`, stored
+  `mode`, effective `allowed`/`source`, `invalid`, and optimistic `version`.
+  Empty child selections broaden only the next selector within this manager;
+  they never implicitly write to descendants. No phone/email/token is returned.
+- Save additionally requires `user_id`, `mode=inherit|allow|deny`, and exact
+  lowercase SHA-256 `version` from that row. Changed hierarchy/ancestor policy
+  returns 409; invalid inputs 400, scope denial 403, unavailable transactional
+  storage 503, other storage failure 500. Errors are safe Persian messages.
+- Storage is user meta `sn_invoice_reissue_mode`; inherit removes the personal
+  override. Changes are recorded as `invoice_reissue_policy_updated` in existing
+  HR profile logs. Transactional save requires users, usermeta, HR profiles,
+  current assignments and HR profile logs to use InnoDB; it never converts them.
+  Atomic audit failure rolls back the setting; unchanged saves add no audit row.
+
+Existing invoice actions, response shapes, public-token rules and financial
+endpoints are unchanged. Reissue affects only the existing ordinary seller
+duplicate guard, after the other authorization and eligibility checks.
+
 ## Public/customer invoice actions
 Known actions from available code and reports:
 - `sn_invoice_info`

@@ -14,6 +14,7 @@ Status: OBSERVED static source, baseline 2.0.235 / 2026-11-12. Human specialist:
 - [includes/class-sn-hr-transfer.php:1](../../includes/class-sn-hr-transfer.php#L1): `SN_HR_Transfer`
 - [includes/class-sn-hr-front-panel.php:1](../../includes/class-sn-hr-front-panel.php#L1): `SN_HR_Front_Panel`
 - [includes/class-sn-hr-workforce-filters.php:1](../../includes/class-sn-hr-workforce-filters.php#L1): `SN_HR_Workforce_Filters`
+- [includes/class-sn-hr-invoice-reissue.php](../../includes/class-sn-hr-invoice-reissue.php): `SN_HR_Invoice_Reissue`, owner-approved 2.0.239 policy.
 
 متدهای راهنما (نام و محل واقعی؛ قرارداد کامل را در declaration بخوانید):
 
@@ -49,6 +50,18 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+2.0.239 adds the HR tab **صدور مجدد فاکتور**. HR/admin selects a sales manager,
+then seniors, supervisors and sellers within that branch. Each selected row has
+inherit/allow/deny; nearest explicit policy wins and the default denies reissue.
+Current HR assignments are read live, never changed by this feature. A personal
+exception survives transfer. Missing/inactive/ambiguous/cyclic chains fail closed.
+The policy is user meta, with existing HR audit records; no schema or WP role
+change. [Detailed AJAX contract](../API_CONTRACTS.md#hr-invoice-reissue-policy-20239).
+
+The plugin constructor registers the policy's existing HR permission predicate
+for both lightweight frontend shortcodes and full AJAX bootstrap. Rendering this
+tab must not depend on forcing the full CRM lifecycle on frontend requests.
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features
@@ -69,11 +82,19 @@ DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.m
 
 ## 8. Testing & Preview
 
+2.0.239 regressions: `php tests/hr/invoice-reissue.php` (memory only) and the
+[guarded native HR suite](../../tests/hr/README.md). They cover inheritance,
+exceptions, current branch scope, transfer, impersonation, nonce, malformed input,
+optimistic conflicts, atomic audit failure and unchanged financial rows/roles.
+
 سناریوهای ضروری این ماژول: والد نامعتبر و چرخه؛ انتقال همزمان؛ حفظ history؛ scope خود/تیم/مدیر؛ کارمند غیرفعال؛ تفاوت audit_only با enforce.
 
 Syntax و Secret Scan در CI فعال‌اند. [ماتریس تست](../TESTING_STANDARDS.md) وضعیت زیرساخت را مشخص می‌کند. تست MIS فقط در محیط disposable با guard مجاز است؛ سایر سناریوها که fixture ندارند NOT_IMPLEMENTED هستند. پیش‌نمایش UI و تست authorization واقعی نیازمند سایت آزمایشی ایزوله است.
 
 ## 9. API & Integration Contracts
+
+2.0.239 adds `wp_ajax_sn_hr_invoice_reissue` and explicit 401-denial
+`wp_ajax_nopriv_sn_hr_invoice_reissue`; see the new module and API contract above.
 
 ثبت‌های literal مرتبط (اگر action با حلقه یا نام پویا ساخته شود باید caller را نیز بررسی کنید):
 
