@@ -13,7 +13,7 @@ $roles=['manager_a'=>'sn_sales_manager','senior_a'=>'sn_senior_supervisor','supe
     'hr'=>'sn_hr','subscriber'=>'subscriber','revoked'=>'sn_hr'];
 foreach($roles as $key=>$role){
     if(isset($f['users'][$key])){continue;}
-    $password=bin2hex(random_bytes(20));$id=wp_insert_user(['user_login'=>'hr239_'.$key,'user_pass'=>$password,'user_email'=>$key.'@example.invalid','display_name'=>'آزمایشی '.$key,'role'=>$role]);
+    $password=bin2hex(random_bytes(20));$id=wp_insert_user(['user_login'=>'hr239_'.$key,'user_pass'=>$password,'user_email'=>'hr239-'.$key.'@example.invalid','display_name'=>'آزمایشی '.$key,'role'=>$role]);
     hr239_ok(!is_wp_error($id),'isolated synthetic HR account '.$key);
     $f['users'][$key]=['id'=>(int)$id,'login'=>'hr239_'.$key,'password'=>$password];
     if(in_array($key,['hr','subscriber','revoked'],true))continue;
