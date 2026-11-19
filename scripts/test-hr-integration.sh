@@ -39,6 +39,8 @@ print('Diagnostic code locations: '+repr(frames[-8:]))
 print('Completed assertions before failure: '+str(sum(x.startswith('PASS ') for x in text.splitlines())))
 labels=re.findall(r'RuntimeException: FAIL ([A-Za-z0-9 _/()+,.:-]{1,180})',text)
 if labels:print('Assertion label: '+labels[-1].split(' in /',1)[0])
+for line in text.splitlines():
+ if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
 PY
     exit 1
   fi

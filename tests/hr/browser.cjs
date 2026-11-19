@@ -30,7 +30,7 @@ module.exports=async function({base,output}){
   const root=page.locator('#sn-hr-invoice-reissue'),status=root.locator('[role=status]');
   const select=level=>root.locator('[data-reissue-level="'+level+'"]');
   const wait=async()=>{await status.filter({hasText:/فهرست آماده است|مجوز ذخیره شد/}).waitFor();await page.waitForFunction(()=>!document.querySelector('[data-reissue-refresh]').disabled);};
-  await wait();ok(native?await page.evaluate(()=>window.snAjax.current_user)===users.hr.id:await page.locator('body').getAttribute('data-verified-user')===String(fixture.id),'browser session cookie resolves to actual WordPress HR user');
+  await wait();ok(native?String(await page.evaluate(()=>window.snAjax.current_user))===String(users.hr.id):await page.locator('body').getAttribute('data-verified-user')===String(fixture.id),'browser session cookie resolves to actual WordPress HR user');
   ok(native?await page.locator('body').evaluate(el=>!el.hasAttribute('data-light-bootstrap')):await page.locator('body').getAttribute('data-light-bootstrap')==='true','HR policy renders through actual lightweight shortcode bootstrap');
   ok(await root.count()===1&&await root.evaluate(el=>getComputedStyle(el).direction)==='rtl','actual HR tab renders the RTL policy component');
   ok(await page.locator('body').evaluate(el=>el.classList.contains('sn-portal-page')),'actual public panel script initializes the shared portal context');
