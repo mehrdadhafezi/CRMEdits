@@ -49,3 +49,27 @@ Environment-specific operation wrappers and private evidence are not committed.
 Do not run these fixtures without the explicit synthetic test environment and
 guards described above. `native-woo.php` only activates the checksum-verified
 official WooCommerce dependency inside that private test site.
+
+The owner-approved additive `scripts/test-hr-integration.sh` runs only on a disposable
+GitHub-hosted VM. It first executes the unchanged Finance integration runner,
+then native HR/nonce/scope/InnoDB failure tests, WooCommerce invoice creation,
+wallet/commission snapshot/replay/reversal checks and real WordPress HTTP login,
+shortcode and `admin-ajax.php` browser tests. Its separate fresh MIS database runs
+all ten default MIS scripts; the optional volume benchmark is excluded. MIS uses
+the existing minimum legacy fixture schema without activating the full CRM;
+native HR/Finance and code rollback separately exercise the activated schema.
+
+`ci-code-state.php` verifies 2.0.239 → 2.0.238 → 2.0.239 code-only rollback while
+preserving financial/HR rows, policy metadata, WordPress role definitions and
+table definitions. No fixture is authorized against existing server databases.
+`ci-mis-bootstrap.php` and `ci-mis-install.php` independently require the hosted
+VM, generated `/tmp/sn-approval-*` root and a separate `*_hrmis_test` database.
+
+The CI mapping is restricted to the reviewed base and six exact runtime
+hashes in `scripts/hr_reissue_ci.py`; all 113 other runtime files must remain
+identical. It keeps every currently required suite and all four original Finance
+jobs. An absent/failed/skipped native job or verification step, changed runtime,
+different base, incomplete evidence or stale PR revision still blocks readiness.
+Only safe summaries/screenshots are uploaded. Configs, fixture passwords, cookies,
+SQL and detailed diagnostic logs remain in the disposable VM. Required native CI
+results remain NOT_RUN until the workflow actually completes successfully.

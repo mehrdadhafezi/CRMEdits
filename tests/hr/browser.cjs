@@ -4,23 +4,34 @@ const fs=require('node:fs');const path=require('node:path');
 const {chromium}=require(process.env.SN_PLAYWRIGHT_MODULE||'playwright');
 module.exports=async function({base,output}){
  if(!/^http:\/\/127[.]0[.]0[.]1:[0-9]+$/.test(base))throw Error('Synthetic loopback browser target required');
+ const native=process.env.SN_HR_BROWSER_NATIVE==='YES';
+ const sandbox=process.env.SN_APPROVAL_ROOT||'';
+ if(native&&(!/^\/tmp\/sn-approval-[A-Za-z0-9]+$/.test(sandbox)||process.env.SN_APPROVAL_ALLOW_SYNTHETIC!=='YES'))throw Error('Generated disposable native browser sandbox required');
  fs.mkdirSync(output,{recursive:true});let checks=0;const errors=[];
  function ok(value,label){if(!value)throw Error(label);checks++;console.log('PASS '+label);}
- const browser=await chromium.launch({channel:'msedge',headless:true});const contexts=[];
+ const browser=await chromium.launch({...(native?{args:['--disable-dev-shm-usage']}:{channel:'msedge'}),headless:true});const contexts=[];
  const open=async()=>{const context=await browser.newContext({viewport:{width:1440,height:1000},serviceWorkers:'block'});contexts.push(context);await context.route('**/*',route=>new URL(route.request().url()).origin===base?route.continue():route.abort());return context;};
  try{
   const hr=await open(),seller=await open(),guest=await open();
-  const fixture=await(await hr.request.get(base+'/test/session?who=hr')).json();
-  await seller.request.get(base+'/test/session?who=seller_a');const users=fixture.users;
+  const fixture=native?JSON.parse(fs.readFileSync(path.join(sandbox,'hr239-fixture.json'))):await(await hr.request.get(base+'/test/session?who=hr')).json();
+  if(native){
+   for(const [context,key] of [[hr,'hr'],[seller,'seller_a']]){
+    const u=fixture.users[key];await context.request.get(base+'/wp-login.php');
+    await context.request.post(base+'/wp-login.php',{form:{log:u.login,pwd:u.password,testcookie:'1',redirect_to:base+'/'}});
+    const session=await(await context.request.get(base+'/?sn_test_nonce=1')).json();
+    ok(session.success&&session.user_id===u.id,'real HTTP WordPress login cookie '+key);
+   }
+  }else{await seller.request.get(base+'/test/session?who=seller_a');}
+  const users=fixture.users;
   const id=key=>String(users[key].id);
   const form=fields=>{const body=new URLSearchParams({action:'sn_hr_invoice_reissue',operation:'list',manager_id:'0',...fields});return body.toString();};
-  const post=async(context,fields)=>{const response=await context.request.post(base+'/ajax',{data:form(fields),headers:{'Content-Type':'application/x-www-form-urlencoded'}});return {status:response.status(),...await response.json()};};
-  const page=await hr.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(base+'/');
+  const post=async(context,fields)=>{const response=await context.request.post(base+(native?'/wp-admin/admin-ajax.php':'/ajax'),{data:form(fields),headers:{'Content-Type':'application/x-www-form-urlencoded'}});return {status:response.status(),...await response.json()};};
+  const page=await hr.newPage();page.on('pageerror',error=>errors.push(error.message));await page.goto(base+(native?'/?page_id='+fixture.page_id+'&sn_hr_tab=hr-invoice-reissue':'/'));
   const root=page.locator('#sn-hr-invoice-reissue'),status=root.locator('[role=status]');
   const select=level=>root.locator('[data-reissue-level="'+level+'"]');
   const wait=async()=>{await status.filter({hasText:/فهرست آماده است|مجوز ذخیره شد/}).waitFor();await page.waitForFunction(()=>!document.querySelector('[data-reissue-refresh]').disabled);};
-  await wait();ok(await page.locator('body').getAttribute('data-verified-user')===String(fixture.id),'browser session cookie resolves to actual WordPress HR user');
-  ok(await page.locator('body').getAttribute('data-light-bootstrap')==='true','HR policy renders through actual lightweight shortcode bootstrap');
+  await wait();ok(native?await page.evaluate(()=>window.snAjax.current_user)===users.hr.id:await page.locator('body').getAttribute('data-verified-user')===String(fixture.id),'browser session cookie resolves to actual WordPress HR user');
+  ok(native?await page.locator('body').evaluate(el=>!el.hasAttribute('data-light-bootstrap')):await page.locator('body').getAttribute('data-light-bootstrap')==='true','HR policy renders through actual lightweight shortcode bootstrap');
   ok(await root.count()===1&&await root.evaluate(el=>getComputedStyle(el).direction)==='rtl','actual HR tab renders the RTL policy component');
   ok(await page.locator('body').evaluate(el=>el.classList.contains('sn-portal-page')),'actual public panel script initializes the shared portal context');
   ok(await root.locator('[data-reissue-level]').count()===4,'four cascading selectors are present');
@@ -84,7 +95,7 @@ module.exports=async function({base,output}){
   const final=await post(hr,selection);const current=final.data.rows.find(x=>x.id===users.manager_a.id);
   if(current.mode!=='inherit'){ok((await post(hr,{...selection,operation:'save',user_id:id('manager_a'),mode:'inherit',version:current.version})).success,'synthetic policy restored to default through authenticated handler');}
   ok(errors.length===0,'browser has no uncaught JavaScript errors');
-  const summary={version:'2.0.239',passed:true,assertions:checks,real_wordpress_auth_cookie:true,real_wordpress_ajax_handler:true,transport:'private CLI via loopback proxy; public web transport not exercised',synthetic:true,production_touched:false};
+  const summary={version:'2.0.239',passed:true,assertions:checks,real_wordpress_auth_cookie:true,real_wordpress_ajax_handler:true,transport:native?'native WordPress HTTP login, shortcode and admin-ajax':'private CLI via loopback proxy; public web transport not exercised',synthetic:true,production_touched:false};
   fs.writeFileSync(path.join(output,'summary.json'),JSON.stringify(summary,null,2)+'\n');console.log('TOTAL '+checks);
  }finally{for(const context of contexts)await context.close();await browser.close();}
 };

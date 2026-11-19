@@ -10,6 +10,19 @@ official RC are conditionally approved only after every required control passes.
 Continue the already authorized public Staging test with that official artifact.
 Never deploy to Production or weaken a failing security/test gate.
 
+Owner approved the bounded CI extension and its public publication on 2026-11-19
+after reviewing the exact local diff, safety tests and rollback plan. The existing run passed all four Finance
+cases and mandatory syntax/docs/secrets/boundary jobs, but the readiness summary
+has no verified job mapping for required UI/access/ledger/schema/MIS suites.
+Approved additive scope: `.github/workflows/ci.yml`, `scripts/fast_track_ci.py`,
+`scripts/hr_reissue_ci.py`, `scripts/test-hr-integration.sh`, the new
+`tests/fast_track/test_hr_reissue_ci.py` and related `tests/hr/` adapters/tests.
+No required suite is removed; the original mandatory jobs/Finance workflow stay
+byte-identical. This mapping is bounded to the six reviewed runtime hashes and
+base below. Publish on this task branch and the existing Draft PR; keep conditional
+merge authorization subject to every required control. Native HTTP/MIS CI evidence
+is NOT_RUN until execution. Production installation remains excluded.
+
 Verified remote: https://github.com/mehrdadhafezi/CRMEdits.git
 Base and intended PR target: main, `3660fe46dcb79f7a96f0b3f04326f119a4d78441`.
 Compatibility reference: experimental, `3f544028bf83b641caade9e5859aa4efd4b3769a`.

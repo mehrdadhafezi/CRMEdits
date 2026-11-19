@@ -8,6 +8,7 @@ from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from risk_report import AUDIT_FILES, LEVELS, SHA, SUITES, IncompleteDiff, git, report
+import hr_reissue_ci as hr_ci
 
 
 JOBS = {
@@ -134,11 +135,13 @@ def make_plan(pr, merge_sha, selection):
         ]
     if finance:
         suites["finance"] = "REQUIRED"
+    hr_native = not unknown and not tooling_only and hr_ci.scope(pr["base"], pr["head"], paths)
     return {
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
         "domains": domains, "files": len(files), "finance": finance,
         "campaign_ui": campaign_ui, "tooling_only": tooling_only, "package_parity": package_parity,
         "audit_only": audit_only,
+        "hr_native": hr_native,
         "reasons": reasons, "suites": suites,
     }
 
@@ -196,7 +199,7 @@ def verify_native_output(wordpress, baseline, merge_sha, output, dist):
 
 
 def outcome(plan, expected, live, results, run_url, matrix_verified=False, evidence_run=None, evidence_error=None,
-            audit_verified=False):
+            audit_verified=False, hr_verified=False):
     problems = [evidence_error] if evidence_error else []
     plan_matches = (isinstance(plan, dict) and plan.get("risk") in (*LEVELS, "UNKNOWN")
                     and isinstance(plan.get("suites"), dict) and plan["suites"].keys() == SUITES.keys()
@@ -227,6 +230,8 @@ def outcome(plan, expected, live, results, run_url, matrix_verified=False, evide
     rows = []
     for suite, applicability in suites.items():
         job = ("campaign-ui" if suite == "ui" and plan_matches and plan["campaign_ui"] else JOBS.get(suite))
+        if plan_matches and plan.get("hr_native") is True and suite in hr_ci.SUITES:
+            job = "hr-native"
         result = results.get(job)
         if applicability == "NOT_SELECTED":
             status, reason = "SKIPPED", "Outside the mapped test scope"
@@ -240,6 +245,8 @@ def outcome(plan, expected, live, results, run_url, matrix_verified=False, evide
             status, reason = "BLOCKED", "Audit safety, offline CLI and package parity steps are unverified in this run attempt"
         elif result == "success" and job == "finance" and not matrix_verified:
             status, reason = "BLOCKED", "The four Finance jobs and their test steps were not verified in this run attempt"
+        elif result == "success" and job == "hr-native" and not hr_verified:
+            status, reason = "BLOCKED", "Bounded HR native tests and output verification are unverified in this run attempt"
         elif result == "success":
             status, reason = "PASS", "Succeeded in this run"
         else:
@@ -330,6 +337,8 @@ def read_optional_evidence(expected, run_url):
         results["finance"] = "success"
     if CAMPAIGN_JOB in successes:
         results["campaign-ui"] = "success"
+    if hr_ci.job_passed(jobs):
+        results["hr-native"] = "success"
     return (results, matrix_verified, f"{run_url.rsplit('/', 1)[0]}/{source['id']}/attempts/{source['run_attempt']}",
             audit_job_passed(jobs))
 
@@ -357,8 +366,17 @@ def markdown(result):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=("plan", "summary", "verify-checkout", "verify-finance-output"))
+    parser.add_argument("stage", choices=("plan", "summary", "verify-checkout", "verify-finance-output", "verify-hr-output"))
     stage = parser.parse_args().stage
+    if stage == "verify-hr-output":
+        event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
+        pr = revision(event["pull_request"])
+        verify_checkout(pr, os.environ["GITHUB_SHA"])
+        selection = report(pr["base"], pr["head"], pr["target"])
+        if not hr_ci.scope(pr["base"], pr["head"], {c["path"] for c in selection["changed_files"]}):
+            raise ValueError("HR tests cannot certify unreviewed runtime changes")
+        hr_ci.verify_output("test-results/hr", os.environ["GITHUB_SHA"])
+        return 0
     if stage == "verify-finance-output":
         verify_native_output(os.environ["SN_TEST_WORDPRESS"], os.environ["SN_TEST_BASELINE"], os.environ["GITHUB_SHA"],
                              Path("test-results/finance"), Path("dist"))
@@ -375,6 +393,7 @@ def main():
             print(f"plan={json.dumps(plan, ensure_ascii=True, separators=(',', ':'))}", file=output)
             print(f"finance={str(plan['finance']).lower()}", file=output)
             print(f"campaign_ui={str(plan['campaign_ui']).lower()}", file=output)
+            print(f"hr_native={str(plan['hr_native']).lower()}", file=output)
         return 0
     try:
         plan = json.loads(os.environ.get("PLAN") or "null")
@@ -386,11 +405,13 @@ def main():
     evidence_run = evidence_error = None
     matrix_verified = False
     audit_verified = False
+    hr_verified = False
     if os.environ.get("METADATA_ONLY") == "true":
         try:
             plan = plan_pr(pr, merge_sha)
             optional, matrix_verified, evidence_run, audit_verified = read_optional_evidence(expected, run_url)
             results.update(optional)
+            hr_verified = optional.get("hr-native") == "success"
         except (URLError, OSError, ValueError, KeyError, TypeError, IncompleteDiff) as exc:
             print(f"Unable to reuse optional evidence ({type(exc).__name__})")
             evidence_error = "Latest exact full CI evidence is missing, pending, failed or unverified"
@@ -398,8 +419,13 @@ def main():
         matrix_verified = verify_finance_run()
     if os.environ.get("METADATA_ONLY") != "true" and isinstance(plan, dict) and plan.get("audit_only"):
         audit_verified = verify_audit_run()
+    if os.environ.get("METADATA_ONLY") != "true" and results.get("hr-native") == "success":
+        try:
+            hr_verified = hr_ci.job_passed(run_jobs(os.environ["GITHUB_RUN_ID"], os.environ["GITHUB_RUN_ATTEMPT"]))
+        except (URLError, OSError, ValueError, KeyError, TypeError):
+            hr_verified = False
     result = outcome(plan, expected, live_revision(pr["pr"]), results, run_url,
-                     matrix_verified, evidence_run, evidence_error, audit_verified)
+                     matrix_verified, evidence_run, evidence_error, audit_verified, hr_verified)
     print(json.dumps(result, indent=2, ensure_ascii=True))
     Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text(markdown(result), encoding="utf-8")
     return int(result["status"] == "BLOCKED")
