@@ -4,6 +4,7 @@ if (! defined('ABSPATH')) {
 }
 
 require_once __DIR__ . '/class-sn-hr-workforce-filters.php';
+require_once __DIR__ . '/class-sn-hr-invoice-reissue.php';
 require_once __DIR__ . '/trait-sn-mis-portal.php';
 require_once __DIR__ . '/trait-sn-sales-branches.php';
 
@@ -45,6 +46,7 @@ class SN_Plugin
 
 	public function __construct()
 	{
+		SN_HR_Invoice_Reissue::register(fn(): bool => $this->sn_can_manage_hr_panel() && ! $this->sn_staff_view_data());
 		if (class_exists('SN_Dot_Flow')) {
 			SN_Dot_Flow::instance()->register_hooks();
 		}
@@ -5308,7 +5310,7 @@ class SN_Plugin
 
 		// Guard ordinary seller issuance for an already-invoiced phone.
 		// Controlled incremental invoices deliberately bypass this restriction.
-		if ($is_seller && ! $is_admin && ! $allow_controlled_workflow_invoice) {
+		if ($is_seller && ! $is_admin && ! $allow_controlled_workflow_invoice && ! SN_HR_Invoice_Reissue::allows((int) $seller_id)) {
 			$previous = $wpdb->get_row($wpdb->prepare(
 				"SELECT id, invoice_code FROM {$wpdb->prefix}sn_invoices WHERE seller_id = %d AND customer_phone = %s ORDER BY id DESC LIMIT 1",
 				(int) $seller_id, (string) $phone
@@ -11803,6 +11805,7 @@ class SN_Plugin
 			SN_HR_Front_Panel::enqueue_assets();
 		}
 		SN_HR_Workforce_Filters::assets();
+		SN_HR_Invoice_Reissue::assets();
 		global $wpdb;
 		if (class_exists('SN_Migration_Service')) { (new SN_Migration_Service())->migrate_if_needed(); }
 		$this->sn_ensure_hr_profile_schema_runtime();
@@ -11810,6 +11813,7 @@ class SN_Plugin
 		$this->sn_ensure_reporting_portal_page();
 		$hr_tabs = [
 				'hr-workforce' => 'مدیریت نیروها',
+				'hr-invoice-reissue' => 'صدور مجدد فاکتور',
 				'hr-manual-add' => 'افزودن دستی نیرو',
 				'hr-csv' => 'ورودی/خروجی کاربران',
 				'hr-bulk' => 'تغییرات گروهی',
@@ -12018,6 +12022,12 @@ class SN_Plugin
 				</div>
 				<p class="sn-note">سطح‌ها کاملاً سفارشی هستند؛ حذف سطح، نیروهای وابسته را بدون سطح می‌کند. موتور حقوق/پورسانت در این فاز اضافه نشده است.</p>
 			</details>
+			</section>
+			<?php endif; ?>
+
+			<?php if ($active_tab === 'hr-invoice-reissue') : ?>
+			<section id="hr-invoice-reissue" class="<?php echo esc_attr($this->sn_tab_panel_class('hr-invoice-reissue', $active_tab)); ?>" data-sn-tab-panel="hr-invoice-reissue">
+			<?php SN_HR_Invoice_Reissue::render(); ?>
 			</section>
 			<?php endif; ?>
 

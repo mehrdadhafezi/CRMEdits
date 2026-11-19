@@ -39,6 +39,15 @@ Current transitional state in test/staging reports:
 
 ## Invoice/payment flow constraints
 - Seller creates pre-invoice.
+- Owner-approved 2.0.239: ordinary seller issuance for an already-invoiced,
+  normalized customer phone is denied by default for that same seller. HR can
+  configure inherit/allow/deny at sales manager, senior supervisor, supervisor
+  and seller. The nearest explicit setting wins within the current active HR
+  chain, including supported skipped levels. An explicit personal exception
+  remains with the person after transfer; inherited permission follows the new
+  branch. Missing/inactive/ambiguous hierarchy cannot grant reissue. Invoice
+  status or product do not change duplicate identity. Existing administrator and
+  controlled-workflow exceptions and other invoice eligibility gates remain.
 - New invoice codes are six numeric digits. Existing invoice codes, including legacy `INV-*` codes, remain valid and must not be rewritten.
 - Customer receives tokenized public invoice link through SMS.
 - Public/customer invoice actions require `access_token`.

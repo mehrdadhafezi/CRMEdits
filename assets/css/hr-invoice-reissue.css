@@ -1,0 +1,19 @@
+.sn-hr-reissue { direction: rtl; }
+.sn-hr-reissue .sn-hr-reissue-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 20px 0 10px; }
+.sn-hr-reissue .sn-hr-reissue-filters label { display: flex; flex-direction: column; gap: 8px; min-width: 0; font-weight: 600; }
+.sn-hr-reissue select { width: 100%; min-width: 0; font: inherit; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; background: #fff; color: #0f172a; }
+.sn-hr-reissue select[multiple] { min-height: 130px; }
+.sn-hr-reissue .sn-table-wrap { margin-top: 16px; overflow-x: auto; }
+.sn-hr-reissue table { min-width: 720px; }
+.sn-hr-reissue td { vertical-align: middle; }
+.sn-hr-reissue td select { min-width: 145px; }
+.sn-hr-reissue .sn-hr-reissue-status { min-height: 28px; margin: 12px 0; }
+.sn-hr-reissue .sn-hr-reissue-error { color: #b91c1c; }
+.sn-hr-reissue .sn-hr-reissue-allowed { color: #047857; font-weight: 700; }
+.sn-hr-reissue .sn-hr-reissue-denied { color: #9f1239; font-weight: 700; }
+.sn-hr-reissue .sn-hr-reissue-dirty { display: block; margin-top: 5px; color: #92400e; font-size: 12px; }
+.sn-hr-reissue button:focus-visible, .sn-hr-reissue select:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+/* Override the legacy sticky sidebar only while this tab uses the mobile drawer. */
+@media (max-width: 900px) { html body #sn-hr-panel[data-sn-active-tab="hr-invoice-reissue"] > .sn-panel-toolbar { position: fixed !important; } }
+@media (max-width: 950px) { .sn-hr-reissue .sn-hr-reissue-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 540px) { .sn-hr-reissue .sn-hr-reissue-filters { grid-template-columns: minmax(0, 1fr); } }

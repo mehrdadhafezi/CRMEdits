@@ -3,7 +3,7 @@
  * Plugin Name: Sales Network (شبکه فروش)
  * Plugin URI:  https://example.com
  * Description: مدیریت فروشندگان، تخصیص شماره و صدور فاکتور با پرداخت آنلاین یا کارت به کارت
- * Version: 2.0.238
+ * Version: 2.0.239
  * Author:      M.Hafezi & A.Nazari
  * Text Domain: sn
  * Domain Path: /languages
@@ -15,8 +15,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SN_VERSION', '2.0.238' );
-define( 'SN_BUILD', '2026-11-17-reporting-finance-reconciliation' );
+define( 'SN_VERSION', '2.0.239' );
+define( 'SN_BUILD', '2026-11-19-hr-invoice-reissue-policy' );
 // UI/API revisions do not rerun unchanged legacy schema/page repairs.
 define( 'SN_LEGACY_RUNTIME_VERSION', '2.0.188-receipt-corrections-dev' );
 define( 'SN_PERF_INDEX_VERSION', '2026-07-21-invoice-hierarchy-export-v1' );
