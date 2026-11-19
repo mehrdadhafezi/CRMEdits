@@ -3,7 +3,7 @@
 مخزن مشترک توسعه افزونه WordPress «شبکه فروش». مبنای رسمی تحویلی مالک:
 **2.0.235**، فایل `sales-network.php`. این مخزن Private است.
 
-**شروع توسعه‌دهنده:** [راهنمای فارسی Codex و Claude](docs/DEVELOPER_HANDBOOK.md)
+**شروع توسعه‌دهنده:** [از اینجا شروع کنید](TEAM_START_HERE.md) → [راهنمای فارسی Codex و Claude](docs/DEVELOPER_HANDBOOK.md)
 → [قوانین Agent](AGENTS.md) → [قرارداد ماژول](docs/modules/README.md).
 
 ```bash
