@@ -94,7 +94,7 @@ PY
 phase product-settings-native run_php tests/products/native-product-settings.php
 phase product-sms-races run_test python3 -B tests/products/product-sms-races.py
 sudo install -o sn-approval-test -m 600 tests/products/product-provider.php "$runtime/wordpress/wp-content/mu-plugins/product241-provider.php"
-phase product-native-http-browser run_test node tests/products/ci-browser.cjs
+phase product-native-http-browser run_test timeout 180 node tests/products/ci-browser.cjs
 # Verify code-only rollback after the policy and all financial fixtures exist.
 phase snapshot-before-rollback run_php tests/hr/ci-code-state.php save
 mkdir "$runtime/hr-238"

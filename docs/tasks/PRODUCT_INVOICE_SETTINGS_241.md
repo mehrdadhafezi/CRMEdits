@@ -70,6 +70,9 @@ root cause of that exit or a Production PHP remediation.
 The disposable web server runs without opcode caching or debugger instrumentation
 so parser-boundary behavior can be separated from those optional extensions.
 All native HTTP assertions, the input limit, and retained regressions remain.
+The intentionally invalid HTTP request and diagnostic retry have hard deadlines;
+the generated native product browser process is bounded to 180 seconds. A timeout
+fails the required suite; it is never converted to the required HTTP 400 proof.
 At the end of local validation no commit, push, PR, merge, official RC or canonical
 Stage deployment had been made. Subsequent GitHub metadata records those steps.
 
