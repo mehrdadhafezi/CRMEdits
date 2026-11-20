@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 from risk_report import AUDIT_FILES, LEVELS, SHA, SUITES, IncompleteDiff, git, report
 import hr_reissue_ci as hr_ci
 import gateway_manual_ci as gateway_ci
+import product_invoice_ci as product_ci
 
 
 JOBS = {
@@ -137,7 +138,8 @@ def make_plan(pr, merge_sha, selection):
     if finance:
         suites["finance"] = "REQUIRED"
     gateway_manual = not unknown and not tooling_only and gateway_ci.scope(pr["base"], pr["head"], paths)
-    hr_native = not unknown and not tooling_only and (gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
+    product_settings = not unknown and not tooling_only and product_ci.scope(pr["base"], pr["head"], paths)
+    hr_native = not unknown and not tooling_only and (product_settings or gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
     return {
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
         "domains": domains, "files": len(files), "finance": finance,
@@ -145,6 +147,7 @@ def make_plan(pr, merge_sha, selection):
         "audit_only": audit_only,
         "hr_native": hr_native,
         "gateway_manual": gateway_manual,
+        "product_settings": product_settings,
         "reasons": reasons, "suites": suites,
     }
 
@@ -379,7 +382,9 @@ def main():
         verify_checkout(pr, os.environ["GITHUB_SHA"])
         selection = report(pr["base"], pr["head"], pr["target"])
         paths = {c["path"] for c in selection["changed_files"]}
-        if gateway_ci.scope(pr["base"], pr["head"], paths):
+        if product_ci.scope(pr["base"], pr["head"], paths):
+            product_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
+        elif gateway_ci.scope(pr["base"], pr["head"], paths):
             gateway_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
         elif hr_ci.scope(pr["base"], pr["head"], paths):
             hr_ci.verify_output("test-results/hr", os.environ["GITHUB_SHA"])
@@ -389,6 +394,8 @@ def main():
     if stage == "verify-finance-output":
         verify_native_output(os.environ["SN_TEST_WORDPRESS"], os.environ["SN_TEST_BASELINE"], os.environ["GITHUB_SHA"],
                              Path("test-results/finance"), Path("dist"), gateway_manual=gateway_ci.payload_matches_revision(os.environ["GITHUB_SHA"]))
+        if product_ci.payload_matches_revision(os.environ["GITHUB_SHA"]):
+            product_ci.verify_finance_output(Path("test-results/finance"), os.environ["SN_TEST_WORDPRESS"])
         return 0
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
     pr = revision(event["pull_request"])

@@ -190,6 +190,9 @@ jobs:
             test-results/hr/*.json
             test-results/hr/browser/summary.json
             test-results/hr/browser/hr-reissue-*.png
+            test-results/hr/product-browser/product241-browser.json
+            test-results/hr/product-browser/product241-browser-errors.json
+            test-results/hr/product-browser/*.png
             test-results/finance/gateway-manual-native.json
             test-results/finance/gateway-manual-races.json
             test-results/finance/gateway-browser/gateway-manual-browser.json

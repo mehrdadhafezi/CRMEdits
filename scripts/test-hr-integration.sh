@@ -31,7 +31,19 @@ phase() {
   (umask 077; : > "$runtime/hr-$label.private.log")
   if ! "$@" > "$runtime/hr-$label.private.log" 2>&1; then
     printf 'FAIL %s; detailed synthetic diagnostics stay inside the disposable VM\n' "$label"
-    python3 - "$runtime/hr-$label.private.log" <<'PY'
+    if ! kill -0 "$server_pid" 2>/dev/null; then
+      if wait "$server_pid"; then printf 'NATIVE_HTTP_SERVER_EXIT=0\n'; else printf 'NATIVE_HTTP_SERVER_EXIT=%s\n' "$?"; fi
+    fi
+    run_php -r 'echo "NATIVE_PHP_VERSION=".PHP_VERSION."\nNATIVE_PHP_EXTENSIONS=".implode(",",get_loaded_extensions())."\n";'
+    (umask 077; sudo dmesg > "$runtime/hr-kernel.private.log")
+    python3 - "$runtime/hr-kernel.private.log" <<'PY'
+import pathlib,re,sys
+text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
+crashes=[line for line in text.splitlines() if re.search(r'php(?:8[.]3)?\[[0-9]+\]',line) and re.search(r'segfault|trap|killed',line,re.I)]
+print('NATIVE_PHP_KERNEL_CRASH_COUNT='+str(len(crashes)))
+print('NATIVE_PHP_CRASH_MODULES='+repr(sorted(set(re.findall(r' in ([A-Za-z0-9_.-]+)\[','\n'.join(crashes))))))
+PY
+    python3 - "$runtime/hr-$label.private.log" "$server_log" <<'PY'
 import pathlib,re,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
 frames=re.findall(r'([A-Za-z0-9_.-]+\.(?:php|cjs))(?::| on line )(\d+)',text)
@@ -40,7 +52,11 @@ print('Completed assertions before failure: '+str(sum(x.startswith('PASS ') for 
 labels=re.findall(r'RuntimeException: FAIL ([A-Za-z0-9 _/()+,.:-]{1,180})',text)
 if labels:print('Assertion label: '+labels[-1].split(' in /',1)[0])
 for line in text.splitlines():
- if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
+ if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES|HTTP_ORIGIN_MATCH|HTTP_API_STATUS|HTTP_API_ERROR) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
+server=pathlib.Path(sys.argv[2]).read_text(errors='replace')
+print('Native HTTP input-limit warning recorded: '+str('Input variables exceeded' in server))
+print('Native HTTP fatal/parse count: '+str(len(re.findall(r'(?:Fatal|Parse) error:',server))))
+print('Native AJAX response statuses: '+repr(re.findall(r'\[([0-9]{3})\]: POST /wp-admin/admin-ajax[.]php',server)[-12:]))
 PY
     exit 1
   fi
@@ -66,6 +82,19 @@ phase invoice-creation run_php tests/hr/native-invoices.php
 phase wallet-commission run_php tests/hr/native-ledger.php
 phase finance-reporting run_php tests/hr/native-finance.php
 phase native-http-browser run_test node tests/hr/ci-browser.cjs
+# Retain all existing suites, then exercise product settings through native HTTP.
+phase product-policy-memory run_php tests/products/invoice-product-policy.php
+python3 - "$runtime/hr-product-policy-memory.private.log" "$output/product241-unit.json" <<'PY'
+import json,pathlib,sys
+text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
+count=sum(line.startswith('PASS ') for line in text.splitlines())
+assert count==40 and 'TOTAL 40' in text.splitlines()
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.241','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
+PY
+phase product-settings-native run_php tests/products/native-product-settings.php
+phase product-sms-races run_test python3 -B tests/products/product-sms-races.py
+sudo install -o sn-approval-test -m 600 tests/products/product-provider.php "$runtime/wordpress/wp-content/mu-plugins/product241-provider.php"
+phase product-native-http-browser run_test timeout 180 node tests/products/ci-browser.cjs
 # Verify code-only rollback after the policy and all financial fixtures exist.
 phase snapshot-before-rollback run_php tests/hr/ci-code-state.php save
 mkdir "$runtime/hr-238"
@@ -76,7 +105,7 @@ sudo mv "$runtime/hr-238" "$runtime/wordpress/wp-content/plugins/sales-network-v
 phase rollback-238 run_php tests/hr/ci-code-state.php rollback
 sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/hr-238"
 sudo mv "$runtime/hr-candidate" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
-phase reinstall-240 run_php tests/hr/ci-code-state.php restored
+phase reinstall-241 run_php tests/hr/ci-code-state.php restored
 # MIS resets its own separate fresh database. It cannot touch the HR/Finance DB.
 mis_db="sn_approval_${GITHUB_RUN_ID}_hrmis_test"
 sudo env MYSQL_PWD=root mysql --user=root --protocol=socket <<SQL

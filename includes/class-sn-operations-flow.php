@@ -982,6 +982,7 @@ final class SN_Operations_Flow {
 		if(!$ok_item||!$ok_stage||!$ok_action||false===$ok_op){$wpdb->query('ROLLBACK');return new WP_Error('sn_ops_invoice_parts','اجزای فاکتور افزایشی کامل ذخیره نشد: '.($wpdb->last_error?:'خطای دیتابیس'));}
 		if(!SN_Purpose_Commission::instance()->snapshot_sale($invoice_id)) { $wpdb->query('ROLLBACK');return new WP_Error('sn_ops_sale_policy','ثبت انتساب فروش عملیات انجام نشد.'); }
         $wpdb->query('COMMIT');
+		if (class_exists('SN_Invoice_SMS_Policy')) { SN_Invoice_SMS_Policy::created($invoice_id); }
 		$url=$this->invoice_url($invoice_id); $sms_sent=$this->send_invoice_sms((string)$ctx->customer_phone,(string)$ctx->customer_name,$code,$url,$initial_due,(string)$option['name'],$invoice_id);
 		$this->event($item_id,'operations_upgrade_invoice_created',[ 'invoice_id'=>$invoice_id,'amount'=>$amount,'payment_plan'=>$payment_plan,'initial_due'=>$initial_due,'target_credit'=>(float)$option['credit'],'source'=>$source,'sms_sent'=>$sms_sent ],$actor_id);
 		return[ 'invoice_id'=>$invoice_id,'url'=>$url,'sms_sent'=>$sms_sent,'payment_plan'=>$payment_plan,'current_due_amount'=>$initial_due ];
@@ -1013,7 +1014,7 @@ final class SN_Operations_Flow {
 			esc_url_raw($url),
 			sanitize_text_field($name)?:'مشتری گرامی',
 			number_format(max(0,$amount),0,'',','),
-			$card_number
+			$card_number, $invoice_id
 		);
 		$this->last_sms_error = $sent ? '' : $sms->get_last_error();
 		return $sent;

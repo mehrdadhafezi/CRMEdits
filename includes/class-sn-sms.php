@@ -1,5 +1,6 @@
 <?php
 if ( ! defined( 'ABSPATH' ) ) { exit; }
+require_once __DIR__ . '/class-sn-invoice-sms-policy.php';
 
 /**
  * سرویس ارسال پیامک
@@ -9,6 +10,7 @@ class SN_SMS {
 
 	private string $last_error = '';
 	private bool $delivery_uncertain = false;
+	private string $invoice_dispatch_state = '';
 	private static bool $transport_hook_registered = false;
 
 	/** Scope the IPv4 workaround to our Faraz requests, never other HTTP traffic. */
@@ -388,7 +390,24 @@ class SN_SMS {
 	}
 
 	/** ارسال لینک فاکتور به مشتری */
-	public function send_invoice_link( string $phone, string $invoice_code, string $invoice_url, string $customer_name, $amount = '', $card_number = '' ): bool {
+	public function invoice_dispatch_state(): string { return $this->invoice_dispatch_state; }
+
+	public function send_invoice_link( string $phone, string $invoice_code, string $invoice_url, string $customer_name, $amount = '', $card_number = '', int $invoice_id = 0, bool $only_previous_unsent = false ): bool {
+		$this->last_error = '';
+		$this->invoice_dispatch_state = '';
+		$this->delivery_uncertain = false;
+		if ( $invoice_id > 0 && class_exists( 'SN_Invoice_SMS_Policy' ) ) {
+			$result = SN_Invoice_SMS_Policy::dispatch( $invoice_id,
+				fn() => $this->send_invoice_link_payload( $phone, $invoice_code, $invoice_url, $customer_name, $amount, $card_number ),
+				fn() => $this->delivery_uncertain(), $only_previous_unsent );
+			$this->invoice_dispatch_state = $result['state'];
+			if ( ! empty( $result['message'] ) ) { $this->last_error = $result['message']; }
+			return $result['sent'];
+		}
+		return $this->send_invoice_link_payload( $phone, $invoice_code, $invoice_url, $customer_name, $amount, $card_number );
+	}
+
+	private function send_invoice_link_payload( string $phone, string $invoice_code, string $invoice_url, string $customer_name, $amount, $card_number ): bool {
 		$this->last_error = '';
 		$phone         = SN_Helpers::normalize_mobile( $phone );
 		$invoice_code  = trim( $invoice_code );
@@ -420,7 +439,6 @@ class SN_SMS {
 			'created_at'   => current_time( 'mysql' ),
 			'payload'      => $sn_invoice_sms_debug_payload,
 		], false );
-		error_log( 'SN Invoice SMS Preview | ' . wp_json_encode( $sn_invoice_sms_debug_payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) );
 
 		// اگر سرویس‌دهنده فراز باشد و کد پترن تعریف شده باشد، با پترن بفرست
 		if ( $this->provider === 'kavenegar' && $this->event_pattern( 'invoice' ) !== '' ) {

@@ -3,7 +3,7 @@
  * Plugin Name: Sales Network (شبکه فروش)
  * Plugin URI:  https://example.com
  * Description: مدیریت فروشندگان، تخصیص شماره و صدور فاکتور با پرداخت آنلاین یا کارت به کارت
- * Version: 2.0.240
+ * Version: 2.0.241
  * Author:      M.Hafezi & A.Nazari
  * Text Domain: sn
  * Domain Path: /languages
@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'SN_VERSION', '2.0.240' );
+define( 'SN_VERSION', '2.0.241' );
 define( 'SN_BUILD', '2026-11-19-hr-invoice-reissue-policy' );
 // UI/API revisions do not rerun unchanged legacy schema/page repairs.
 define( 'SN_LEGACY_RUNTIME_VERSION', '2.0.188-receipt-corrections-dev' );
@@ -67,6 +67,8 @@ require_once SN_PLUGIN_DIR . 'includes/class-sn-mis-service.php';
 add_action('init', ['SN_MIS_Request_Lock','acquire'], 0);
 require_once SN_PLUGIN_DIR . 'includes/class-sn-activator.php';
 require_once SN_PLUGIN_DIR . 'includes/class-sn-helpers.php';
+require_once SN_PLUGIN_DIR . 'includes/class-sn-invoice-sms-policy.php';
+SN_Invoice_SMS_Policy::register_hooks();
 require_once SN_PLUGIN_DIR . 'includes/class-sn-payment-transactions.php';
 require_once SN_PLUGIN_DIR . 'includes/class-sn-payment-batch.php';
 require_once SN_PLUGIN_DIR . 'includes/class-sn-receipt-review.php';

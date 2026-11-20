@@ -44,6 +44,26 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+2.0.241 adds [SN_Invoice_SMS_Policy](../../includes/class-sn-invoice-sms-policy.php)
+for global per-product invoice-link suppression. Existing products default on.
+The WooCommerce product edit box saves a versioned postmeta policy with existing
+product-edit capability and its own nonce. Every supported invoice-link caller
+(initial issuance, resend, Dot and Operations) passes its real invoice ID to the
+gate. A mixed invoice requires every product's SMS switch to be on. OTP and
+payment acknowledgements remain independent; provider selection, credentials,
+payload formats and protocol are unchanged.
+
+Re-enabling never starts a background/bulk send. Administrators may separately
+enable previous sends, preview a bounded page, and confirm that batch. Each item
+rechecks product, policy revision, current unpaid/open state and durable unsent
+evidence. Accepted, ambiguous/in-flight, paid, cancelled and unknown legacy cases
+are excluded. Each HTTP request dispatches at most one item. Per-site invoice and
+batch MySQL locks protect concurrent attempts. A failed final audit write retains
+the durable in-flight claim, preventing a blind historical retry. New non-autoload
+delivery options contain only state, actor ID, attempt ID and timestamp; no phone,
+message, invoice URL/token or credential. Full SMS payload logging was removed
+from the touched invoice-send path; the existing admin diagnostic option remains.
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features

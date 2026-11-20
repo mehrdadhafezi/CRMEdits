@@ -193,7 +193,7 @@
         return;
       }
       var code = data.invoice_code || data.code || '';
-      var smsMessage = data.sms_sent === false ? ' پیش‌فاکتور صادر شد اما ارسال پیامک ناموفق بود.' : ' پیش‌فاکتور صادر شد و پیامک مشتری ارسال شد.';
+      var smsMessage = data.sms_message ? ' ' + data.sms_message : data.sms_sent === false ? ' پیش‌فاکتور صادر شد و پیامک ارسال نشد.' : ' پیش‌فاکتور صادر شد و پیامک مشتری ارسال شد.';
       notice('پیش‌فاکتور ' + (code ? code : '') + smsMessage, true);
       $('#sn-converter-cust-name,#sn-converter-cust-phone,#sn-converter-cust-phone-secondary,#sn-converter-cust-city,#sn-converter-cust-address,#sn-converter-cust-postal').val('');
       $('#sn-converter-cust-prov').val('');

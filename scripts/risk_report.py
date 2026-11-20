@@ -64,6 +64,8 @@ CORE_FILES = {
     "sales-network.php", "includes/class-sn-plugin.php", "includes/class-sn-helpers.php",
     "assets/css/public.css", "assets/css/public-performance.css", "assets/js/public.js",
     "assets/js/public-shell.js", "assets/js/public-manager.js", "assets/js/admin.js",
+    "includes/class-sn-sms.php", "includes/class-sn-dot-flow.php",
+    "includes/class-sn-operations-flow.php",
 }
 SENSITIVE_PATHS = {
     "finance": r"finance|payment|invoice|receipt|gateway|seller|subscription|conversion|converter|catalog|project",

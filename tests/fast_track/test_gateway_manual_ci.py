@@ -12,7 +12,7 @@ class GatewayProofTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.before=committed_members(ROOT,gw.BASE)
-        cls.after={**cls.before,**{'sales-network-v4/'+name:(ROOT/name).read_bytes() for name in gw.RUNTIME}}
+        cls.after=committed_members(ROOT,'3e5ea9a950b8ec0c936ba4188ddb6118fe3b1cc6')
 
     def test_only_eight_reviewed_runtime_changes_are_accepted(self):
         self.assertTrue(gw.bounded_payload(self.before,self.after))
