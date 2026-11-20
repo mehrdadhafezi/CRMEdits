@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
-module.exports=async function({playwright,channel='msedge'}){
+module.exports=async function({playwright,channel}){
  const {chromium}=require(playwright);const browser=await chromium.launch({headless:true,channel});let checks=0;
  const source=fs.readFileSync(path.resolve(__dirname,'../../assets/js/payment-transactions.js'),'utf8');
  function ok(v,label){assert.ok(v,label);checks++;console.log('PASS '+label);}

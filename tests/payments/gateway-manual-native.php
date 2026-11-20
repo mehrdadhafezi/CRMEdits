@@ -10,7 +10,7 @@ if(getenv('SN_APPROVAL_ALLOW_SYNTHETIC')==='YES'){
     $test_root=$GLOBALS['hr239_root'];
 }
 if(!defined('DOING_AJAX'))define('DOING_AJAX',true);
-if(SN_VERSION!=='2.0.241')throw new RuntimeException('Exact Gateway240 candidate required');
+if(SN_VERSION!=='2.0.242')throw new RuntimeException('Exact Gateway240 candidate required');
 global $wpdb;$checks=0;$batch='G240-'.bin2hex(random_bytes(3));$plugin=sn_bootstrap_plugin_instance();
 function gm_ok($value,string $label):void{global $checks;if(!$value)throw new RuntimeException('FAIL '.$label);$checks++;echo 'PASS '.$label.PHP_EOL;}
 function gm_call(string $name,...$args){global $plugin;$m=new ReflectionMethod(SN_Plugin::class,$name);$m->setAccessible(true);return $m->invoke($plugin,...$args);}

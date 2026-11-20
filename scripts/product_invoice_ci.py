@@ -48,26 +48,27 @@ def scope(base,head,paths):
     return base==BASE and set(RUNTIME)<=paths<=set(RUNTIME)|NON_RUNTIME and payload_matches_revision(head)
 
 
-def verify_finance_output(output,wordpress):
+def verify_finance_output(output,wordpress,*,version='2.0.241'):
     root=Path(output)
     native=completed(root,'gateway-manual-native.json',64)
     race=completed(root,'gateway-manual-races.json',18)
     browser=completed(root,'gateway-browser/gateway-manual-browser.json',27)
-    if any(row.get('version')!='2.0.241' for row in [native,race,browser]):raise ValueError('Wrong product candidate payment version')
+    if any(row.get('version')!=version for row in [native,race,browser]):raise ValueError('Wrong product candidate payment version')
     if native.get('wordpress')!=wordpress or not native.get('mysql'):raise ValueError('Wrong payment WordPress/database runtime')
     if race.get('cases')!=4 or race.get('real_parallel_php_processes') is not True or race.get('actual_mysql_advisory_and_row_locks') is not True:raise ValueError('Real concurrent payment MySQL workers required')
     if (browser.get('transport')!='native WordPress HTTP' or browser.get('actual_multipart_upload_tested') is not True
             or browser.get('real_wordpress_auth_cookie') is not True or not browser.get('chromium')):raise ValueError('Real payment HTTP upload/authentication required')
 
 
-def verify_hr_output(output,merge):
+def verify_hr_output(output,merge,*,version='2.0.241',runtime=None,payload_verifier=None):
     root=Path(output)
+    runtime=RUNTIME if runtime is None else runtime
     for name,minimum in {'hr239-native-summary.json':43,'hr239-invoices-summary.json':23,'hr239-finance-summary.json':49,
         'hr239-ledger-summary.json':24,'browser/summary.json':32,'code-rollback.json':27,'mis-summary.json':100}.items():
         data=json.loads((root/name).read_text(encoding='utf-8'))
         if (data.get('passed') is not True or data.get('synthetic') is not True or type(data.get('assertions')) is not int
                 or data['assertions']<minimum):raise ValueError('Incomplete retained HR/ledger/schema/MIS regression: '+name)
-        if name.startswith('hr239-') and (data.get('core_sha256')!=RUNTIME['includes/class-sn-plugin.php']
+        if name.startswith('hr239-') and (data.get('core_sha256')!=runtime['includes/class-sn-plugin.php']
                 or data.get('policy_sha256')!='1ad645e71cfdaeb63fb9bb81d12646515d2ee626b947099930f88ba7dfb683d8'):raise ValueError('HR evidence belongs to another runtime')
     browser=json.loads((root/'browser/summary.json').read_text(encoding='utf-8'))
     if browser.get('transport')!='native WordPress HTTP login, shortcode and admin-ajax':raise ValueError('Actual HR HTTP regression required')
@@ -77,14 +78,14 @@ def verify_hr_output(output,merge):
     native=completed(root,'product241-native.json',55)
     race=completed(root,'product241-races.json',16)
     browser=completed(root,'product-browser/product241-browser.json',32)
-    if any(row.get('version')!='2.0.241' or row.get('real_sms_sent') is not False for row in [unit,native,race,browser]):raise ValueError('Wrong product version or real SMS status')
+    if any(row.get('version')!=version or row.get('real_sms_sent') is not False for row in [unit,native,race,browser]):raise ValueError('Wrong product version or real SMS status')
     if native.get('wordpress')!='7.1.4' or native.get('woocommerce')!='10.4.3':raise ValueError('Real pinned WordPress/WooCommerce required')
     if (race.get('cases')!=2 or race.get('real_parallel_php_processes') is not True
             or race.get('actual_mysql_advisory_locks') is not True or race.get('stale_cache_control') is not True):raise ValueError('Real SMS races and stale-cache control required')
     for flag in ['actual_wordpress_cookie','actual_admin_http','actual_woocommerce_product_save','legacy_400_reproduced','json_large_form_passed','desktop_mobile']:
         if browser.get(flag) is not True:raise ValueError('Missing product HTTP/browser evidence: '+flag)
     if json.loads((root/'product-browser/product241-browser-errors.json').read_text(encoding='utf-8'))!={'errors':[]}:raise ValueError('Product browser has uncaught errors')
-    if git('rev-parse','HEAD').decode().strip()!=merge or not payload_matches_revision(merge):raise ValueError('Verified product revision changed')
-    verify_finance_output(root.parent/'finance','7.1.4')
-    (root/'verified-revision.json').write_text(json.dumps({'merge':merge,'runtime':RUNTIME,'synthetic':True,
+    if git('rev-parse','HEAD').decode().strip()!=merge or not (payload_verifier or payload_matches_revision)(merge):raise ValueError('Verified product revision changed')
+    verify_finance_output(root.parent/'finance','7.1.4',version=version)
+    (root/'verified-revision.json').write_text(json.dumps({'merge':merge,'runtime':runtime,'synthetic':True,
         'suites':['ui','access','ledger','schema','mis'],'gateway_manual':True,'product_invoice_settings':True},indent=2)+'\n',encoding='utf-8')

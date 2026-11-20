@@ -3,7 +3,7 @@
 require dirname(__DIR__).'/payments/integration/support.php';sn_test_bootstrap();global $wpdb;
 $phase=$argv[1]??'';if(!in_array($phase,['save','rollback','restored'],true)){throw new RuntimeException('Explicit code rollback phase required');}
 $root=realpath((string)getenv('SN_APPROVAL_ROOT'));$output=(string)getenv('SN_APPROVAL_OUTPUT');
-sn_test_ok(SN_VERSION===($phase==='rollback'?'2.0.238':'2.0.241'),'intended code version in phase '.$phase);
+sn_test_ok(SN_VERSION===($phase==='rollback'?'2.0.238':'2.0.242'),'intended code version in phase '.$phase);
 $state=['roles'=>get_option($wpdb->prefix.'user_roles'),'meta'=>$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->usermeta} WHERE meta_key IN (%s,%s) ORDER BY umeta_id",$wpdb->prefix.'capabilities','sn_invoice_reissue_mode'),ARRAY_A),'tables'=>[]];
 foreach(['sn_invoices','sn_invoice_items','sn_invoice_payment_stages','sn_payments','sn_payment_review_events','sn_wallets','sn_wallet_transactions','sn_payment_commission_matrix','sn_hr_profiles','sn_hr_positions','sn_hr_assignments','sn_hr_profile_logs'] as $suffix){
     $table=$wpdb->prefix.$suffix;$ddl=$wpdb->get_row("SHOW CREATE TABLE `{$table}`",ARRAY_N);

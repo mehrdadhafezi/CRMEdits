@@ -81,10 +81,13 @@ Database failures or ambiguous stage identities fail closed, with generic errors
 New purchases require transactional Dot/invoice/stage/item tables; this is a
 preflight requirement, not permission to convert Production tables.
 
-Rollback to 2.0.241 after writing `staged` cases is **not certified**: old code
-does not implement the adapter's new meaning. Before release, rehearse upgrade,
-reopen/cancel/resubmit, legacy coexistence, race and rollback recovery with a
-consistent backup. Do not delete or remap payment/commission history to roll back.
+Code-only business rollback to 2.0.241 after writing `staged_receipt` cases is
+**unsupported**: old code does not implement the adapter's new meaning. Synthetic
+lifecycle tests rehearse preservation during a read-only code swap, resuming the
+candidate and full recovery of a consistent matching database/plugin snapshot.
+They also test both pinned main and experimental baselines. Do not delete or
+remap payment/commission history to roll back. Account for payments accepted
+since the backup before restoring it; a stale snapshot can discard those records.
 
 ## Validation
 
@@ -98,6 +101,9 @@ Playwright module path and browser channel; all network requests are blocked.
 The private native test covers actual multi-receipt approval, same-code next
 stage, SQL failure rollback, denied unrelated actor, stale stage, commission
 amount/replay, gateway reference matching and CSV association/injection checks.
-These checks do not replace the remaining release, concurrency, upgrade/rollback,
-full endpoint security and exact-head GitHub CI evidence. Merge remains a separate
-operation requiring its explicit authorization and final exact-revision checks.
+The additive runner also requires real parallel commission/stage races, actual
+public token requests, endpoint security, browser and full upgrade/restore proof.
+These do not replace exact-head GitHub CI and official artifact/Staging evidence.
+Merge remains a separate operation requiring its explicit authorization and final
+exact-revision checks. See `docs/RELEASE_2.0.242_TRACEABILITY.md` for deployment
+limits and recovery requirements.
