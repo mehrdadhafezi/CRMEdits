@@ -1,5 +1,8 @@
 """Rehearse both verified tracks and full backup restore in fresh synthetic namespaces only."""
 import hashlib,json,os,pathlib,re,secrets,shutil,stat,subprocess,sys,tempfile,zipfile
+import importlib.util
+_schema_spec=importlib.util.spec_from_file_location('trace242_schema',pathlib.Path(__file__).resolve().with_name('traceability_schema.py'))
+_schema=importlib.util.module_from_spec(_schema_spec);_schema_spec.loader.exec_module(_schema)
 
 BASE='dac9617874b5d0a53e7f7b5c1fde3e8066402761';EXPERIMENTAL='3f544028bf83b641caade9e5859aa4efd4b3769a'
 def need(ok,label):
@@ -43,7 +46,9 @@ def dump(tables,data=True):
  return run(args+[dbname]+tables,'dump',timeout=120)
 def fingerprint(tables):
  raw=mysql('CHECKSUM TABLE '+','.join('`'+x+'`' for x in tables)+' EXTENDED','checksums');lines=raw.splitlines();need(len(lines)==len(tables) and all(re.fullmatch(r'[^\t]+\t[0-9]+',line) for line in lines),'Actual table checksums required')
- return {'schema':sha(dump(tables,False)),'rows':sha(raw.encode())}
+ need(all(re.fullmatch('[A-Za-z0-9_]+',name) for name in tables),'Fixed metadata table identifiers')
+ columns=mysql("SELECT TABLE_NAME,ORDINAL_POSITION,COLUMN_NAME,COLUMN_TYPE,IS_NULLABLE,COLUMN_DEFAULT,EXTRA,CHARACTER_SET_NAME,COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ("+','.join("'"+name+"'" for name in tables)+") ORDER BY TABLE_NAME,ORDINAL_POSITION",'column-metadata')
+ return {'schema':sha(_schema.canonical_dump(dump(tables,False))),'columns':sha(columns.encode()),'rows':sha(raw.encode())}
 def ok(value,label):
  global checks
  need(value,label);checks+=1;print('PASS '+label,flush=True)
@@ -106,7 +111,7 @@ try:
   ok(bool(backup) and sha(backup_path.read_bytes())==sha(backup),track+' private consistent baseline backup verified')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')
   swap(site,profiles['candidate']);phase(site,'upgrade');ok(True,track+' legacy identities schema and roles survive candidate upgrade')
-  php_run(site,tests.parent/'hr/native-fixtures.php','new-fixtures');text=php_run(site,tests/'traceability-native.php','new-financial-flow');need('TOTAL 50' in text.splitlines(),'New receipt financial invariants');checks+=50
+  php_run(site,tests.parent/'hr/native-fixtures.php','new-fixtures');text=php_run(site,tests/'traceability-native.php','new-financial-flow');need('TOTAL 51' in text.splitlines(),'New receipt financial invariants');checks+=51
   phase(site,'snapshot');swap(site,profiles['main']);phase(site,'downgrade');ok(True,track+' code swap preserves new financial data without using old code to continue purchases')
   swap(site,profiles['candidate']);phase(site,'resume');ok(True,track+' candidate resume preserves receipts commissions and roles')
   targets=names(prefix);need(targets and all(x.startswith(prefix) and re.fullmatch('h239_[a-f0-9]{8}_[A-Za-z0-9_]+',x) for x in targets),'Generated private namespace reset only')
@@ -117,7 +122,7 @@ try:
   if restored_names!=base_names or restored_fingerprint!=base_fingerprint:
    restored_schema=dump(base_names,False);left=base_schema.decode().splitlines();right=restored_schema.decode().splitlines()
    # Only generated schema metadata, never row contents or credentials.
-   print('RESTORE_DIAGNOSTIC '+json.dumps({'track':track,'names_equal':restored_names==base_names,'schema_equal':restored_fingerprint['schema']==base_fingerprint['schema'],'rows_equal':restored_fingerprint['rows']==base_fingerprint['rows'],'schema_lines_before':len(left),'schema_lines_after':len(right),'changed_schema_line_prefixes':sorted(set((a[:90] if a.startswith(('SET ','/*!','CREATE TABLE','ALTER TABLE',') ENGINE')) else 'COLUMN_OR_INDEX_DEFINITION')for a,b in zip(left,right)if a!=b)),'synthetic_schema_differences':[{'before':a[:240],'after':b[:240]}for a,b in zip(left,right)if a!=b][:8]}),flush=True)
+   print('RESTORE_DIAGNOSTIC '+json.dumps({'track':track,'names_equal':restored_names==base_names,'schema_equal':restored_fingerprint['schema']==base_fingerprint['schema'],'columns_equal':restored_fingerprint['columns']==base_fingerprint['columns'],'rows_equal':restored_fingerprint['rows']==base_fingerprint['rows'],'schema_lines_before':len(left),'schema_lines_after':len(right),'changed_schema_line_prefixes':sorted(set((a[:90] if a.startswith(('SET ','/*!','CREATE TABLE','ALTER TABLE',') ENGINE')) else 'COLUMN_OR_INDEX_DEFINITION')for a,b in zip(left,right)if a!=b)),'synthetic_schema_differences':[{'before':a[:240],'after':b[:240]}for a,b in zip(left,right)if a!=b][:8]}),flush=True)
   ok(restored_names==base_names and restored_fingerprint==base_fingerprint,track+' full backup restores every generated baseline table exactly')
   swap(site,baseline);phase(site,'restore241' if track=='main' else 'restore235');ok(True,track+' old plugin and restored database agree')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')

@@ -45,7 +45,7 @@ Blindly restoring an old snapshot after accepting new payments can lose records.
 The additive CI mapping in `scripts/traceability_ci.py` accepts only the reviewed
 runtime hashes and named task files from the pinned 2.0.241 base. All existing
 four Finance matrix jobs and HR, product, wallet, schema, browser and MIS gates
-remain mandatory. Additional proof covers 21 unit assertions, 50 native receipt
+remain mandatory. Additional proof covers 21 unit assertions, 51 native receipt
 assertions, 30 controller security assertions, six real public controller
 requests, two parallel-process races, and desktop/mobile escaping and retry UI.
 
@@ -55,6 +55,13 @@ new receipts/commissions, a read-only code swap, resuming the candidate, full
 database/plugin restore and repeated upgrade. It compares every preexisting
 table outside its generated namespaces before/after. It is never a Production
 repair tool and must not run on customer-data clones.
+
+Restore comparison retains row checksums, effective column metadata and DDL.
+MySQL can serialize a column's existing collation with a redundant explicit
+matching charset after restore; only that unquoted column token spelling is
+canonicalized. Collation, effective charset, defaults, nullability, types, index
+definitions, table options and quoted values remain checked. The backup bytes
+are never altered by this comparison.
 
 Actual completed checks, exact GitHub revisions, artifact identifiers and final
 Staging results belong in the PR/delivery evidence. This document alone grants

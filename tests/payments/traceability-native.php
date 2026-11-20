@@ -63,6 +63,7 @@ hr239_ok(!empty($blocked['blocked'])&&wp_json_encode($wpdb->get_results($wpdb->p
 $rows=SN_Payment_Transactions::rows($invoice());$refs=array_column($rows,'transaction_code');
 hr239_ok(count($rows)===3&&count(array_unique($refs))===3&&$refs===['PAY-'.$p1,'PAY-'.$p2,'PAY-'.$p3],'each real receipt has a different stable transaction reference');
 hr239_ok(array_unique(array_column($rows,'stage_count'))===[2]&&$rows[0]['stage_reference']===$rows[1]['stage_reference']&&$rows[2]['stage_reference']!==$rows[0]['stage_reference'],'three transactions remain attributable to their two real stages');
+$closed_view=$review->read($invoice());hr239_ok(count($closed_view['payments'])===3&&!array_filter($closed_view['payments'],static fn($row)=>!empty($row['actions']['retry_commission'])),'historical and completed manual receipts do not advertise unsupported commission retry');
 $overview=$call($dot,'staged_conversion_overview_rows',$case(),[]);hr239_ok(count($overview)===2,'Dot overview expands canonical stage history instead of one adapter');
 wp_set_current_user($admin);
 $tx=[];foreach([$p1=>1,$p2=>1,$p3=>2]as$payment_id=>$number){$tx[]=['trackId'=>(string)$payment_id,'orderId'=>$code,'amount'=>100,'status'=>'1','_source'=>'local','_invoice'=>array_merge((array)$invoice(),['payment_row_id'=>$payment_id,'trace_stage_no'=>$number])];}

@@ -54,7 +54,7 @@ if labels:print('Assertion label: '+labels[-1].split(' in /',1)[0])
 for line in text.splitlines():
  if line.startswith('RESTORE_DIAGNOSTIC '):
   diagnostic=json.loads(line.split(' ',1)[1])
-  if set(diagnostic)=={'track','names_equal','schema_equal','rows_equal','schema_lines_before','schema_lines_after','changed_schema_line_prefixes','synthetic_schema_differences'}:print('Synthetic restore diagnostic: '+json.dumps(diagnostic,sort_keys=True))
+  if set(diagnostic)=={'track','names_equal','schema_equal','columns_equal','rows_equal','schema_lines_before','schema_lines_after','changed_schema_line_prefixes','synthetic_schema_differences'}:print('Synthetic restore diagnostic: '+json.dumps(diagnostic,sort_keys=True))
  if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES|HTTP_ORIGIN_MATCH|HTTP_API_STATUS|HTTP_API_ERROR) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
 server=pathlib.Path(sys.argv[2]).read_text(errors='replace')
 print('Native HTTP input-limit warning recorded: '+str('Input variables exceeded' in server))

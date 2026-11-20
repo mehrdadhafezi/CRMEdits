@@ -292,7 +292,7 @@ final class SN_Receipt_Review {
             $editable=$current && $this->editable($invoice,$r);
             $row['actions']=['approve'=>$decidable && $this->allowed('approve'),'reject'=>$decidable && $this->allowed('reject'),'correct'=>$editable,'appeal'=>$editable && $r->status==='rejected',
                 'retry_finalize'=>$current && $retry_finalize && self::modern($r) && $r->status==='approved',
-                'retry_commission'=>$this->allowed('approve') && self::modern($r) && $r->status==='approved' && !in_array((string)$invoice->status,['cancelled','payment_archived','rejected'],true) && class_exists('SN_Dot_Flow') && SN_Dot_Flow::instance()->is_staged_conversion_invoice($id)];
+                'retry_commission'=>$current && $this->allowed('approve') && self::modern($r) && $r->status==='approved' && !in_array((string)$invoice->status,['cancelled','payment_archived','rejected'],true) && class_exists('SN_Dot_Flow') && SN_Dot_Flow::instance()->is_staged_conversion_invoice($id)];
             $row['uploaded_by_name']=!empty($r->uploaded_by_user_id)?self::name((int)$r->uploaded_by_user_id):'ثبت‌کننده قدیمی / درگاه';
             if($current && $finance && $r->status==='pending' && $own_payment && self::modern($r))$row['action_hint']='تأیید یا رد این واریز باید توسط کارشناس مالی دیگری انجام شود.';
             $row['duplicates']=$this->duplicates($invoice,$r,$row['proof']);
