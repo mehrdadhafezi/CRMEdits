@@ -57,10 +57,16 @@ Committed preflight additionally maps the three existing shared SMS/Dot/Operatio
 files as HIGH/shared, selecting every dependent suite without raising the generic
 blob limit. Runtime certification still requires the exact reviewed payload; a
 different payload cannot select the bounded native proof. Real-Git tests cover it.
-The native HTTP test server also logs parser/startup warnings privately before
+The native HTTP test server also routes parser/startup warnings to the disposable
+VM syslog with an explicit UTC timezone before
 WordPress starts, matching the intended WP_DEBUG_DISPLAY=false boundary. The
 input limit remains 1000 and the HTTP 400 reproduction is still mandatory; no
 network failure is accepted as a substitute for that response.
+The old hosted CLI web process exits during that warning; the safe startup-log
+configuration avoids the file-timestamp path described in PHP's
+[upstream advisory](https://github.com/php/php-src/security/advisories/GHSA-gr4f-wgx5-jpfv).
+This is a test-server mitigation, not a claim that the advisory is the proven
+root cause of that exit or a Production PHP remediation.
 At the end of local validation no commit, push, PR, merge, official RC or canonical
 Stage deployment had been made. Subsequent GitHub metadata records those steps.
 

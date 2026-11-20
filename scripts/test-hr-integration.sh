@@ -31,6 +31,9 @@ phase() {
   (umask 077; : > "$runtime/hr-$label.private.log")
   if ! "$@" > "$runtime/hr-$label.private.log" 2>&1; then
     printf 'FAIL %s; detailed synthetic diagnostics stay inside the disposable VM\n' "$label"
+    if ! kill -0 "$server_pid" 2>/dev/null; then
+      if wait "$server_pid"; then printf 'NATIVE_HTTP_SERVER_EXIT=0\n'; else printf 'NATIVE_HTTP_SERVER_EXIT=%s\n' "$?"; fi
+    fi
     python3 - "$runtime/hr-$label.private.log" "$server_log" <<'PY'
 import pathlib,re,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')

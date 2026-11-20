@@ -143,7 +143,7 @@ class ProductProofTests(unittest.TestCase):
         self.assertIn('test-results/hr/product-browser/product241-browser-errors.json',workflow)
         self.assertIn('production_touched:false',(ROOT/'tests/products/product-settings-browser.cjs').read_text())
         finance=(ROOT/'scripts/test-finance-integration.sh').read_text()
-        self.assertIn('-d display_errors=0 -d display_startup_errors=0 -d log_errors=1 -S 127.0.0.1:8877',finance)
+        self.assertIn('-d display_errors=0 -d display_startup_errors=0 -d log_errors=1 -d error_log=syslog -d date.timezone=UTC -S 127.0.0.1:8877',finance)
 
 
 if __name__=='__main__':unittest.main()
