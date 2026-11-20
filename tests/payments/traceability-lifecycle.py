@@ -117,7 +117,7 @@ try:
   if restored_names!=base_names or restored_fingerprint!=base_fingerprint:
    restored_schema=dump(base_names,False);left=base_schema.decode().splitlines();right=restored_schema.decode().splitlines()
    # Only generated schema metadata, never row contents or credentials.
-   print('RESTORE_DIAGNOSTIC '+json.dumps({'track':track,'names_equal':restored_names==base_names,'schema_equal':restored_fingerprint['schema']==base_fingerprint['schema'],'rows_equal':restored_fingerprint['rows']==base_fingerprint['rows'],'schema_lines_before':len(left),'schema_lines_after':len(right),'changed_schema_line_prefixes':sorted(set((a[:90] if a.startswith(('SET ','/*!','CREATE TABLE','ALTER TABLE',') ENGINE')) else 'COLUMN_OR_INDEX_DEFINITION')for a,b in zip(left,right)if a!=b))}),flush=True)
+   print('RESTORE_DIAGNOSTIC '+json.dumps({'track':track,'names_equal':restored_names==base_names,'schema_equal':restored_fingerprint['schema']==base_fingerprint['schema'],'rows_equal':restored_fingerprint['rows']==base_fingerprint['rows'],'schema_lines_before':len(left),'schema_lines_after':len(right),'changed_schema_line_prefixes':sorted(set((a[:90] if a.startswith(('SET ','/*!','CREATE TABLE','ALTER TABLE',') ENGINE')) else 'COLUMN_OR_INDEX_DEFINITION')for a,b in zip(left,right)if a!=b)),'synthetic_schema_differences':[{'before':a[:240],'after':b[:240]}for a,b in zip(left,right)if a!=b][:8]}),flush=True)
   ok(restored_names==base_names and restored_fingerprint==base_fingerprint,track+' full backup restores every generated baseline table exactly')
   swap(site,baseline);phase(site,'restore241' if track=='main' else 'restore235');ok(True,track+' old plugin and restored database agree')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')
