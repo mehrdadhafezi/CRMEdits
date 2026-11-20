@@ -5,7 +5,7 @@ sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[2]/'scripts'))
 import product_invoice_ci as product
 from package import committed_members
 from fast_track_ci import make_plan,outcome
-from risk_report import SUITES
+from risk_report import SUITES,assess,report
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 
 
@@ -32,6 +32,26 @@ class ProductProofTests(unittest.TestCase):
             for base,names in [('b'*40,paths),(product.BASE,paths-{'sales-network.php'}),(product.BASE,paths|{'scripts/unreviewed.py'}),(product.BASE,paths|{'includes/class-sn-invoice.php'})]:
                 self.assertFalse(product.scope(base,'h'*40,names))
             check.assert_not_called()
+
+    def test_actual_reviewed_commit_selects_the_complete_native_plan(self):
+        head='e38d04264894a51bb1d02a2d63f1b4574ed7d205'
+        selected=report(product.BASE,head,'main')
+        pr={'pr':21,'base':product.BASE,'head':head,'target':'main'}
+        plan=make_plan(pr,'a'*40,selected)
+        self.assertEqual(selected['risk'],'HIGH');self.assertEqual(selected['blockers'],[])
+        self.assertTrue(plan['product_settings'] and plan['finance'] and plan['hr_native'])
+        self.assertTrue(all(value=='REQUIRED'for value in plan['suites'].values()))
+        with patch('product_invoice_ci.payload_matches_revision',return_value=False):
+            unreviewed=make_plan(pr,'a'*40,selected)
+        self.assertFalse(unreviewed['hr_native'] or unreviewed['product_settings'])
+        self.assertTrue(all(value=='REQUIRED'for value in unreviewed['suites'].values()))
+
+    def test_shared_sms_flow_mapping_is_conservative_and_keeps_object_guards(self):
+        for name in ['includes/class-sn-sms.php','includes/class-sn-dot-flow.php','includes/class-sn-operations-flow.php']:
+            risk,domains,_=assess(name,'M',('100644','100644'),('a'*40,'b'*40),'c'*40,'d'*40)
+            self.assertEqual((risk,domains),('HIGH',{'shared'}))
+            risk,_,_=assess(name,'M',('100644','120000'),('a'*40,'b'*40),'c'*40,'d'*40)
+            self.assertEqual(risk,'UNKNOWN')
 
     def test_product_plan_requires_all_finance_and_native_hr_gates(self):
         pr={'pr':21,'base':product.BASE,'head':'c'*40,'target':'main'};revision={**pr,'merge':'a'*40}
@@ -121,6 +141,7 @@ class ProductProofTests(unittest.TestCase):
         self.assertIn("os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted'",(ROOT/'tests/products/product-sms-races.py').read_text())
         workflow=(ROOT/'.github/workflows/ci.yml').read_text();self.assertNotIn('product241-fixture.json',workflow)
         self.assertIn('test-results/hr/product-browser/product241-browser-errors.json',workflow)
+        self.assertIn('production_touched:false',(ROOT/'tests/products/product-settings-browser.cjs').read_text())
 
 
 if __name__=='__main__':unittest.main()

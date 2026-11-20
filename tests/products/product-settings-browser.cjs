@@ -80,6 +80,6 @@ module.exports=async function({base,fixture,output,channel}){
   fs.writeFileSync(path.join(output,'product241-browser-errors.json'),JSON.stringify({errors},null,2));
   if(errors.length)console.log('BROWSER_ERROR_META '+JSON.stringify(errors));
   ok(errors.length===0,'no uncaught browser JavaScript errors');
-  const result={passed:true,version:'2.0.241',assertions:checks,actual_wordpress_cookie:true,actual_admin_http:true,actual_woocommerce_product_save:true,legacy_400_reproduced:true,json_large_form_passed:true,desktop_mobile:true,synthetic:true,real_sms_sent:false};fs.writeFileSync(path.join(output,'product241-browser.json'),JSON.stringify(result,null,2));console.log('TOTAL '+checks);
+  const result={passed:true,version:'2.0.241',assertions:checks,actual_wordpress_cookie:true,actual_admin_http:true,actual_woocommerce_product_save:true,legacy_400_reproduced:true,json_large_form_passed:true,desktop_mobile:true,synthetic:true,production_touched:false,real_sms_sent:false};fs.writeFileSync(path.join(output,'product241-browser.json'),JSON.stringify(result,null,2));console.log('TOTAL '+checks);
  }finally{await browser.close();}
 };

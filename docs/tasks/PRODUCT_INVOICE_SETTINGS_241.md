@@ -53,6 +53,10 @@ additive CI mapping pins all 12 changed runtime files against the selected base,
 retains every Finance matrix/HR/ledger/schema/MIS gate, and adds product policy,
 native WordPress/WooCommerce, actual HTTP/mobile and concurrent SMS evidence.
 The owner approved the concrete CI/security proposal and publication on 2026-11-20.
+Committed preflight additionally maps the three existing shared SMS/Dot/Operations
+files as HIGH/shared, selecting every dependent suite without raising the generic
+blob limit. Runtime certification still requires the exact reviewed payload; a
+different payload cannot select the bounded native proof. Real-Git tests cover it.
 At the end of local validation no commit, push, PR, merge, official RC or canonical
 Stage deployment had been made. Subsequent GitHub metadata records those steps.
 
@@ -72,7 +76,7 @@ content pinned in `scripts/product_invoice_ci.py`; no invented tested commit.
 | Scope/Diff | PASS | All changed/new files reviewed against the task/base; 12 runtime changes, 109 unchanged runtime files, no removed runtime files; staged diff empty |
 | API/DB/Role Compatibility | PASS (current stable) | Additive scoped APIs/settings; six original SMS arguments preserved; no DDL/role/token changes; immutable discount and sale-policy regression passed |
 | Documentation/Hygiene | PASS | Updated SMS/catalog/API contracts and release/task notes; repository link and operational-file checks passed |
-| GitHub CI | NOT_RUN | Public publication for this task is not authorized; complete four-entry Finance matrix, HR browser, rollback and isolated MIS remain required on the exact future Head/Base |
+| GitHub CI | NOT_RUN at publication | Approved publication must run the complete four-entry Finance matrix, HR browser, rollback and isolated MIS on the exact Head/Base |
 | Official RC / canonical Stage | NOT_RUN | Requires separately authorized publication, successful exact-revision CI and immutable official artifact |
 
 The verified experimental tip remains `3f544028bf83b641caade9e5859aa4efd4b3769a`
