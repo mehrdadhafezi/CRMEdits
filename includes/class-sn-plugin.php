@@ -5,6 +5,7 @@ if (! defined('ABSPATH')) {
 
 require_once __DIR__ . '/class-sn-hr-workforce-filters.php';
 require_once __DIR__ . '/class-sn-hr-invoice-reissue.php';
+require_once __DIR__ . '/class-sn-invoice-sms-policy.php';
 require_once __DIR__ . '/trait-sn-mis-portal.php';
 require_once __DIR__ . '/trait-sn-sales-branches.php';
 
@@ -4437,28 +4438,46 @@ class SN_Plugin
 			SN_Helpers::send_json(false, 'دسترسی غیرمجاز');
 			return;
 		}
+		$request = $_POST;
+		if (array_key_exists('payload', $request)) {
+			$raw = $request['payload'];
+			$payload = is_string($raw) && strlen($raw) <= 1048576 ? json_decode(wp_unslash($raw), true, 16) : null;
+			if (!is_array($payload)) {
+				SN_Helpers::send_json(false, 'اطلاعات تنظیمات کامل یا معتبر دریافت نشد؛ تغییری ذخیره نشد.'); return;
+			}
+			foreach ($payload as $key => $value) {
+				if (!is_string($key) || !preg_match('/^sn_[a-z0-9_]+$/D', $key)) {
+					SN_Helpers::send_json(false, 'کلید تنظیمات معتبر نیست؛ تغییری ذخیره نشد.'); return;
+				}
+				$arrays = ['sn_dot','sn_dot_marketing','sn_dot_marketing_forms','sn_projects','sn_commission_rates','sn_product_wheel','sn_lucky_wheels','sn_sales_manager_cards','sn_sales_deputy_cards'];
+				if (in_array($key, $arrays, true) ? !is_array($value) : !is_string($value)) {
+					SN_Helpers::send_json(false, 'نوع یکی از تنظیمات معتبر نیست؛ تغییری ذخیره نشد.'); return;
+				}
+			}
+			$request = wp_slash($payload);
+		}
 		if (class_exists('SN_Dot_Flow')) {
-			$dot_saved = SN_Dot_Flow::instance()->save_settings_from_request($_POST);
+			$dot_saved = SN_Dot_Flow::instance()->save_settings_from_request($request);
 			if (is_wp_error($dot_saved)) {
 				SN_Helpers::send_json(false, $dot_saved->get_error_message());
 				return;
 			}
-			$dot_marketing_saved = SN_Dot_Flow::instance()->save_marketing_settings_from_request($_POST);
+			$dot_marketing_saved = SN_Dot_Flow::instance()->save_marketing_settings_from_request($request);
 			if (is_wp_error($dot_marketing_saved)) {
 				SN_Helpers::send_json(false, $dot_marketing_saved->get_error_message());
 				return;
 			}
 		}
 		if (class_exists('SN_Projects')) {
-			$projects_saved = SN_Projects::instance()->save_settings_from_request($_POST);
+			$projects_saved = SN_Projects::instance()->save_settings_from_request($request);
 			if (is_wp_error($projects_saved)) {
 				SN_Helpers::send_json(false, $projects_saved->get_error_message());
 				return;
 			}
 		}
 
-		if ( class_exists( 'SN_Purpose_Commission' ) ) {
-			$commission_saved = SN_Purpose_Commission::instance()->save_settings_from_request( $_POST );
+		if ( class_exists( 'SN_Purpose_Commission' ) && isset($request['sn_commission_rates']) ) {
+			$commission_saved = SN_Purpose_Commission::instance()->save_settings_from_request( $request );
 			if ( is_wp_error( $commission_saved ) ) { SN_Helpers::send_json( false, $commission_saved->get_error_message() ); return; }
 		}
 
@@ -4539,21 +4558,21 @@ class SN_Plugin
 			'sn_operations_execution_expert_panel_page_id',
 		];
 		foreach ($fields as $field) {
-			if (isset($_POST[$field])) {
+			if (isset($request[$field])) {
 				if (in_array($field, ['sn_sms_invoice_template','sn_payment_reward_text','sn_payment_reward_form_text','sn_payment_reward_sms_template','sn_lottery_text_template','sn_recontact_popup_text'], true)) {
-					update_option($field, sanitize_textarea_field(wp_unslash($_POST[$field])));
+					update_option($field, sanitize_textarea_field(wp_unslash($request[$field])));
 				} else {
-					update_option($field, sanitize_text_field(wp_unslash($_POST[$field])));
+					update_option($field, sanitize_text_field(wp_unslash($request[$field])));
 				}
 			}
 		}
 
 		// Zibal reporting API token is a secret: never echo it back into the settings form.
 		// Empty submissions preserve the existing token; the explicit clear checkbox removes it.
-		if (! empty($_POST['sn_zibal_report_api_token_clear'])) {
+		if (! empty($request['sn_zibal_report_api_token_clear'])) {
 			delete_option('sn_zibal_report_api_token');
-		} elseif (isset($_POST['sn_zibal_report_api_token'])) {
-			$zibal_report_token = trim((string) wp_unslash($_POST['sn_zibal_report_api_token']));
+		} elseif (isset($request['sn_zibal_report_api_token'])) {
+			$zibal_report_token = trim((string) wp_unslash($request['sn_zibal_report_api_token']));
 			$zibal_report_token = (string) preg_replace('/[\x00-\x1F\x7F]/', '', $zibal_report_token);
 			if ($zibal_report_token !== '') {
 				// Bearer tokens may legitimately contain punctuation (for example dots, tildes or percent signs).
@@ -4563,8 +4582,8 @@ class SN_Plugin
 		}
 
 		// 1.0.149: normalize the product-row limit. Zero is the explicit unlimited mode.
-		if (isset($_POST['sn_invoice_max_products'])) {
-			$raw_max_products = SN_Helpers::to_english_nums(sanitize_text_field(wp_unslash($_POST['sn_invoice_max_products'])));
+		if (isset($request['sn_invoice_max_products'])) {
+			$raw_max_products = SN_Helpers::to_english_nums(sanitize_text_field(wp_unslash($request['sn_invoice_max_products'])));
 			update_option('sn_invoice_max_products', (string) max(0, (int) $raw_max_products));
 		}
 
@@ -4574,14 +4593,14 @@ class SN_Plugin
 		$checkbox_fields = ['sn_zarinpal_sandbox','sn_zibal_test_mode','sn_asan_reconcile','sn_wallet_auto_credit','sn_coupon_allow_on_sale','sn_payment_reward_sms_enabled','sn_customer_portal_invite_sms_enabled','sn_invoice_info_show_product_info','sn_invoice_info_show_short_desc','sn_invoice_info_show_price','sn_invoice_info_show_lottery','sn_invoice_info_show_coupon','sn_invoice_info_show_image','sn_invoice_info_show_gallery','sn_card_to_card_enabled'];
 		foreach ($checkbox_fields as $checkbox_field) {
 			$marker = $checkbox_field . '__present';
-			if (! isset($_POST[$checkbox_field]) && ! isset($_POST[$marker])) {
+			if (! isset($request[$checkbox_field]) && ! isset($request[$marker])) {
 				continue;
 			}
-			update_option($checkbox_field, isset($_POST[$checkbox_field]) ? '1' : '0', false);
+			update_option($checkbox_field, isset($request[$checkbox_field]) ? '1' : '0', false);
 		}
 
-		if (isset($_POST['sn_sales_deputy_cards']) && is_array($_POST['sn_sales_deputy_cards'])) {
-			$raw_cards = wp_unslash($_POST['sn_sales_deputy_cards']);
+		if (isset($request['sn_sales_deputy_cards']) && is_array($request['sn_sales_deputy_cards'])) {
+			$raw_cards = wp_unslash($request['sn_sales_deputy_cards']);
 			$cards = [];
 			foreach ($raw_cards as $deputy_id => $row) {
 				$deputy_id = absint($deputy_id);
@@ -4601,8 +4620,8 @@ class SN_Plugin
 			update_option('sn_sales_deputy_cards', $cards, false);
 		}
 
-		if (isset($_POST['sn_sales_manager_cards']) && is_array($_POST['sn_sales_manager_cards'])) {
-			$raw_cards = wp_unslash($_POST['sn_sales_manager_cards']);
+		if (isset($request['sn_sales_manager_cards']) && is_array($request['sn_sales_manager_cards'])) {
+			$raw_cards = wp_unslash($request['sn_sales_manager_cards']);
 			$cards = [];
 			foreach ($raw_cards as $manager_id => $row) {
 				$manager_id = absint($manager_id);
@@ -4623,8 +4642,8 @@ class SN_Plugin
 		}
 
 		// تنظیمات یکجای گردونه/قرعه‌کشی محصولات از صفحه تنظیمات؛ additive و هماهنگ با product meta ووکامرس.
-		if (isset($_POST['sn_product_wheel']) && is_array($_POST['sn_product_wheel'])) {
-			$wheel_products = wp_unslash($_POST['sn_product_wheel']);
+		if (isset($request['sn_product_wheel']) && is_array($request['sn_product_wheel'])) {
+			$wheel_products = wp_unslash($request['sn_product_wheel']);
 			foreach ($wheel_products as $pid => $row) {
 				$pid = absint($pid);
 				if (! $pid || get_post_type($pid) !== 'product') { continue; }
@@ -4640,8 +4659,8 @@ class SN_Plugin
 
 
 		// تنظیمات چند گردونه: هر گردونه چند گزینه با درصد شانس دارد و هر محصول به یکی از گردونه‌ها وصل می‌شود.
-		if (isset($_POST['sn_lucky_wheels']) && is_array($_POST['sn_lucky_wheels'])) {
-			$raw_wheels = wp_unslash($_POST['sn_lucky_wheels']);
+		if (isset($request['sn_lucky_wheels']) && is_array($request['sn_lucky_wheels'])) {
+			$raw_wheels = wp_unslash($request['sn_lucky_wheels']);
 			$wheels = [];
 			foreach ($raw_wheels as $wheel_key => $wheel_row) {
 				$wheel_row = is_array($wheel_row) ? $wheel_row : [];
@@ -4677,7 +4696,7 @@ class SN_Plugin
 			update_option('sn_lucky_wheels', $wheels, false);
 		}
 
-		$sms_saved = SN_SMS::save_provider_settings_from_request( $_POST );
+		$sms_saved = SN_SMS::save_provider_settings_from_request( $request );
 		if ( is_wp_error( $sms_saved ) ) { SN_Helpers::send_json( false, $sms_saved->get_error_message() ); return; }
 
 		SN_Helpers::send_json(true, 'تنظیمات ذخیره شد');
@@ -5514,6 +5533,7 @@ class SN_Plugin
         if(!SN_Purpose_Commission::instance()->snapshot_sale($invoice_id)) { $wpdb->query('ROLLBACK');return ['success'=>false,'message'=>'ثبت نرخ و انتساب فروش انجام نشد؛ فاکتور ذخیره نشد.','status'=>500]; }
         $invoice_committed=$wpdb->query('COMMIT');
         if ($plus_snapshot && false===$invoice_committed) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت نهایی اشتراک+ انجام نشد؛ وضعیت فاکتور را تازه‌سازی کنید.','status'=>500]; }
+		SN_Invoice_SMS_Policy::created($invoice_id);
 		$invoice_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$invoice_table} WHERE id=%d", $invoice_id));
 
 		if ($is_converter && (int) $user->ID === (int) $seller_id) {
@@ -5541,7 +5561,7 @@ class SN_Plugin
 			$amount = number_format($initial_due, 0, '', ',');
 			$card_number = $this->sn_card_to_card_enabled() ? (string) ($this->sn_resolve_invoice_card($invoice_row)['number'] ?? '') : '';
 			$sms = new SN_SMS();
-			$sms_sent = $sms->send_invoice_link($phone, $code, $invoice_url, $name, $amount, $card_number);
+			$sms_sent = $sms->send_invoice_link($phone, $code, $invoice_url, $name, $amount, $card_number, $invoice_id);
 			$sms_error = $sms->get_last_error();
 		} catch (Throwable $error) {
 			$sms_error = 'خطا در اجرای ارسال پیامک؛ جزئیات در گزارش خطای سرور ثبت شد.';
@@ -5551,7 +5571,7 @@ class SN_Plugin
 
 		return ['success' => true, 'message' => $message, 'data' => [
 			'sms_sent' => $sms_sent,
-			'sms_status' => $sms_sent ? 'sent' : 'failed',
+			'sms_status' => $sms_sent ? 'sent' : (isset($sms) && $sms->invoice_dispatch_state() === 'blocked' ? 'blocked' : 'failed'),
 			'sms_message' => $sms_sent ? 'درخواست پیامک توسط سرویس پذیرفته شد.' : ('پیش‌فاکتور صادر شد. ' . ($sms_error ?: 'ارسال پیامک تأیید نشد؛ تنظیمات سرویس پیامک را بررسی کنید.')),
 			'invoice_id' => $invoice_id,
 			'invoice_code' => $code,
@@ -7319,7 +7339,7 @@ class SN_Plugin
 		return ['success'=>true,'completed'=>$completed,'stage_no'=>$stage_no,'stage_amount'=>$due,'paid'=>$new_paid,'remaining'=>$new_remaining,'total'=>$totals['total'],'status'=>$completed ? (string)($fresh->status ?? $final_status) : 'partial_paid'];
 	}
 
-	private function sn_send_invoice_stage_sms(int $invoice_id, string $destination_phone = ''): bool
+	private function sn_send_invoice_stage_sms(int $invoice_id, string $destination_phone = '', bool $only_previous_unsent = false): bool
 	{
 		$this->sn_invoice_sms_last_error = '';
 		global $wpdb;
@@ -7334,9 +7354,15 @@ class SN_Plugin
 		if ($sms_amount <= 0.5) { $sms_amount = (float) ($totals['total'] ?? 0); }
 		$sms = new SN_SMS();
 		$display_invoice = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_anchor($invoice) : $invoice;
-		$sent = (bool) $sms->send_invoice_link($destination_phone !== '' ? $destination_phone : (string)$invoice->customer_phone, (string)$display_invoice->invoice_code, $url, (string)$invoice->customer_name, number_format($sms_amount, 0, '', ','), $this->sn_card_to_card_enabled() ? (string)($card['number'] ?? '') : '');
+		$sent = (bool) $sms->send_invoice_link($destination_phone !== '' ? $destination_phone : (string)$invoice->customer_phone, (string)$display_invoice->invoice_code, $url, (string)$invoice->customer_name, number_format($sms_amount, 0, '', ','), $this->sn_card_to_card_enabled() ? (string)($card['number'] ?? '') : '', $invoice_id, $only_previous_unsent);
 		$this->sn_invoice_sms_last_error = $sms->get_last_error();
 		return $sent;
+	}
+
+	public function send_product_invoice_sms_backlog(int $invoice_id): bool
+	{
+		if (!current_user_can('manage_options')) { return false; }
+		return $this->sn_send_invoice_stage_sms($invoice_id, '', true);
 	}
 
 	private function sn_can_resend_invoice_sms($invoice): bool
@@ -27290,7 +27316,7 @@ class SN_Plugin
 				<div class="sn-card"><strong>صفحه فاکتور</strong><br><span><?php echo (int) $s['sn_invoice_page_id'] > 0 ? ('#' . (int) $s['sn_invoice_page_id']) : 'تنظیم نشده'; ?></span></div>
 			</div>
 			<div id="sn-settings-notice"></div>
-			<form id="sn-settings-form">
+			<form id="sn-settings-form" novalidate>
 				<?php wp_nonce_field('sn_admin', 'sn_settings_nonce'); ?>
 				<div class="sn-admin-tabs">
 					<button type="button" class="button sn-admin-tab active" data-tab="general">عمومی</button>
@@ -27492,7 +27518,7 @@ class SN_Plugin
 			jQuery(function($){
 				function showProvider(){ var p=$('#sn_sms_provider').val(); $('.sn-provider-row').hide(); $('.sn-provider-'+p).show(); }
 				showProvider(); $('#sn_sms_provider').on('change', showProvider);
-				$('.sn-admin-tab').on('click', function(){ var t=$(this).data('tab'); $('.sn-admin-tab').removeClass('active'); $(this).addClass('active'); $('.sn-admin-tab-panel').removeClass('active').hide(); $('#sn-settings-'+t).addClass('active').show(); $('#sn-settings-form').prop('noValidate', t === 'invoice'); });
+				$('.sn-admin-tab').on('click', function(){ var t=$(this).data('tab'); $('.sn-admin-tab').removeClass('active'); $(this).addClass('active'); $('.sn-admin-tab-panel').removeClass('active').hide(); $('#sn-settings-'+t).addClass('active').show(); $('#sn-settings-form').prop('noValidate', true); });
 				$('.sn-admin-tab-panel').hide(); $('.sn-admin-tab-panel.active').show();
 				$('#sn-test-sms-btn').on('click', function(){ var phone=$('#sn-test-sms-phone').val().trim(); if(!phone){alert('شماره موبایل را وارد کنید');return;} var $b=$(this),$r=$('#sn-test-sms-result'); $b.prop('disabled',true).text('در حال ارسال...'); $.post(ajaxurl,{action:'sn_test_sms',nonce:snAdmin.nonce,phone:phone,test_type:$('#sn-test-sms-type').val()},function(res){ $b.prop('disabled',false).text('ارسال پیامک تست'); $r.css('color',res.success?'green':'red').text((res.success?'✅ ':'❌ ')+(res.message||'')); }); });
 					$('#sn-preview-invoice-sms-btn').on('click', function(){ var code=$('#sn-preview-invoice-sms-code').val().trim(), phone=$('#sn-preview-invoice-sms-phone').val().trim(); if(!code){alert('کد فاکتور را وارد کنید');return;} var $b=$(this),$r=$('#sn-preview-invoice-sms-result'),$o=$('#sn-preview-invoice-sms-output'); $b.prop('disabled',true).text('در حال ساخت...'); $r.text(''); $o.hide().text(''); $.post(ajaxurl,{action:'sn_preview_invoice_sms',nonce:snAdmin.nonce,invoice_code:code,phone:phone},function(res){ $b.prop('disabled',false).text('ساخت پیش‌نمایش'); $r.css('color',res.success?'green':'red').text((res.success?'✅ ':'❌ ')+(res.message||'')); var preview = res && (res.preview || (res.data && res.data.preview)); if(preview){ $o.text(JSON.stringify(preview,null,2)).show(); } else if(res){ $o.text(JSON.stringify(res,null,2)).show(); } }).fail(function(xhr){ $b.prop('disabled',false).text('ساخت پیش‌نمایش'); $r.css('color','red').text('❌ خطا در دریافت پاسخ Ajax'); $o.text(xhr && xhr.responseText ? xhr.responseText : 'Ajax failed').show(); }); });

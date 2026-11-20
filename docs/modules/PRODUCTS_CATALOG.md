@@ -46,6 +46,16 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+2.0.241 adds a boolean `allow_custom_discount` to each manager/product catalog
+row. Missing grants default to false; omitted fields from older clients preserve
+the existing grant. The staff API returns only the effective product/manager
+choice. `price_items()` accepts a numeric fixed option or `custom:<integer cents>`
+after current product and manager authorization. Custom discounts must be positive
+and below the current server unit price; quantity, payable stage totals and the
+existing immutable invoice discount snapshot retain their contracts. Product SMS
+is a separate global product setting, not a manager-scoped catalog setting.
+See [the task](../tasks/PRODUCT_INVOICE_SETTINGS_241.md).
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features

@@ -3936,7 +3936,25 @@ final class SN_Dot_Flow {
 		] );
 	}
 
+	private bool $configured_invoice_sms_uncertain = true;
+
 	private function send_configured_sms( string $type, string $phone, array $vars, array $context = [] ): bool {
+		$id = absint($context['invoice_id'] ?? 0);
+		if ($type === 'payment' && $id > 0 && class_exists('SN_Invoice_SMS_Policy')) {
+			if (!empty($this->config()['sms_test_mode'])) {
+				if (!SN_Invoice_SMS_Policy::allowed($id)) {
+					SN_Invoice_SMS_Policy::dispatch($id, static fn() => false, static fn() => false); return false;
+				}
+				return $this->send_configured_sms_payload($type, $phone, $vars, $context);
+			}
+			$result = SN_Invoice_SMS_Policy::dispatch($id, fn() => $this->send_configured_sms_payload($type, $phone, $vars, $context), fn() => $this->configured_invoice_sms_uncertain);
+			return $result['sent'];
+		}
+		return $this->send_configured_sms_payload($type, $phone, $vars, $context);
+	}
+
+	private function send_configured_sms_payload( string $type, string $phone, array $vars, array $context = [] ): bool {
+		$this->configured_invoice_sms_uncertain = true;
 		$config = $this->config();
 		$sms_config = (array) $config['sms'];
 		$pattern = trim( (string) ( $sms_config[ $type . '_pattern' ] ?? '' ) );
@@ -3949,13 +3967,15 @@ final class SN_Dot_Flow {
 		}
 		$sms = new SN_SMS();
 		if ( $pattern !== '' && (string) get_option( 'sn_sms_provider', '' ) === 'faraz' ) {
-			if ( $sms->send_faraz_pattern( SN_Helpers::normalize_mobile( $phone ), $pattern, array_map( 'strval', $vars ) ) ) { return true; }
+			if ( $sms->send_faraz_pattern( SN_Helpers::normalize_mobile( $phone ), $pattern, array_map( 'strval', $vars ) ) ) { $this->configured_invoice_sms_uncertain = false; return true; }
 			// render_sms_message() already supplies the safe built-in template when
 			// the optional custom template is blank. Do not suppress that fallback
 			// merely because a configured Faraz pattern failed.
 			if ( $message === '' ) { return false; }
 		}
-		return $message !== '' && $sms->send( $phone, $message );
+		$result = $message !== '' && $sms->send( $phone, $message );
+		$this->configured_invoice_sms_uncertain = !$result;
+		return $result;
 	}
 
 	/**
@@ -7104,6 +7124,7 @@ final class SN_Dot_Flow {
 		if ( false === $wpdb->update( $t['cases'], $case_update, [ 'id' => (int) $case->id ] ) ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'sn_dot_case_payment', 'اتصال لینک پرداخت به پرونده انجام نشد.' ); }
         if(!SN_Purpose_Commission::instance()->snapshot_sale($invoice_id)) { $wpdb->query('ROLLBACK');return new WP_Error('sn_dot_sale_policy','ثبت انتساب فروش تبدیل انجام نشد.'); }
 		if ( false === $wpdb->query( 'COMMIT' ) ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'sn_dot_commit', 'ثبت نهایی فاکتور تبدیل انجام نشد؛ وضعیت پرونده را تازه‌سازی کنید.' ); }
+		if (class_exists('SN_Invoice_SMS_Policy')) { SN_Invoice_SMS_Policy::created($invoice_id); }
 		$invoice = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$invoice_table} WHERE id=%d", $invoice_id ) );
 		$this->log_case( (int) $case->id, $actor_id, 'payment_link_created', (string) $case->status, 'payment_link_sent', [ 'payment_id' => $payment_id, 'invoice_id' => $invoice_id, 'payment_type' => $payment_type, 'amount' => $amount ] );
 		return [ 'invoice' => $invoice, 'payment_id' => $payment_id, 'payment_type' => $payment_type, 'amount' => $amount, 'case' => $case ];
@@ -7156,7 +7177,7 @@ final class SN_Dot_Flow {
 				$url,
 				(string) $case->customer_name,
 				number_format( max( 0, $amount ), 0, '', ',' ),
-				$card_number
+				$card_number, (int) $invoice->id
 			);
 		}
 		$this->log_case( (int) $case->id, get_current_user_id(), $fallback_sent ? 'payment_sms_fallback_sent' : 'payment_sms_failed', (string) $case->status, (string) $case->status, [
@@ -7211,7 +7232,7 @@ final class SN_Dot_Flow {
                 ], ['case_id'=>$case_id,'invoice_id'=>$invoice_id,'include_current_user'=>true]);
             } else {
                 $sms = new SN_SMS();
-                $sent = $sms->send_invoice_link($phone, (string)$invoice->invoice_code, $url, (string)$invoice->customer_name, $amount, (string)$invoice->payment_card_number);
+                $sent = $sms->send_invoice_link($phone, (string)$invoice->invoice_code, $url, (string)$invoice->customer_name, $amount, (string)$invoice->payment_card_number, $invoice_id);
                 $uncertain = $sms->delivery_uncertain();
             }
             $event = $sent ? ($test ? 'cash_payment_sms_previewed' : 'cash_payment_sms_sent') : ($uncertain ? 'cash_payment_sms_uncertain' : 'cash_payment_sms_failed');

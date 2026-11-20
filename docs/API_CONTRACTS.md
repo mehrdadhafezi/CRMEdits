@@ -561,3 +561,41 @@ Rules:
   callbacks. Late verified bank results become `reconcile_error` with retained
   reference and no duplicate settlement/commission. Unknown or failed inquiries
   never select a method. See [payment contract](modules/PAYMENTS_FINANCE.md).
+
+## Product invoice controls — 2.0.241
+
+- Existing `sn_sales_catalog_save`: optional boolean
+  `policy.products[product_id].allow_custom_discount`; absent means preserve the
+  prior setting, or false for a new row. Existing admin nonce/capability and
+  optimistic policy revision remain mandatory. Staff catalog responses add the
+  effective boolean. Existing `catalog_discount_ids` and Dot
+  `catalog_discount_id` accept `custom:<integer hundredths of a toman>` only with
+  the effective product/manager grant. Fixed numeric option IDs remain unchanged.
+- Existing `sn_save_settings`: optional JSON string `payload`, at most 1 MiB and
+  depth 16. Routing `action` and `nonce` stay outside the payload. Existing
+  `manage_options` and `sn_admin` nonce checks run before decoding. Scalar form
+  fields must be strings; known structured groups must be arrays. The legacy
+  form request remains accepted. The browser submits only the active tab and
+  uses explicit checkbox presence markers; absent tabs retain their settings.
+  Commission settings are saved only when their rates group is present.
+- New authenticated POST `sn_product_invoice_sms_preview`: `product_id`,
+  `nonce` (`sn_product_invoice_sms`), optional numeric `after` cursor. Requires
+  `manage_options`, product edit permission, enabled product SMS and explicit
+  previous-send setting. Returns count, opaque actor/product/revision-bound
+  batch token and pagination metadata; no customer or public invoice payload.
+  At most 200 known candidate records are considered per page.
+- New authenticated POST `sn_product_invoice_sms_send`: same product/nonce plus
+  batch `token` and exact `confirmation=SEND_PREVIOUS`. Expiring tokens belong
+  to one actor/product/revision. The server chooses the next eligible invoice;
+  callers cannot supply an invoice ID or destination phone. Each request handles
+  at most one record and returns processed/sent/skipped/failed counts. Current
+  scope, status and delivery evidence are checked again; completed batches cannot
+  resend accepted messages.
+- Internal `SN_SMS::send_invoice_link` preserves six existing positional
+  parameters, adding optional invoice ID and previous-unsent guard parameters.
+  Known CRM invoice callers pass the real ID; explicit standalone SMS tests keep
+  their existing non-invoice behavior. No public invoice token or gateway contract
+  changes. Product policy uses `_sn_invoice_sms_policy` postmeta; delivery evidence
+  uses `sn_invoice_sms_delivery_<id>` options, with autoload disabled. No DDL or
+  historical data repair is introduced. Existing Woo product-save hooks still run
+  during a normal product update; they were not executed on Production here.

@@ -66,6 +66,19 @@ phase invoice-creation run_php tests/hr/native-invoices.php
 phase wallet-commission run_php tests/hr/native-ledger.php
 phase finance-reporting run_php tests/hr/native-finance.php
 phase native-http-browser run_test node tests/hr/ci-browser.cjs
+# Retain all existing suites, then exercise product settings through native HTTP.
+phase product-policy-memory run_php tests/products/invoice-product-policy.php
+python3 - "$runtime/hr-product-policy-memory.private.log" "$output/product241-unit.json" <<'PY'
+import json,pathlib,sys
+text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
+count=sum(line.startswith('PASS ') for line in text.splitlines())
+assert count==40 and 'TOTAL 40' in text.splitlines()
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.241','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
+PY
+phase product-settings-native run_php tests/products/native-product-settings.php
+phase product-sms-races run_test python3 -B tests/products/product-sms-races.py
+sudo install -o sn-approval-test -m 600 tests/products/product-provider.php "$runtime/wordpress/wp-content/mu-plugins/product241-provider.php"
+phase product-native-http-browser run_test node tests/products/ci-browser.cjs
 # Verify code-only rollback after the policy and all financial fixtures exist.
 phase snapshot-before-rollback run_php tests/hr/ci-code-state.php save
 mkdir "$runtime/hr-238"
@@ -76,7 +89,7 @@ sudo mv "$runtime/hr-238" "$runtime/wordpress/wp-content/plugins/sales-network-v
 phase rollback-238 run_php tests/hr/ci-code-state.php rollback
 sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/hr-238"
 sudo mv "$runtime/hr-candidate" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
-phase reinstall-240 run_php tests/hr/ci-code-state.php restored
+phase reinstall-241 run_php tests/hr/ci-code-state.php restored
 # MIS resets its own separate fresh database. It cannot touch the HR/Finance DB.
 mis_db="sn_approval_${GITHUB_RUN_ID}_hrmis_test"
 sudo env MYSQL_PWD=root mysql --user=root --protocol=socket <<SQL

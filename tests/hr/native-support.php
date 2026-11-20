@@ -24,7 +24,7 @@ function hr239_bootstrap(bool $full = true): void {
             || $wpdb->get_var('SELECT DATABASE()')!==DB_NAME) { throw new RuntimeException('Private runtime identity rejected'); }
         $GLOBALS['hr239_root']=$root;$GLOBALS['hr239_output']=$root.'/evidence';
     }
-    if (!defined('SN_VERSION') || SN_VERSION!=='2.0.240') { throw new RuntimeException('Intended candidate version required'); }
+    if (!defined('SN_VERSION') || SN_VERSION!=='2.0.241') { throw new RuntimeException('Intended candidate version required'); }
     $GLOBALS['hr239_automatic_policy_hook']=has_action('wp_ajax_sn_hr_invoice_reissue')!==false;
     sn_bootstrap_load_core();sn_bootstrap_plugin_instance($full);
     global $wpdb;$wpdb->hide_errors();

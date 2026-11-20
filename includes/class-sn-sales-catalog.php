@@ -233,7 +233,13 @@ final class SN_Sales_Catalog {
         return $out;
     }
 
-    /** Select one fixed discount for each line; never trust a client-supplied amount. */
+    public function custom_discount_allowed( int $product_id, int $actor_id, int $owner_id = 0 ): bool {
+        if ( is_wp_error( $this->validate_products( [ $product_id ], $actor_id, $owner_id ) ) ) { return false; }
+        $policy = $this->policy( $this->discount_manager( $actor_id, $owner_id ) );
+        return ( $policy['products'][ $product_id ]['allow_custom_discount'] ?? false ) === true;
+    }
+
+    /** Select an authorized fixed/custom per-unit discount; use server prices. */
     public function price_items( array $items, $selections, int $actor_id, int $owner_id = 0 ) {
         if ( ! is_array( $selections ) || count( $selections ) > count( $items ) ) { return new WP_Error( 'sn_catalog_discount_input', 'گزینه‌های تخفیف معتبر نیستند.' ); }
         foreach ( $selections as $index => $value ) {
@@ -249,10 +255,19 @@ final class SN_Sales_Catalog {
             $line_gross = $unit_cents * $qty; $gross += $line_gross;
             $selection = trim( (string) ( $selections[ $index ] ?? '' ) );
             if ( $selection === '' || $selection === '0' ) { continue; }
-            $matched = null;
-            foreach ( $this->discounts( (int) $item['product_id'], $actor_id, $owner_id ) as $option ) { if ( $selection === $option['id'] ) { $matched = $option; break; } }
-            if ( ! $matched ) { return new WP_Error( 'sn_catalog_discount_forbidden', 'تخفیف انتخاب‌شده برای این محصول و مدیر فروش مجاز نیست؛ فهرست تخفیف‌ها را تازه‌سازی کنید.' ); }
-            $unit_discount = (int) $matched['id'];
+            $custom = strpos( $selection, 'custom:' ) === 0;
+            if ( $custom ) {
+                $key = substr( $selection, 7 );
+                if ( ! $this->custom_discount_allowed( (int) $item['product_id'], $actor_id, $owner_id ) || ! preg_match( '/^[1-9][0-9]{0,13}$/D', $key ) ) {
+                    return new WP_Error( 'sn_catalog_custom_discount_forbidden', 'تخفیف دلخواه برای این محصول و مدیر فروش مجاز نیست یا مبلغ آن معتبر نیست.' );
+                }
+                $unit_discount = (int) $key;
+            } else {
+                $matched = null;
+                foreach ( $this->discounts( (int) $item['product_id'], $actor_id, $owner_id ) as $option ) { if ( $selection === $option['id'] ) { $matched = $option; break; } }
+                if ( ! $matched ) { return new WP_Error( 'sn_catalog_discount_forbidden', 'تخفیف انتخاب‌شده برای این محصول و مدیر فروش مجاز نیست؛ فهرست تخفیف‌ها را تازه‌سازی کنید.' ); }
+                $unit_discount = (int) $matched['id'];
+            }
             if ( $unit_discount >= $unit_cents ) { return new WP_Error( 'sn_catalog_discount_excess', 'تخفیف هر واحد باید کمتر از قیمت همان محصول باشد.' ); }
             $line_discount = $unit_discount * $qty; $discount += $line_discount;
             $snapshot[] = [ 'line_index' => $index, 'product_id' => (int) $item['product_id'], 'product_name' => (string) ( $item['product_name'] ?? '' ), 'qty' => $qty, 'option_id' => $selection, 'unit_discount' => $unit_discount / 100, 'discount_total' => $line_discount / 100, 'original_unit_price' => $unit_cents / 100, 'original_line_total' => $line_gross / 100, 'final_line_total' => ( $line_gross - $line_discount ) / 100, 'manager_user_id' => $this->discount_manager( $actor_id, $owner_id ) ];
@@ -304,9 +319,9 @@ final class SN_Sales_Catalog {
             <div class="sn-catalog-editor" hidden>
                 <div class="sn-catalog-mode"><label><input type="radio" class="sn-catalog-mode-input" name="sn_catalog_mode_ui" value="all"> همه محصولات CRM</label><label><input type="radio" class="sn-catalog-mode-input" name="sn_catalog_mode_ui" value="selected"> فقط محصولات انتخاب‌شده</label><label><input type="radio" class="sn-catalog-mode-input" name="sn_catalog_mode_ui" value="all_except"> همه محصولات به‌جز موارد انتخابی</label></div>
                 <p class="sn-catalog-mode-help" aria-live="polite"></p>
-                <p>تخفیف ثابت برای هر واحد محصول محاسبه می‌شود. فروشنده می‌تواند «بدون تخفیف» یا یکی از مبالغ مجاز را انتخاب کند. محدودیت‌های قبلی نوع محصول و پروژه نیز اعمال می‌شوند.</p>
+                <p>تخفیف برای هر واحد محصول محاسبه می‌شود. فروشنده می‌تواند «بدون تخفیف» یا یکی از مبالغ ثابت مجاز را انتخاب کند. با فعال‌کردن «تخفیف دلخواه» برای یک محصول، تیم همین مدیر می‌تواند مبلغ دلخواهِ کمتر از قیمت هر واحد وارد کند. پیش‌فرض این مجوز خاموش است. محدودیت‌های قبلی نوع محصول و پروژه نیز اعمال می‌شوند.</p>
                 <div class="sn-catalog-tools"><input type="search" class="sn-catalog-search" aria-label="جستجوی نام محصول" placeholder="جستجوی نام محصول"><button type="button" class="button sn-catalog-select-all">انتخاب همه</button><button type="button" class="button sn-catalog-select-none">لغو انتخاب همه</button></div>
-                <div class="sn-catalog-table-wrap"><table class="widefat striped sn-catalog-table"><thead><tr><th class="sn-catalog-access-label">اجازه فروش</th><th>محصول CRM</th><th>قیمت فعلی</th><th>تخفیف‌های ثابت هر واحد (تومان)</th></tr></thead><tbody></tbody></table></div>
+                <div class="sn-catalog-table-wrap"><table class="widefat striped sn-catalog-table"><thead><tr><th class="sn-catalog-access-label">اجازه فروش</th><th>محصول CRM</th><th>قیمت فعلی</th><th>تخفیف‌های ثابت هر واحد (تومان)</th><th>تخفیف دلخواه</th></tr></thead><tbody></tbody></table></div>
                 <p class="sn-catalog-footnote">در حالت «فقط محصولات انتخاب‌شده»، فهرست خالی یعنی هیچ محصولی مجاز نیست. در حالت «همه محصولات به‌جز موارد انتخابی»، محصولات علامت‌خورده ممنوع‌اند و سایر محصولات فعلی و آینده مجازند. این محدودیت برای مدیر و تمام زیرمجموعه‌اش در انتخاب محصول و صدور پیش‌فاکتور کنترل می‌شود.</p>
                 <button type="button" class="button button-primary sn-catalog-save">ذخیره محصولات و تخفیف‌های این مدیر</button>
             </div>
@@ -365,7 +380,8 @@ final class SN_Sales_Catalog {
             }
             $discounts = array_values( $discounts );
             usort( $discounts, static fn( $a, $b ) => (int) $a <=> (int) $b );
-            $products[ $pid ] = [ 'discounts' => $discounts ];
+            if ( array_key_exists( 'allow_custom_discount', $row ) && ! is_bool( $row['allow_custom_discount'] ) ) { wp_send_json_error( [ 'message' => 'مقدار مجوز تخفیف دلخواه معتبر نیست.' ], 400 ); }
+            $products[ $pid ] = [ 'discounts' => $discounts, 'allow_custom_discount' => $row['allow_custom_discount'] ?? ( ( $old['products'][ $pid ]['allow_custom_discount'] ?? false ) === true ) ];
         }
         $policy = [ 'mode' => $input['mode'], 'products' => $products, 'excluded_products' => $excluded, 'revision' => wp_generate_uuid4(), 'updated_by' => get_current_user_id(), 'updated_at' => current_time( 'mysql' ) ];
         // Compare against the exact version read before validation.
@@ -403,6 +419,7 @@ final class SN_Sales_Catalog {
         foreach ( SN_Helpers::get_sn_products( 0, true ) as $product ) {
             if ( is_wp_error( $this->validate_products( [ (int) $product['id'] ], $actor, $owner ) ) ) { continue; }
             $product['discounts'] = $this->discounts( (int) $product['id'], $actor, $owner );
+            $product['allow_custom_discount'] = $this->custom_discount_allowed( (int) $product['id'], $actor, $owner );
             $products[] = $product;
         }
         wp_send_json_success( [ 'products' => $products, 'manager_id' => $this->discount_manager( $actor, $owner ) ] );
@@ -418,7 +435,10 @@ final class SN_Sales_Catalog {
         foreach ( $options as $option ) {
             if ( empty( $option['active'] ) ) { continue; }
             $pid = absint( $option['product_id'] ?? 0 );
-            if ( $pid > 0 ) { $map[ (string) $option['key'] ] = $this->discounts( $pid, $actor_id, $owner_id ); }
+            if ( $pid > 0 ) {
+                $map[ (string) $option['key'] ] = $this->discounts( $pid, $actor_id, $owner_id );
+                if ( $this->custom_discount_allowed( $pid, $actor_id, $owner_id ) ) { $map[ (string) $option['key'] ][] = [ 'id' => 'custom', 'label' => 'تخفیف دلخواه', 'custom' => true ]; }
+            }
         }
         ?><label class="sn-catalog-case-discount" data-selected="<?php $saved = json_decode( (string) ( $case->catalog_discount_snapshot ?? '' ), true ); echo esc_attr( (string) ( $saved['option_id'] ?? '' ) ); ?>" data-discounts="<?php echo esc_attr( wp_json_encode( $map ) ); ?>"><span>تخفیف محصول نهایی</span><select name="catalog_discount_id"><option value="">بدون تخفیف</option></select><small>پس از ثبت اولین لینک پرداخت، تخفیف این پرونده ثابت می‌ماند.</small></label><?php
     }

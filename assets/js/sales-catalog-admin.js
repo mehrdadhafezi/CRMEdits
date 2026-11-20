@@ -52,6 +52,7 @@
             $('<td>').text(Number(product.price).toLocaleString('fa-IR') + ' تومان').appendTo($tr);
             var $cell = $('<td><div class="sn-catalog-amounts"></div><button type="button" class="button sn-catalog-add-amount">افزودن مبلغ تخفیف</button></td>').appendTo($tr);
             ((row && row.discounts) || []).forEach(function (cents) { addAmount($cell, Number(cents) / 100); });
+            $('<td>').append($('<label>').append($('<input type="checkbox" class="sn-catalog-custom-allowed">').prop('checked', !!(row && row.allow_custom_discount === true))).append(document.createTextNode(' مجاز برای این مدیر و تیمش'))).appendTo($tr);
             $body.append($tr);
           });
           $root.find('.sn-catalog-editor').prop('hidden', false); $root.find('.sn-catalog-search').val(''); syncMode(); message('تنظیمات بارگذاری شد.');
@@ -75,7 +76,7 @@
         }
         $root.find('tbody tr').each(function () {
           var $tr = $(this), discounts = $tr.find('.sn-catalog-amount').map(function () { return String($(this).val()).trim(); }).get().filter(Boolean);
-          if (policy.mode !== 'selected' || $tr.find('.sn-catalog-allowed').prop('checked')) policy.products[$tr.attr('data-product-id')] = {discounts: discounts};
+          if (policy.mode !== 'selected' || $tr.find('.sn-catalog-allowed').prop('checked')) policy.products[$tr.attr('data-product-id')] = {discounts: discounts, allow_custom_discount: $tr.find('.sn-catalog-custom-allowed').prop('checked')};
         });
         busy = true; $root.find('.sn-catalog-save').prop('disabled', true); message('در حال ذخیره…');
         request('sn_sales_catalog_save', {manager_id: loadedId, policy: JSON.stringify(policy)}).done(function (res) {

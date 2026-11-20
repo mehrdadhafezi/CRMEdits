@@ -233,9 +233,12 @@
       savedFields = $changed.toArray().map(field => ({ field, value: field.value, checked: field.checked }));
       data = { action: 'sn_save_invoice_settings', nonce: nonce, payload: JSON.stringify(settingsPayload(settingsFields($changed))) };
     } else {
-      const $fields = $form.find(':input[name]').not($invoice.find(':input[name]'));
-      data = settingsFields($fields);
-      data.push({ name: 'action', value: 'sn_save_settings' }, { name: 'nonce', value: nonce });
+      const $panel = $form.find('.sn-admin-tab-panel.active');
+      const $fields = $panel.find(':input[name]:enabled');
+      const invalid = $fields.toArray().find(field => field.checkValidity && !field.checkValidity());
+      if (invalid) { invalid.reportValidity(); return; }
+      // Keep routing/auth outside the bounded JSON, regardless of form size.
+      data = { action: 'sn_save_settings', nonce: nonce, payload: JSON.stringify(settingsPayload(settingsFields($fields))) };
     }
     const $buttons=$form.find('button[type="submit"]');
     function showSettingsNotice(success,message) {
@@ -254,7 +257,7 @@
         }
         showSettingsNotice(!!(res&&res.success),(res&&res.message)||'پاسخ معتبر برای نتیجه ذخیره دریافت نشد.');
       })
-      .fail(function(xhr) { showSettingsNotice(false,(xhr.responseJSON&&xhr.responseJSON.message)||'نتیجه ذخیره دریافت نشد؛ خطای ارتباط یا سرور: '+(xhr.status||'قطع ارتباط')); })
+      .fail(function(xhr) { showSettingsNotice(false,(xhr.responseJSON&&(xhr.responseJSON.message||(xhr.responseJSON.data&&xhr.responseJSON.data.message)))||'نتیجه ذخیره دریافت نشد؛ خطای ارتباط یا سرور: '+(xhr.status||'قطع ارتباط')); })
       .always(function() { $form.removeData('snSaving'); $buttons.prop('disabled',false).removeAttr('aria-busy'); });
   });
 

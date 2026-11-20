@@ -11,7 +11,7 @@ if(!defined('SN_APPROVAL_TEST_SANDBOX')||SN_APPROVAL_TEST_SANDBOX!==true||DB_HOS
     ||$wpdb->get_var('SELECT DATABASE()')!==DB_NAME||realpath(ABSPATH)!==$root.'/mis/wordpress'
     ||get_option('active_plugins',[])!==[]){throw new RuntimeException('Separate minimal MIS database guard failed');}
 require_once dirname(__DIR__,2).'/sales-network.php';sn_bootstrap_load_core();
-if(SN_VERSION!=='2.0.240'){throw new RuntimeException('Reviewed MIS candidate required');}
+if(SN_VERSION!=='2.0.241'){throw new RuntimeException('Reviewed MIS candidate required');}
 // MIS fixtures exercise their legacy minimum schema. Activation/full init would
 // silently replace it with invoice tables that have a different fixture contract.
 $method=new ReflectionMethod(SN_Activator::class,'register_roles');$method->setAccessible(true);$method->invoke(null);
