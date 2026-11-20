@@ -44,7 +44,7 @@ print('NATIVE_PHP_KERNEL_CRASH_COUNT='+str(len(crashes)))
 print('NATIVE_PHP_CRASH_MODULES='+repr(sorted(set(re.findall(r' in ([A-Za-z0-9_.-]+)\[','\n'.join(crashes))))))
 PY
     python3 - "$runtime/hr-$label.private.log" "$server_log" <<'PY'
-import pathlib,re,sys
+import json,pathlib,re,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
 frames=re.findall(r'([A-Za-z0-9_.-]+\.(?:php|cjs))(?::| on line )(\d+)',text)
 print('Diagnostic code locations: '+repr(frames[-8:]))
@@ -52,6 +52,9 @@ print('Completed assertions before failure: '+str(sum(x.startswith('PASS ') for 
 labels=re.findall(r'RuntimeException: FAIL ([A-Za-z0-9 _/()+,.:-]{1,180})',text)
 if labels:print('Assertion label: '+labels[-1].split(' in /',1)[0])
 for line in text.splitlines():
+ if line.startswith('RESTORE_DIAGNOSTIC '):
+  diagnostic=json.loads(line.split(' ',1)[1])
+  if set(diagnostic)=={'track','names_equal','schema_equal','rows_equal','schema_lines_before','schema_lines_after','changed_schema_line_prefixes'}:print('Synthetic restore diagnostic: '+json.dumps(diagnostic,sort_keys=True))
  if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES|HTTP_ORIGIN_MATCH|HTTP_API_STATUS|HTTP_API_ERROR) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
 server=pathlib.Path(sys.argv[2]).read_text(errors='replace')
 print('Native HTTP input-limit warning recorded: '+str('Input variables exceeded' in server))

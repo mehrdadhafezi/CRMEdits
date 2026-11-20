@@ -102,7 +102,7 @@ try:
  for track in ['main','experimental']:
   baseline=profiles[track];need(baseline['file']=='trace242-'+track+'.zip','Fixed baseline archive name')
   site,prefix=fresh(baseline);current=site;baseline_phase='baseline241' if track=='main' else 'baseline235'
-  phase(site,baseline_phase);base_names=names(prefix);base_fingerprint=fingerprint(base_names);backup=dump(base_names);backup_path=site/'baseline-backup.private.sql';backup_path.write_bytes(backup);os.chmod(str(backup_path),0o600)
+  phase(site,baseline_phase);base_names=names(prefix);base_fingerprint=fingerprint(base_names);base_schema=dump(base_names,False);backup=dump(base_names);backup_path=site/'baseline-backup.private.sql';backup_path.write_bytes(backup);os.chmod(str(backup_path),0o600)
   ok(bool(backup) and sha(backup_path.read_bytes())==sha(backup),track+' private consistent baseline backup verified')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')
   swap(site,profiles['candidate']);phase(site,'upgrade');ok(True,track+' legacy identities schema and roles survive candidate upgrade')
@@ -113,7 +113,12 @@ try:
   # These are freshly generated synthetic tables only, never an existing site/clone.
   mysql('SET FOREIGN_KEY_CHECKS=0; DROP TABLE '+','.join('`'+x+'`' for x in targets)+'; SET FOREIGN_KEY_CHECKS=1','synthetic-restore-reset')
   mysql('',label='synthetic-restore-import',payload=backup)
-  ok(names(prefix)==base_names and fingerprint(base_names)==base_fingerprint,track+' full backup restores every generated baseline table exactly')
+  restored_names=names(prefix);restored_fingerprint=fingerprint(base_names)
+  if restored_names!=base_names or restored_fingerprint!=base_fingerprint:
+   restored_schema=dump(base_names,False);left=base_schema.decode().splitlines();right=restored_schema.decode().splitlines()
+   # Only generated schema metadata, never row contents or credentials.
+   print('RESTORE_DIAGNOSTIC '+json.dumps({'track':track,'names_equal':restored_names==base_names,'schema_equal':restored_fingerprint['schema']==base_fingerprint['schema'],'rows_equal':restored_fingerprint['rows']==base_fingerprint['rows'],'schema_lines_before':len(left),'schema_lines_after':len(right),'changed_schema_line_prefixes':sorted(set((a[:90] if a.startswith(('SET ','/*!','CREATE TABLE','ALTER TABLE',') ENGINE')) else 'COLUMN_OR_INDEX_DEFINITION')for a,b in zip(left,right)if a!=b))}),flush=True)
+  ok(restored_names==base_names and restored_fingerprint==base_fingerprint,track+' full backup restores every generated baseline table exactly')
   swap(site,baseline);phase(site,'restore241' if track=='main' else 'restore235');ok(True,track+' old plugin and restored database agree')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')
   swap(site,profiles['candidate']);phase(site,'reupgrade');ok(True,track+' repeated upgrade after full restore is idempotent')
