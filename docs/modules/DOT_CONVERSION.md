@@ -44,6 +44,12 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Unreleased local work gives new classic Dot purchases one canonical full-price
+invoice with ordinary payment stages and a current-stage adapter. Existing child
+invoices are retained. The stored marker and rollback are described in the
+[traceability contract](../tasks/INVOICE_PAYMENT_TRACEABILITY.md); this is not
+authorization to rewrite old cases or deploy the local work.
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features

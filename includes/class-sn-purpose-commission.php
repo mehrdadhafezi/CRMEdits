@@ -615,18 +615,18 @@ final class SN_Purpose_Commission {
 	public function on_payment_stage_approved( int $invoice_id, $invoice = null, array $context = [] ): void {
 		if ( ! self::is_matrix_engine_enabled() ) { return; }
 		$this->maybe_upgrade();
-		if (empty($context['completed'])) { return; }
-        // A completed invoice releases all stages using the existing formula and frozen rates.
+		if (empty($context['completed']) && (!class_exists('SN_Dot_Flow') || !SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id))) { return; }
+        // Legacy completion releases stages; marked Dot purchases reconcile approved receipts.
         $this->reconcile_invoice($invoice_id);
 
 	}
 
-	private function post_commissions_for_stage( int $invoice_id, int $stage_no, float $stage_amount, $invoice = null, string $component_purpose = '' ): array {
+	private function post_commissions_for_stage( int $invoice_id, int $stage_no, float $stage_amount, $invoice = null, string $component_purpose = '', int $payment_id = 0 ): array {
         if ($component_purpose === '' && class_exists('SN_Subscription_Plus')) {
             $components=SN_Subscription_Plus::instance()->commission_components($invoice_id,$stage_amount);
             if ($components !== null) {
                 $sum=['created'=>0,'existing'=>0,'unresolved'=>[],'purpose'=>'subscription_plus'];
-                foreach ($components as $purpose=>$amount) { if ($amount<=0) { continue; } $one=$this->post_commissions_for_stage($invoice_id,$stage_no,$amount,$invoice,$purpose); $sum['created']+=$one['created']; $sum['existing']+=$one['existing']; $sum['unresolved']=array_merge($sum['unresolved'],$one['unresolved']); }
+                foreach ($components as $purpose=>$amount) { if ($amount<=0) { continue; } $one=$this->post_commissions_for_stage($invoice_id,$stage_no,$amount,$invoice,$purpose,$payment_id); $sum['created']+=$one['created']; $sum['existing']+=$one['existing']; $sum['unresolved']=array_merge($sum['unresolved'],$one['unresolved']); }
                 return $sum;
             }
         }
@@ -649,26 +649,67 @@ final class SN_Purpose_Commission {
 			if ( $user_id < 1 ) { $report['unresolved'][] = $role_key; continue; }
 			$amount = round( $stage_amount * $rate / 100, 2 ); if ( $amount <= 0 ) { continue; }
 			$wallet_type = $this->wallet_type_for( $purpose, $role_key );
-			$key = implode( ':', [ 'purpose-commission', $invoice_id, 'stage', $stage_no, $purpose, $role_key, 'user', $user_id ] );
+			$key = implode( ':', [ 'purpose-commission', $invoice_id, $payment_id ? 'payment' : 'stage', $payment_id ?: $stage_no, $purpose, $role_key, 'user', $user_id ] );
 			// A later HR assignment must not credit the same invoice, stage and role twice.
-			$role_prefix = implode( ':', [ 'purpose-commission', $invoice_id, 'stage', $stage_no, $purpose, $role_key, 'user', '' ] );
+			$role_prefix = implode( ':', [ 'purpose-commission', $invoice_id, $payment_id ? 'payment' : 'stage', $payment_id ?: $stage_no, $purpose, $role_key, 'user', '' ] );
 			$existing = (int) $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$wpdb->prefix}sn_wallet_transactions WHERE idempotency_key LIKE %s LIMIT 1", $wpdb->esc_like( $role_prefix ) . '%' ) );
 			if ( $existing > 0 ) { $report['existing']++; continue; }
 			$description = sprintf( 'پورسانت %s — %s — مرحله %d فاکتور %s (%.2f%%)', $purpose_label, (string) $role_def['label'], $stage_no, $invoice_code, $rate );
-			$tx_id = $this->post_transaction( $user_id, $wallet_type, $amount, 'credit', 'purpose_commission', $description, $invoice_id, $lead_id ?: null, [
+            if ($payment_id) { $description .= ' — تراکنش PAY-'.$payment_id; }
+			$tx_id = $this->post_transaction( $user_id, $wallet_type, $amount, 'credit', 'purpose_commission', $description, $invoice_id, $lead_id ?: null, array_merge([
 				'engine'=>'purpose_matrix','payment_purpose'=>$purpose,'payment_purpose_label'=>$purpose_label,'payment_cycle'=>(string) self::purposes()[$purpose]['cycle'],
 				'role_key'=>$role_key,'role_label'=>(string)$role_def['label'],'rate_percent'=>$rate,'base_amount'=>$stage_amount,'stage_no'=>$stage_no,
 				'invoice_code'=>$invoice_code,'recipient_user_id'=>$user_id,'wallet_label'=>$wallet_type==='seller'?'فروش':'بیاوین','snapshot_version'=>defined('SN_VERSION')?SN_VERSION:'',
-			], $key );
+			], $payment_id ? ['payment_id'=>$payment_id,'transaction_code'=>'PAY-'.$payment_id] : []), $key );
 			if ( $tx_id > 0 ) { $report['created']++; }
+            elseif ($payment_id > 0) { throw new RuntimeException('Receipt commission write failed'); }
 		}
 		return $report;
 	}
+
+    /** New Dot purchases only: credit immutable approved receipt ids, under one wallet transaction. */
+    private function reconcile_receipt_invoice(int $invoice_id): array {
+        global $wpdb;
+        $report = ['stages'=>0,'payments'=>0,'created'=>0,'existing'=>0,'blocked'=>false];
+        if (!SN_Subscription_Plus::instance()->transactional_tables(['sn_invoices','sn_invoice_payment_stages','sn_payments','sn_wallets','sn_wallet_transactions','sn_dot_invoice_links'])) { $report['blocked']=true; return $report; }
+        $lock = 'sn_receipt_commission_'.md5($wpdb->prefix.':'.$invoice_id);
+        if ((int)$wpdb->get_var($wpdb->prepare('SELECT GET_LOCK(%s,3)', $lock)) !== 1) { $report['blocked']=true; return $report; }
+        try {
+            if (false === $wpdb->query('START TRANSACTION')) { throw new RuntimeException('Receipt commission transaction'); }
+            $invoice = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_invoices WHERE id=%d FOR UPDATE", $invoice_id));
+            if (!$invoice || !SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id)) { throw new RuntimeException('Receipt commission invoice'); }
+            foreach (['status','invoice_status','payment_status'] as $field) {
+                if (in_array((string)($invoice->$field ?? ''), ['rejected','cancelled','canceled','payment_archived','failed','refunded','trash'], true)) { $wpdb->query('ROLLBACK'); return $report; }
+            }
+            $payments = $wpdb->get_results($wpdb->prepare("SELECT p.id,p.payment_stage_no,p.amount,s.id AS canonical_stage_id FROM {$wpdb->prefix}sn_payments p LEFT JOIN {$wpdb->prefix}sn_invoice_payment_stages s ON s.invoice_id=p.invoice_id AND s.stage_no=p.payment_stage_no WHERE p.invoice_id=%d AND p.status IN ('approved','paid') ORDER BY p.id FOR UPDATE", $invoice_id));
+            if (!is_array($payments) || $wpdb->last_error !== '') { throw new RuntimeException('Receipt commission ledger'); }
+            $sum = 0.0; $stage_ids = []; $payment_ids = [];
+            foreach ($payments as $payment) {
+                $amount = (float)$payment->amount;
+                if (empty($payment->canonical_stage_id) || isset($payment_ids[(int)$payment->id])) { throw new RuntimeException('Receipt commission stage identity'); }
+                $payment_ids[(int)$payment->id] = true;
+                if (!is_finite($amount) || $amount <= 0) { throw new RuntimeException('Receipt commission amount'); }
+                $sum += $amount; $stage_ids[(int)$payment->payment_stage_no] = true;
+            }
+            if ($sum > (float)$invoice->payment_total_amount + 0.005 || $sum > (float)$invoice->paid_total_amount + 0.005) { throw new RuntimeException('Receipt commission paid sum'); }
+            foreach ($payments as $payment) {
+                $one = $this->post_commissions_for_stage($invoice_id, (int)$payment->payment_stage_no, (float)$payment->amount, $invoice, '', (int)$payment->id);
+                $report['created'] += $one['created']; $report['existing'] += $one['existing']; $report['payments']++;
+            }
+            $report['stages'] = count($stage_ids);
+            if (false === $wpdb->query('COMMIT')) { throw new RuntimeException('Receipt commission commit'); }
+            return $report;
+        } catch (Throwable $error) {
+            $wpdb->query('ROLLBACK');
+            return ['stages'=>0,'payments'=>0,'created'=>0,'existing'=>0,'blocked'=>true];
+        } finally { $wpdb->get_var($wpdb->prepare('SELECT RELEASE_LOCK(%s)', $lock)); }
+    }
 
 	public function reconcile_invoice( int $invoice_id ): array {
 		global $wpdb;
 		$report = [ 'stages'=>0,'created'=>0,'existing'=>0 ];
 		if ( $invoice_id < 1 || ! self::is_matrix_engine_enabled() ) { return $report; }
+        if (class_exists('SN_Dot_Flow') && SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id)) { return $this->reconcile_receipt_invoice($invoice_id); }
 		$invoice = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$wpdb->prefix}sn_invoices WHERE id=%d", $invoice_id ) ); if ( ! $invoice ) { return $report; }
         if((string)($invoice->payment_workflow_status ?? '')!=='completed' || (float)($invoice->remaining_amount ?? 1)>0.5) { return $report; }
 		foreach ( [ 'status', 'invoice_status', 'payment_status' ] as $field ) {

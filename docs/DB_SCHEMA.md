@@ -1,5 +1,18 @@
 # DB_SCHEMA
 
+## Unreleased traceability stored-data contract (no DDL)
+
+New classic Dot purchases use `sn_dot_invoice_links.payment_kind=staged_receipt`
+with `flow_kind=conversion_payment`. One full-price `sn_invoices` row owns its
+canonical `sn_invoice_payment_stages`; the existing unique Dot payment row is a
+current-stage adapter. Real receipts remain separate `sn_payments` rows.
+Receipt commission idempotency keys include payment id and wallet metadata adds
+payment_id/transaction_code while preserving invoice/stage and frozen policy.
+No old invoice, payment, stage, token or commission row is automatically migrated.
+This stored meaning is not understood by 2.0.241; code-only rollback after new
+writes is not certified. Transactional-table and restore/rollback preflight is
+required before release. See [the contract](tasks/INVOICE_PAYMENT_TRACEABILITY.md).
+
 ## Migration rules
 - Use versioned, idempotent migrations.
 - Prefer create-if-missing and add-column-if-missing repairs.

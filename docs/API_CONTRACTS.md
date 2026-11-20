@@ -1,5 +1,21 @@
 # API_CONTRACTS
 
+## Unreleased invoice/payment traceability
+
+Authorized transaction/history projections add `transaction_code`, `stage_id`,
+`stage_reference`, `stage_count`, `transaction_count`, `record_reference` and
+`record_type_label`. Existing authentication, nonce, capabilities and record
+scope remain. These references do not replace a public invoice access token.
+Read metadata never creates a receipt or asserts provider settlement.
+
+For new Dot purchases only, a committed receipt approval whose wallet posting
+needs retry returns `success=false`, `decision_saved=true` and
+`commission_pending=true`, with a generic safe message. Authorized Finance may
+reuse the existing approve operation on that already approved receipt; payment
+revision remains required and no new financial approval is created. Read actions
+add `retry_commission` only for authorized Finance on eligible approved receipts.
+See [the exact scope and compatibility limits](tasks/INVOICE_PAYMENT_TRACEABILITY.md).
+
 ## Response conventions
 - AJAX handlers should return JSON with `wp_send_json_success()` / `wp_send_json_error()`.
 - Do not return raw PHP errors to frontend.

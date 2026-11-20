@@ -46,6 +46,10 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Unreleased local traceability appends separate invoice/stage/transaction metadata
+to existing authorized exports; amount units and totals stay unchanged. See the
+[column semantics and compatibility limits](../tasks/INVOICE_PAYMENT_TRACEABILITY.md).
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features

@@ -7,7 +7,10 @@ if ( ! defined( 'ABSPATH' ) ) { exit; }
  * This module is intentionally additive. It keeps all flow state in dedicated
  * tables and only attaches an existing CRM invoice to the flow by a link row.
  */
+require_once __DIR__.'/trait-sn-dot-invoice-ledger.php';
+
 final class SN_Dot_Flow {
+    use SN_Dot_Invoice_Ledger;
 	public const INVOICE_CONVERSION_EDIT_NOTICE = 'این پیش‌فاکتور از داخل پروندهٔ تبدیل مدیریت می‌شود.';
 	private const DB_VERSION = '2026-09-11-conversion-outcomes-v7';
 	private const CONFIG_OPTION = 'sn_dot_config';
@@ -2405,6 +2408,7 @@ final class SN_Dot_Flow {
 	}
 
 	public function on_invoice_paid( int $invoice_id, $invoice ): void {
+        if ($this->is_staged_conversion_invoice($invoice_id)) { $this->synchronize_staged_conversion($invoice_id); return; }
 		global $wpdb;
 		$t = $this->tables();
 		if ( $this->is_gifted_assessment_invoice( $invoice_id ) ) { return; }
@@ -3427,6 +3431,7 @@ final class SN_Dot_Flow {
 	}
 
 	public function on_invoice_payment_stage_approved( int $invoice_id, $invoice, array $context = [] ): void {
+        if ($this->is_staged_conversion_invoice($invoice_id)) { $this->synchronize_staged_conversion($invoice_id); }
 		$this->resolve_operational_archive( 'assessment_unpaid', 'invoice', $invoice_id, 'payment_stage_approved' );
 		foreach ( [ 'subscription_unpaid', 'product_unpaid', 'product_star_unpaid' ] as $type ) { $this->resolve_operational_archive( $type, 'invoice', $invoice_id, 'payment_stage_approved' ); }
 	}
@@ -4005,6 +4010,7 @@ final class SN_Dot_Flow {
 	}
 
 	public function on_financial_rejected( int $invoice_id, $invoice, string $reason ): void {
+        if ($this->is_staged_conversion_invoice($invoice_id)) { $this->synchronize_staged_conversion($invoice_id); return; }
 		global $wpdb;
 		$t = $this->tables();
 		$link = $this->table_exists( $t['links'] ) ? $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['links']} WHERE invoice_id=%d LIMIT 1", $invoice_id ) ) : null;
@@ -5681,6 +5687,7 @@ final class SN_Dot_Flow {
 	}
 
 	private function render_case_payment_overview( object $case, array $payments, bool $allow_resend = false, bool $compact = false, int $support_case_id = 0, string $title = 'وضعیت پرداخت پرونده' ): void {
+		$payments = $this->staged_conversion_overview_rows( $case, $payments );
 		$summary = $this->case_payment_summary( $case );
 		$ordered = array_reverse( $payments );
 		$latest_payment_id = $payments ? max( array_map( static fn( $payment ) => (int) $payment->id, $payments ) ) : 0;
@@ -6061,7 +6068,7 @@ final class SN_Dot_Flow {
 		$refs = [];
 		foreach ( array_chunk( $ids, 500 ) as $chunk ) {
 			$marks = implode( ',', array_fill( 0, count( $chunk ), '%d' ) );
-			$sql = "SELECT p.invoice_id, a.invoice_id anchor_id, i.invoice_code,
+			$sql = "SELECT p.invoice_id, a.invoice_id anchor_id, i.invoice_code, i.current_payment_stage, l.payment_kind,
 				(SELECT COUNT(*) FROM {$t['payments']} s WHERE s.case_id=p.case_id AND s.id<=p.id) stage_no
 				FROM {$t['payments']} p
 				INNER JOIN {$t['links']} l ON l.invoice_id=p.invoice_id AND l.case_id=p.case_id AND l.flow_kind='conversion_payment'
@@ -6070,7 +6077,8 @@ final class SN_Dot_Flow {
 				INNER JOIN {$wpdb->prefix}sn_invoices i ON i.id=a.invoice_id
 				WHERE p.invoice_id IN ({$marks})";
 			foreach ( $wpdb->get_results( $wpdb->prepare( $sql, ...$chunk ), ARRAY_A ) ?: [] as $row ) {
-				$refs[(int) $row['invoice_id']] = $row;
+				if (($row['payment_kind'] ?? '') === 'staged_receipt') { $row['stage_no'] = (int)$row['current_payment_stage']; }
+                $refs[(int) $row['invoice_id']] = $row;
 			}
 		}
 		return $refs;
@@ -6146,6 +6154,7 @@ final class SN_Dot_Flow {
 		if ( $invoice_id < 1 || ! $this->table_exists( $t['links'] ) || ! $this->table_exists( $t['cases'] ) || ! $this->table_exists( $t['payments'] ) ) { return []; }
 		$link = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$t['links']} WHERE invoice_id=%d AND flow_kind='conversion_payment' LIMIT 1", $invoice_id ) );
 		if ( ! $link || (int) $link->case_id < 1 ) { return []; }
+        if ((string)$link->payment_kind === 'staged_receipt') { return $this->staged_conversion_public_context($link); }
 		$case = $this->get_case( (int) $link->case_id );
 		if ( ! $case ) { return []; }
 		$payments = array_reverse( $this->payment_rows( (int) $case->id ) );
@@ -6306,7 +6315,7 @@ final class SN_Dot_Flow {
 		} elseif ( in_array( $tab, [ 'staged_completed', 'staged_incomplete' ], true ) ) {
 			// A conversion can issue separate invoices for deposit and balance. Its
 			// completion belongs to the case, rather than one paid stage invoice.
-			$staged = "((dl.id IS NOT NULL AND dl.payment_kind IN ('deposit','balance')) OR (dl.id IS NULL AND (i.payment_plan='partial' OR i.current_payment_stage>1)))";
+			$staged = "((dl.id IS NOT NULL AND dl.payment_kind IN ('deposit','balance','staged_receipt')) OR (dl.id IS NULL AND (i.payment_plan='partial' OR i.current_payment_stage>1)))";
 			$complete = "((dl.id IS NOT NULL AND COALESCE(c.remaining_amount,0)<=0.5 AND COALESCE(c.selected_option_price,0)>0 AND COALESCE(c.paid_amount,0)>=COALESCE(c.selected_option_price,0)-0.5) OR (dl.id IS NULL AND i.status IN ('paid','approved') AND i.payment_workflow_status='completed' AND COALESCE(i.remaining_amount,0)<=0.5))";
 			$where[] = $staged . ' AND ' . ( $tab === 'staged_completed' ? $complete : 'NOT ' . $complete );
 		}
@@ -6401,8 +6410,8 @@ final class SN_Dot_Flow {
 			else { $summary['pre_invoice'] += $count; }
 		}
 		$stage_counts = $wpdb->get_row( $wpdb->prepare(
-			"SELECT COUNT(DISTINCT CASE WHEN ((dl.id IS NOT NULL AND dl.payment_kind IN ('deposit','balance')) OR (dl.id IS NULL AND (i.payment_plan='partial' OR i.current_payment_stage>1))) AND ((dl.id IS NOT NULL AND COALESCE(c.selected_option_price,0)>0 AND COALESCE(c.paid_amount,0)>=c.selected_option_price-0.5) OR (dl.id IS NULL AND i.status IN ('paid','approved') AND i.payment_workflow_status='completed' AND COALESCE(i.remaining_amount,0)<=0.5)) THEN i.id END) completed,
-			COUNT(DISTINCT CASE WHEN ((dl.id IS NOT NULL AND dl.payment_kind IN ('deposit','balance')) OR (dl.id IS NULL AND (i.payment_plan='partial' OR i.current_payment_stage>1))) AND NOT ((dl.id IS NOT NULL AND COALESCE(c.selected_option_price,0)>0 AND COALESCE(c.paid_amount,0)>=c.selected_option_price-0.5) OR (dl.id IS NULL AND i.status IN ('paid','approved') AND i.payment_workflow_status='completed' AND COALESCE(i.remaining_amount,0)<=0.5)) THEN i.id END) incomplete
+			"SELECT COUNT(DISTINCT CASE WHEN ((dl.id IS NOT NULL AND dl.payment_kind IN ('deposit','balance','staged_receipt')) OR (dl.id IS NULL AND (i.payment_plan='partial' OR i.current_payment_stage>1))) AND ((dl.id IS NOT NULL AND COALESCE(c.selected_option_price,0)>0 AND COALESCE(c.paid_amount,0)>=c.selected_option_price-0.5) OR (dl.id IS NULL AND i.status IN ('paid','approved') AND i.payment_workflow_status='completed' AND COALESCE(i.remaining_amount,0)<=0.5)) THEN i.id END) completed,
+			COUNT(DISTINCT CASE WHEN ((dl.id IS NOT NULL AND dl.payment_kind IN ('deposit','balance','staged_receipt')) OR (dl.id IS NULL AND (i.payment_plan='partial' OR i.current_payment_stage>1))) AND NOT ((dl.id IS NOT NULL AND COALESCE(c.selected_option_price,0)>0 AND COALESCE(c.paid_amount,0)>=c.selected_option_price-0.5) OR (dl.id IS NULL AND i.status IN ('paid','approved') AND i.payment_workflow_status='completed' AND COALESCE(i.remaining_amount,0)<=0.5)) THEN i.id END) incomplete
 			FROM {$invoice_table} i LEFT JOIN {$t['links']} dl ON dl.invoice_id=i.id AND dl.flow_kind='conversion_payment' LEFT JOIN {$t['cases']} c ON c.id=dl.case_id WHERE {$base_where}",
 			$user_id, $user_id, $user_id
 		), ARRAY_A );
@@ -6988,6 +6997,10 @@ final class SN_Dot_Flow {
 		$stage_table = $wpdb->prefix . 'sn_invoice_payment_stages';
 		$source = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$invoice_table} WHERE id=%d LIMIT 1", (int) $case->source_invoice_id ) );
 		if ( ! $source ) { return new WP_Error( 'sn_dot_source_missing', 'فاکتور مبنای اعتبارسنجی یافت نشد.' ); }
+        $continuation = $this->continue_staged_conversion_payment($case, $payment_type, $amount, $actor_id);
+        if ($continuation !== null) { return isset($continuation['error']) ? new WP_Error('sn_dot_stage', $continuation['error']) : $continuation; }
+        $prior_count = (int)$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$t['payments']} WHERE case_id=%d", (int)$case->id));
+        if (!$prior_count && !SN_Subscription_Plus::instance()->transactional_tables(['sn_dot_cases','sn_dot_invoice_links','sn_dot_payments','sn_invoices','sn_invoice_items','sn_invoice_payment_stages'])) { return new WP_Error('sn_dot_ledger_storage','دفتر مراحل این خرید به جدول‌های تراکنشی نیاز دارد.'); }
 		try { $invoice_code = $this->generate_invoice_code(); $short_code = $this->generate_short_code(); }
 		catch ( Throwable $e ) { return new WP_Error( 'sn_dot_code', 'ساخت کد فاکتور پرداخت ممکن نشد.' ); }
 		$access_token = SN_Helpers::generate_unique_access_token();
@@ -6998,6 +7011,7 @@ final class SN_Dot_Flow {
 			$wpdb->query( 'ROLLBACK' );
 			return new WP_Error( 'sn_dot_case_state', 'وضعیت پرونده برای ساخت لینک پرداخت معتبر نیست.' );
 		}
+        if ($this->staged_conversion_link((int)$locked_case->id)) { $wpdb->query('ROLLBACK'); return new WP_Error('sn_dot_stage_changed','فاکتور این خرید قبلاً ساخته شده؛ وضعیت را دوباره بازخوانی کنید.'); }
 		$open_payment = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['payments']} WHERE case_id=%d AND status IN ('pending','pending_finance')", (int) $locked_case->id ) );
 		if ( $open_payment > 0 ) {
 			$wpdb->query( 'ROLLBACK' );
@@ -7091,6 +7105,8 @@ final class SN_Dot_Flow {
 			}
 		}
 		$invoice_product_id = $subscription_product_id > 0 ? $subscription_product_id : (int) $case->source_product_id;
+        $new_ledger = (int)$payment_count === 0;
+        $invoice_total = $new_ledger ? $total : $amount;
 		$invoice_data = $this->existing_columns( $invoice_table, [
 			'invoice_code' => $invoice_code, 'access_token' => $access_token, 'short_code' => $short_code,
 			'seller_id' => (int) $case->seller_id, 'lead_id' => ! empty( $source->lead_id ) ? (int) $source->lead_id : null,
@@ -7101,9 +7117,9 @@ final class SN_Dot_Flow {
 			'province' => (string) $case->province, 'city' => (string) $case->city,
 			'catalog_discounts_snapshot' => wp_json_encode( $catalog_snapshot ? [ $catalog_snapshot ] : [] ),
 			'catalog_manager_user_id' => absint( $catalog_snapshot['manager_user_id'] ?? 0 ) ?: null,
-			'product_id' => $invoice_product_id, 'product_price' => $amount, 'original_total' => $amount, 'final_total' => $amount,
-			'payment_plan' => 'full', 'payment_total_amount' => $amount, 'current_due_amount' => $amount, 'paid_total_amount' => 0,
-			'remaining_amount' => $amount, 'current_payment_stage' => 1, 'payment_workflow_status' => 'awaiting_payment',
+			'product_id' => $invoice_product_id, 'product_price' => $invoice_total, 'original_total' => $invoice_total, 'final_total' => $invoice_total,
+			'payment_plan' => $new_ledger && $payment_type !== 'full' ? 'partial' : 'full', 'payment_total_amount' => $invoice_total, 'current_due_amount' => $amount, 'paid_total_amount' => 0,
+			'remaining_amount' => $invoice_total, 'current_payment_stage' => 1, 'payment_workflow_status' => 'awaiting_payment',
 			'current_stage_issued_by_user_id' => $actor_id, 'issued_by_user_id' => $actor_id, 'original_seller_id' => (int) $case->seller_id,
 			'payment_card_number' => (string) ( $source->payment_card_number ?? '' ), 'payment_card_owner' => (string) ( $source->payment_card_owner ?? '' ),
 			'payment_card_sales_manager_user_id' => ! empty( $source->payment_card_sales_manager_user_id ) ? (int) $source->payment_card_sales_manager_user_id : null,
@@ -7114,9 +7130,9 @@ final class SN_Dot_Flow {
 		$stage_type = [ 'full' => 'full', 'deposit' => 'partial', 'balance' => 'remaining' ][ $payment_type ] ?? 'partial';
 		if ( ! $wpdb->insert( $invoice_table, $invoice_data ) ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'sn_dot_invoice_insert', 'ذخیره فاکتور پرداخت انجام نشد: ' . ( $wpdb->last_error ?: 'خطای دیتابیس' ) ); }
 		$invoice_id = (int) $wpdb->insert_id;
-		$ok = $wpdb->insert( $item_table, [ 'invoice_id' => $invoice_id, 'product_id' => $invoice_product_id, 'product_name' => $item_name, 'product_type' => $is_plus ? 'subscription_plus_cash' : null, 'qty' => 1, 'unit_price' => $amount, 'total_price' => $amount, 'is_free' => 0, 'created_at' => $now ] )
+		$ok = $wpdb->insert( $item_table, [ 'invoice_id' => $invoice_id, 'product_id' => $invoice_product_id, 'product_name' => $item_name, 'product_type' => $is_plus ? 'subscription_plus_cash' : null, 'qty' => 1, 'unit_price' => $invoice_total, 'total_price' => $invoice_total, 'is_free' => 0, 'created_at' => $now ] )
 			&& $wpdb->insert( $stage_table, [ 'invoice_id' => $invoice_id, 'stage_no' => 1, 'stage_type' => $stage_type, 'requested_amount' => $amount, 'status' => 'pending', 'issued_by_user_id' => $actor_id, 'note' => 'دات فلو: ' . $this->payment_type_label( $payment_type ), 'created_at' => $now, 'updated_at' => $now ] )
-			&& $wpdb->insert( $t['links'], [ 'invoice_id' => $invoice_id, 'case_id' => (int) $case->id, 'flow_kind' => 'conversion_payment', 'payment_kind' => $payment_type, 'supervisor_id' => (int) $case->supervisor_id, 'requires_finance' => 1, 'sms_delay_minutes' => 0, 'created_at' => $now, 'updated_at' => $now ] )
+			&& $wpdb->insert( $t['links'], [ 'invoice_id' => $invoice_id, 'case_id' => (int) $case->id, 'flow_kind' => 'conversion_payment', 'payment_kind' => $new_ledger ? 'staged_receipt' : $payment_type, 'supervisor_id' => (int) $case->supervisor_id, 'requires_finance' => 1, 'sms_delay_minutes' => 0, 'created_at' => $now, 'updated_at' => $now ] )
 			&& $wpdb->insert( $t['payments'], [ 'case_id' => (int) $case->id, 'invoice_id' => $invoice_id, 'payment_type' => $payment_type, 'requested_amount' => $amount, 'status' => 'pending', 'created_by' => $actor_id, 'created_at' => $now, 'updated_at' => $now ] );
 		if ( ! $ok ) { $wpdb->query( 'ROLLBACK' ); return new WP_Error( 'sn_dot_payment_insert', 'ساخت لینک پرداخت کامل نشد: ' . ( $wpdb->last_error ?: 'خطای دیتابیس' ) ); }
 		$payment_id = (int) $wpdb->insert_id;
@@ -7299,7 +7315,12 @@ final class SN_Dot_Flow {
 		if ( (string) $case->status === 'completed' ) { $this->finish_action( false, 'پرداخت این پرونده قبلاً کامل شده است.' ); }
 		global $wpdb; $t = $this->tables();
 		$case = $this->sync_live_case_option_prices( $case );
+        $modern_link = $this->staged_conversion_link($case_id);
+        $modern_invoice = $modern_link ? $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_invoices WHERE id=%d", (int)$modern_link->invoice_id)) : null;
+        if ($modern_invoice) { $case = clone $case; $case->paid_amount = (float)$modern_invoice->paid_total_amount; $case->remaining_amount = (float)$modern_invoice->remaining_amount; }
+
 		$open = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$t['payments']} WHERE case_id=%d AND status IN ('pending','pending_finance')", $case_id ) );
+        if ($modern_invoice && (float)$modern_invoice->current_due_amount <= 0.5 && (string)$modern_invoice->payment_workflow_status === 'awaiting_assignment') { $open = 0; }
 		if ( $open ) { $this->finish_action( false, 'ابتدا لینک پرداخت باز فعلی باید پرداخت یا رد شود.' ); }
 		$type = sanitize_key( wp_unslash( $_POST['payment_type'] ?? '' ) );
 		$total = (float) $case->selected_option_price;
@@ -7436,6 +7457,7 @@ final class SN_Dot_Flow {
 	 * Do not START/COMMIT here.
 	 */
 	public function financial_reopen_apply_in_transaction( int $invoice_id, string $reason = '' ): array {
+        if ($this->is_staged_conversion_invoice($invoice_id)) { return $this->synchronize_staged_conversion($invoice_id, false, 'pending_finance'); }
 		global $wpdb;
 		$t = $this->tables();
 		if ( $invoice_id < 1 || ! $this->table_exists( $t['links'] ) ) { return [ 'success' => true, 'handled' => false ]; }
@@ -7480,6 +7502,7 @@ final class SN_Dot_Flow {
 	 * corrected and resent to Finance. Caller already owns the SQL transaction.
 	 */
 	public function financial_resubmit_apply_in_transaction( int $invoice_id, string $note = '' ): array {
+        if ($this->is_staged_conversion_invoice($invoice_id)) { return $this->synchronize_staged_conversion($invoice_id, false, 'pending_finance'); }
 		global $wpdb;
 		$t = $this->tables();
 		if ( $invoice_id < 1 || ! $this->table_exists( $t['links'] ) ) { return [ 'success' => true, 'handled' => false ]; }

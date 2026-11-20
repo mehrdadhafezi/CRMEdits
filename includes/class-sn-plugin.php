@@ -7180,7 +7180,7 @@ class SN_Plugin
 			$fresh = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$invoice_table} WHERE id=%d", $invoice_id));
 			$fresh_totals = $fresh ? $this->sn_invoice_payment_totals($fresh) : $totals;
 			$operations_owned_payment = class_exists('SN_Operations_Flow') && SN_Operations_Flow::instance()->is_upgrade_invoice($invoice_id);
-			if ($fresh && !$is_conversion_cash && $fresh_totals['remaining'] > 0 && $fresh_totals['due'] <= 0 && $fresh_totals['workflow_status'] === 'awaiting_assignment' && ! $operations_owned_payment) {
+			if ($fresh && !$is_conversion_cash && (!class_exists('SN_Dot_Flow') || !SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id)) && $fresh_totals['remaining'] > 0 && $fresh_totals['due'] <= 0 && $fresh_totals['workflow_status'] === 'awaiting_assignment' && ! $operations_owned_payment) {
 				if (!$this->sn_payment_action_for_source($invoice_id)) { $this->sn_create_or_reset_payment_action_item($invoice_id, $fresh); }
 			} elseif ($fresh && $fresh_totals['remaining'] <= 0) {
 				$this->sn_close_payment_action_item($invoice_id, 'payment_completed', $approved_by ?: get_current_user_id(), 'واریزی کامل شده است');
@@ -7244,7 +7244,7 @@ class SN_Plugin
 			'updated_at'=>current_time('mysql'),
 		], ['id'=>(int)$stage->id]);
 		if (! $stage_ok) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت مرحله پرداخت انجام نشد: '.($wpdb->last_error ?: 'خطای دیتابیس')]; }
-		if ($is_conversion_cash && $pay_method === 'online') {
+		if (($is_conversion_cash || (class_exists('SN_Dot_Flow') && SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id))) && $pay_method === 'online') {
 			$confirmed = $wpdb->query($wpdb->prepare(
 				"UPDATE {$wpdb->prefix}sn_payments SET status='paid',updated_at=%s
 				WHERE invoice_id=%d AND payment_stage_no=%d AND status='verified' AND COALESCE(authority,'')<>''
@@ -7307,6 +7307,7 @@ class SN_Plugin
 		}
 		$ok = false !== $wpdb->update($invoice_table, $this->sn_filter_existing_columns($invoice_table, $invoice_data), ['id'=>$invoice_id]);
 		if (! $ok) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت نتیجه پرداخت انجام نشد: '.($wpdb->last_error ?: 'خطای دیتابیس')]; }
+		if (class_exists('SN_Dot_Flow') && !SN_Dot_Flow::instance()->staged_conversion_financial_apply_in_transaction($invoice_id)) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت نتیجه پرداخت در دفتر پرونده کامل نشد.']; }
         if (false === $wpdb->query('COMMIT')) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت نهایی تأیید پرداخت انجام نشد']; }
 		$fresh = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$invoice_table} WHERE id=%d", $invoice_id));
 		$activity_message = $completed ? 'واریزی فاکتور تکمیل شد'
@@ -7327,7 +7328,7 @@ class SN_Plugin
 		if ($completed) {
 			$this->sn_close_payment_action_item($invoice_id, 'payment_completed', $approved_by ?: get_current_user_id(), 'واریزی کامل شد');
 			if ($fresh) { do_action('sn_invoice_paid', $invoice_id, $fresh); }
-		} elseif ($fresh && !$is_conversion_cash) {
+		} elseif ($fresh && !$is_conversion_cash && (!class_exists('SN_Dot_Flow') || !SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id))) {
 			$operations_owned_payment = class_exists('SN_Operations_Flow') && SN_Operations_Flow::instance()->is_upgrade_invoice($invoice_id);
 			if (! $operations_owned_payment) {
 				$action_item_id = $this->sn_create_or_reset_payment_action_item($invoice_id, $fresh);
@@ -7740,11 +7741,13 @@ class SN_Plugin
 	}
 
 	/** Shared visibility and authorization for the next proforma action. */
-	private function sn_can_issue_invoice_next_stage($invoice, int $actor_id, int $cash_case_id = 0): bool
+	private function sn_can_issue_invoice_next_stage($invoice, int $actor_id, int $cash_case_id = 0, int $dot_case_id = 0): bool
 	{
 		$invoice = (object) $invoice;
 		$invoice_id = (int) ($invoice->id ?? 0);
-		if ($cash_case_id) {
+		if ($dot_case_id) {
+            if (!SN_Dot_Flow::instance()->can_issue_staged_conversion_stage($dot_case_id, $invoice_id, $actor_id)) { return false; }
+        } elseif ($cash_case_id) {
 			if (!SN_Dot_Flow::instance()->can_issue_conversion_cash_stage($cash_case_id, $invoice_id, $actor_id)) { return false; }
 		} else {
 			$assignment = $this->sn_invoice_payment_assignment($invoice_id);
@@ -7785,11 +7788,18 @@ class SN_Plugin
 		return $this->sn_issue_owned_invoice_payment_stage($invoice_id, $actor_id, $mode, $amount, 'پرداخت مرحله‌ای اعتبار نقدی', $case_id, $stage_no);
 	}
 
+    /** Internal Dot caller retains its case/nonce checks; no public token or ownership bypass. */
+    public function issue_dot_conversion_payment_stage(int $case_id, int $invoice_id, int $stage_no, int $actor_id, string $mode, float $amount): array
+    {
+        if ($case_id < 1 || $stage_no < 1 || !in_array($mode, ['partial','remaining'], true)) { return ['success'=>false,'message'=>'مرحله پرداخت معتبر نیست.']; }
+        return $this->sn_issue_owned_invoice_payment_stage($invoice_id, $actor_id, $mode, $amount, 'مرحله پرداخت دات فلو', 0, $stage_no, $case_id);
+    }
+
 	/**
 	 * Issue another payment stage on an invoice owned by the current seller/converter.
 	 * Conversion cash uses the same invoice ledger with authorization from its case.
 	 */
-	private function sn_issue_owned_invoice_payment_stage(int $invoice_id, int $actor_id, string $mode, float $requested_amount = 0, string $note = '', int $cash_case_id = 0, int $expected_stage = 0): array
+	private function sn_issue_owned_invoice_payment_stage(int $invoice_id, int $actor_id, string $mode, float $requested_amount = 0, string $note = '', int $cash_case_id = 0, int $expected_stage = 0, int $dot_case_id = 0): array
 	{
 		$this->maybe_create_tables();
 		global $wpdb;
@@ -7804,8 +7814,8 @@ class SN_Plugin
 		if ($expected_stage && (int)$invoice->current_payment_stage !== $expected_stage) {
 			$wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'مرحله پرداخت تغییر کرده است؛ پرونده را دوباره باز کنید.'];
 		}
-		$action_item = $cash_case_id ? null : $this->sn_invoice_payment_assignment($invoice_id,true);
-		if (!$this->sn_can_issue_invoice_next_stage($invoice, $actor_id, $cash_case_id)) {
+		$action_item = ($cash_case_id || $dot_case_id) ? null : $this->sn_invoice_payment_assignment($invoice_id,true);
+		if (!$this->sn_can_issue_invoice_next_stage($invoice, $actor_id, $cash_case_id, $dot_case_id)) {
 			$wpdb->query('ROLLBACK');
 			return ['success'=>false,'message'=>'صدور مرحله بعد مجاز نیست؛ دسترسی، تأیید مرحله قبلی و مانده فاکتور را بررسی کنید'];
 		}
@@ -7851,7 +7861,7 @@ class SN_Plugin
 			'rejected_by'=>null, 'rejected_at'=>null, 'rejected_reason'=>null,
 			'updated_at'=>current_time('mysql'),
 		];
-		if ($cash_case_id) {
+		if ($cash_case_id || $dot_case_id) {
 			// The stage and payment ledger retain the previous deposit and approval.
 			$reset += [
 				'pay_method'=>null, 'payment_source'=>null, 'payment_ref_id'=>null,
@@ -7863,6 +7873,8 @@ class SN_Plugin
 		if ($invoice_updated === false) {
 			$wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>$wpdb->last_error ?: 'وضعیت مرحله جدید روی فاکتور ذخیره نشد'];
 		}
+
+        if ($dot_case_id && !SN_Dot_Flow::instance()->advance_staged_conversion_stage($dot_case_id, $invoice_id, $next_stage, $amount, $mode)) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'اتصال مرحله جدید به پرونده انجام نشد.']; }
 
 		// Keep the shared staged-payment action item in sync so another panel cannot
 		// issue a duplicate stage while this one is open.
@@ -7885,7 +7897,7 @@ class SN_Plugin
 
 		if (false === $wpdb->query('COMMIT')) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت نهایی مرحله پرداخت انجام نشد']; }
 		$sms_sent = false;
-		try { if (!$cash_case_id) { $sms_sent = $this->sn_send_invoice_stage_sms($invoice_id); } }
+		try { if (!$cash_case_id && !$dot_case_id) { $sms_sent = $this->sn_send_invoice_stage_sms($invoice_id); } }
 		catch (Throwable $error) {
 			$this->sn_invoice_sms_last_error = 'خطا در ارتباط با سرویس پیامک';
 			error_log('SN invoice stage SMS failed for invoice #' . $invoice_id . ': ' . $error->getMessage());
@@ -31508,6 +31520,11 @@ class SN_Plugin
 					'sales_manager_id' => ['label' => 'شناسه مدیر فروش', 'excel_text' => true],
 					'sales_deputy' => ['label' => 'معاون فروش', 'excel_text' => false],
 					'sales_deputy_id' => ['label' => 'شناسه معاون فروش', 'excel_text' => true],
+					'transaction_code' => ['label' => 'شناسه تراکنش CRM', 'excel_text' => true],
+					'payment_stage_no' => ['label' => 'شماره مرحله پرداخت', 'excel_text' => true],
+					'stage_reference' => ['label' => 'شناسه مرحله', 'excel_text' => true],
+					'stage_count' => ['label' => 'تعداد مراحل ثبت‌شده', 'excel_text' => true],
+					'trace_status' => ['label' => 'تطبیق تراکنش', 'excel_text' => true],
 				];
 			}
 
@@ -31807,7 +31824,7 @@ class SN_Plugin
 				$payments = $wpdb->prefix . 'sn_payments';
 				$invoices = $wpdb->prefix . 'sn_invoices';
 				if (! $this->sn_table_exists_quiet($payments) || ! $this->sn_table_exists_quiet($invoices)) { return []; }
-				$sql = "SELECT p.id AS payment_row_id,p.invoice_id,p.authority,p.ref_id,p.amount AS transaction_toman,p.status AS payment_row_status,p.created_at AS payment_created_at,p.updated_at AS payment_updated_at,i.*\n"
+				$sql = "SELECT p.id AS payment_row_id,p.payment_stage_no AS trace_stage_no,p.invoice_id,p.authority,p.ref_id,p.amount AS transaction_toman,p.status AS payment_row_status,p.created_at AS payment_created_at,p.updated_at AS payment_updated_at,i.*\n"
 					. "FROM {$payments} p INNER JOIN {$invoices} i ON i.id=p.invoice_id\n"
 					. "WHERE (p.payment_source='zibal' OR p.authority LIKE 'zibal:%')\n"
 					. "AND p.status IN ('approved','paid','verified','success','completed') ORDER BY p.id DESC";
@@ -32096,11 +32113,18 @@ class SN_Plugin
 					}
 				}
 				$product_labels = $this->sn_zibal_invoice_items_labels_map($invoice_ids);
+				$trace_context = SN_Payment_Transactions::trace_context($invoice_ids);
 
 				$rows = [];
 				foreach ($transactions as $transaction) {
 					$order_id = trim((string) ($transaction['orderId'] ?? ''));
-					$invoice = $invoice_by_code[$order_id] ?? (is_array($transaction['_invoice'] ?? null) ? $transaction['_invoice'] : []);
+                    // A local payment belongs to this row; another payment on the same invoice is not interchangeable.
+                    $local = is_array($transaction['_invoice'] ?? null) ? $transaction['_invoice'] : [];
+                    $invoice = $local ?: ($invoice_by_code[$order_id] ?? []);
+                    $invoice_id = (int)($invoice['id'] ?? 0);
+                    $payment_id = (int)($local['payment_row_id'] ?? 0);
+                    $stage_no = (int)($local['trace_stage_no'] ?? 0);
+                    $trace = SN_Payment_Transactions::trace_reference(['payment_id'=>$payment_id,'invoice_id'=>$invoice_id,'stage_no'=>$stage_no], $trace_context[$invoice_id] ?? []);
 					$seller_id = $invoice ? $this->sn_invoice_effective_seller_id_for_admin((array) $invoice) : 0;
 					$chain = $chain_map[$seller_id] ?? [];
 					$rows[] = [
@@ -32132,6 +32156,11 @@ class SN_Plugin
 						! empty($chain['sales_manager_id']) ? (string) (int) $chain['sales_manager_id'] : '',
 						(string) ($chain['deputy_name'] ?? ''),
 						! empty($chain['deputy_id']) ? (string) (int) $chain['deputy_id'] : '',
+						$trace['transaction_code'],
+						$payment_id && $stage_no ? (string)$stage_no : '',
+						$payment_id && $stage_no ? $trace['stage_reference'] : '',
+						$invoice_id ? (string)$trace['stage_count'] : '',
+						$payment_id ? 'تراکنش ثبت‌شده در CRM' : 'درگاه؛ تراکنش محلی تطبیق داده نشده',
 					];
 				}
 				return $rows;
@@ -34888,10 +34917,11 @@ class SN_Plugin
 					wp_die('نوع خروجی نامعتبر است');
 				}
 				$filters = $this->sn_report_filters();
-				$this->sn_csv_header('sales-network-' . $type . '-' . SN_Helpers::tehran_format('Y-m-d') . '.csv');
-				$out = fopen('php://output', 'w');
-				$rows = $this->sn_export_report_rows($type, $filters, 5000);
-				$headers = $this->sn_export_report_headers($type);
+                try { $rows = $this->sn_export_report_rows($type, $filters, 5000); }
+                catch (Throwable $error) { wp_die('خواندن اطلاعات ردیابی کامل نشد؛ خروجی ساخته نشد.', '', ['response'=>500]); return; }
+                $headers = $this->sn_export_report_headers($type);
+                $this->sn_csv_header('sales-network-' . $type . '-' . SN_Helpers::tehran_format('Y-m-d') . '.csv');
+                $out = fopen('php://output', 'w');
 				fputcsv($out, $headers);
 				foreach ($rows as $row) {
 					$line = [];
@@ -35045,7 +35075,7 @@ class SN_Plugin
 					}
 				}
 				unset($row);
-				return $rows;
+				return $this->sn_payment_trace_export_rows($rows);
 			}
 
 			private function sn_successful_payment_report_stats(array $filters): array
@@ -35102,11 +35132,11 @@ class SN_Plugin
 					<?php foreach ($rows as $row) : ?>
 						<tr>
 							<td><?php echo esc_html(SN_Helpers::gregorian_to_jalali_date((string)($row['payment_at'] ?? ''))); ?></td>
-							<td><code><?php echo esc_html((string)($row['invoice_code'] ?? ('#'.(int)($row['invoice_id'] ?? 0)))); ?></code></td>
+							<td><code><?php echo esc_html((string)($row['invoice_code'] ?? ('#'.(int)($row['invoice_id'] ?? 0)))); ?></code><br><bdi><?php echo esc_html((string)($row['record_reference'] ?? '')); ?></bdi><br><small><?php echo esc_html((string)($row['record_type_label'] ?? '')); ?></small></td>
 							<td><strong><?php echo esc_html((string)($row['customer_name'] ?? '—')); ?></strong><br><small><?php echo esc_html($this->sn_mask_phone((string)($row['customer_phone'] ?? ''))); ?></small></td>
 							<td><?php echo esc_html((string)(($row['product_names'] ?? '') ?: '—')); ?></td>
 							<td><?php echo esc_html($this->sn_successful_payment_report_product_type_label((string)($row['product_types'] ?? ''))); ?></td>
-							<td><?php echo esc_html(number_format_i18n(max(1,(int)($row['stage_no'] ?? 1)))); ?></td>
+							<td><?php echo esc_html(number_format_i18n(max(1,(int)($row['stage_no'] ?? 1)))); ?><small> از <?php echo esc_html(number_format_i18n((int)($row['stage_count'] ?? 0))); ?> مرحلهٔ ثبت‌شده</small></td>
 							<td><?php echo esc_html(SN_Helpers::format_price((float)($row['amount'] ?? 0))); ?></td>
 							<td><?php echo esc_html($this->sn_invoice_pay_method_label((string)($row['pay_method'] ?? ''))); ?></td>
 							<td><?php echo esc_html((string)(($row['seller_name'] ?? '') ?: (! empty($row['seller_id']) ? $this->sn_user_label((int)$row['seller_id']) : '—'))); ?></td>
@@ -35798,13 +35828,24 @@ class SN_Plugin
 				return wp_nonce_url(add_query_arg(array_merge(['action' => 'sn_export_report_csv', 'report_type' => $type], $filters), admin_url('admin-post.php')), 'sn_export_report_csv');
 			}
 
+            /** Append references after the caller's authorization/filtering. No financial writes. */
+            private function sn_payment_trace_export_rows(array $rows): array
+            {
+                $context = SN_Payment_Transactions::trace_context(array_column($rows, 'invoice_id'));
+                foreach ($rows as &$row) {
+                    $row = array_merge($row, SN_Payment_Transactions::trace_reference($row, $context[(int)($row['invoice_id'] ?? 0)] ?? []));
+                }
+                unset($row);
+                return $rows;
+            }
+
 			private function sn_export_report_headers(string $type): array
 			{
 				$map = [
 					'leads' => ['id' => 'ID', 'customer_name' => 'نام', 'national_id' => 'کد ملی', 'marketing_form_id' => 'فرم مارکتینگ', 'phone' => 'موبایل', 'province' => 'استان', 'city' => 'شهر', 'status' => 'وضعیت', 'seller' => 'فروشنده', 'created_at' => 'تاریخ'],
-					'invoices' => ['id' => 'ID', 'invoice_code' => 'کد فاکتور', 'customer_name' => 'مشتری', 'customer_phone' => 'موبایل', 'status' => 'وضعیت', 'amount' => 'مبلغ', 'seller' => 'فروشنده', 'created_at' => 'تاریخ'],
-					'successful_payments' => ['payment_at' => 'تاریخ پرداخت', 'invoice_code' => 'کد فاکتور', 'customer_name' => 'مشتری', 'customer_phone' => 'موبایل', 'product_names' => 'محصول/محصولات', 'product_types_label' => 'نوع محصول', 'stage_no' => 'مرحله', 'amount' => 'مبلغ پرداخت', 'pay_method_label' => 'روش پرداخت', 'seller_name' => 'فروشنده', 'payment_status' => 'وضعیت'],
-					'payments' => ['invoice_code' => 'کد فاکتور', 'amount' => 'مبلغ', 'status' => 'وضعیت', 'pay_method' => 'روش', 'created_at' => 'تاریخ'],
+					'invoices' => ['id' => 'ID', 'invoice_code' => 'کد فاکتور', 'customer_name' => 'مشتری', 'customer_phone' => 'موبایل', 'status' => 'وضعیت', 'amount' => 'مبلغ', 'seller' => 'فروشنده', 'created_at' => 'تاریخ', 'stage_count'=>'تعداد مراحل صادرشده', 'transaction_count'=>'تعداد تراکنش‌های ثبت‌شده'],
+					'successful_payments' => ['payment_at' => 'تاریخ پرداخت', 'invoice_code' => 'کد فاکتور', 'customer_name' => 'مشتری', 'customer_phone' => 'موبایل', 'product_names' => 'محصول/محصولات', 'product_types_label' => 'نوع محصول', 'stage_no' => 'مرحله', 'amount' => 'مبلغ پرداخت', 'pay_method_label' => 'روش پرداخت', 'seller_name' => 'فروشنده', 'payment_status' => 'وضعیت', 'transaction_code'=>'شناسه یکتای تراکنش', 'stage_reference'=>'شناسه مرحله', 'stage_count'=>'تعداد مراحل صادرشده', 'record_reference'=>'شناسه رکورد مبنا', 'record_type_label'=>'نوع سابقه مالی'],
+					'payments' => ['invoice_code' => 'کد فاکتور', 'amount' => 'مبلغ', 'status' => 'وضعیت', 'pay_method' => 'روش', 'created_at' => 'تاریخ', 'transaction_code'=>'شناسه یکتای تراکنش', 'stage_no'=>'شماره مرحله', 'stage_reference'=>'شناسه مرحله', 'stage_count'=>'تعداد مراحل صادرشده', 'transaction_count'=>'تعداد تراکنش‌های فاکتور'],
 					'wallet' => ['user' => 'کاربر', 'wallet_type' => 'نوع کیف پول', 'balance' => 'موجودی', 'updated_at' => 'بروزرسانی'],
 					'commission' => ['rule_name' => 'قانون', 'position_slug' => 'سمت', 'level_slug' => 'سطح', 'is_active' => 'فعال'],
 					'hr_profiles' => ['user_id' => 'کاربر', 'display_name' => 'نام', 'position' => 'سمت', 'level' => 'سطح', 'employment_status' => 'وضعیت همکاری'],
@@ -35842,12 +35883,18 @@ class SN_Plugin
 					[$date, $date_args] = $this->sn_report_date_sql('i.created_at', $filters);
 					$status = $filters['status'] !== '' ? ' AND i.status=%s' : '';
 					$status_args = $filters['status'] !== '' ? [$filters['status']] : [];
-					$rows = $wpdb->get_results($wpdb->prepare("SELECT i.id,i.invoice_code,i.customer_name,i.customer_phone,i.status,COALESCE(i.final_total,i.product_price,0) amount,u.display_name seller,i.created_at FROM {$wpdb->prefix}sn_invoices i LEFT JOIN {$wpdb->users} u ON u.ID=i.seller_id WHERE 1=1 {$scope} {$date} {$status} ORDER BY i.id DESC LIMIT %d", ...array_merge($scope_args, $date_args, $status_args, [$limit])), ARRAY_A) ?: [];
+					$rows = $wpdb->get_results($wpdb->prepare("SELECT i.id,i.id invoice_id,0 payment_id,i.current_payment_stage stage_no,i.invoice_code,i.customer_name,i.customer_phone,i.status,COALESCE(i.final_total,i.product_price,0) amount,u.display_name seller,i.created_at FROM {$wpdb->prefix}sn_invoices i LEFT JOIN {$wpdb->users} u ON u.ID=i.seller_id WHERE 1=1 {$scope} {$date} {$status} ORDER BY i.id DESC LIMIT %d", ...array_merge($scope_args, $date_args, $status_args, [$limit])), ARRAY_A) ?: [];
 					foreach ($rows as &$row) { $row['customer_phone'] = $this->sn_mask_phone((string) $row['customer_phone']); }
-					return $rows;
+					return $this->sn_payment_trace_export_rows($rows);
 				}
 				if ($type === 'payments' && $this->sn_table_exists_quiet($wpdb->prefix . 'sn_payments')) {
-					return $wpdb->get_results($wpdb->prepare("SELECT i.invoice_code,p.amount,p.status,p.pay_method,p.created_at FROM {$wpdb->prefix}sn_payments p LEFT JOIN {$wpdb->prefix}sn_invoices i ON i.id=p.invoice_id ORDER BY p.id DESC LIMIT %d", $limit), ARRAY_A) ?: [];
+					[$scope, $scope_args] = $this->sn_report_seller_sql('i.seller_id', $filters);
+                    [$date, $date_args] = $this->sn_report_date_sql('p.created_at', $filters);
+                    $search = ''; $search_args = []; $q = trim((string)($filters['q'] ?? ''));
+                    if (preg_match('/^PAY-([1-9][0-9]*)$/D', $q, $match)) { $search = ' AND p.id=%d'; $search_args[] = (int)$match[1]; }
+                    elseif ($q !== '') { $search = ' AND i.invoice_code LIKE %s'; $search_args[] = '%'.$wpdb->esc_like($q).'%'; }
+                    $rows = $wpdb->get_results($wpdb->prepare("SELECT p.id payment_id,p.invoice_id,p.payment_stage_no stage_no,i.invoice_code,p.amount,p.status,p.pay_method,p.created_at FROM {$wpdb->prefix}sn_payments p LEFT JOIN {$wpdb->prefix}sn_invoices i ON i.id=p.invoice_id WHERE 1=1 {$scope} {$date} {$search} ORDER BY p.id DESC LIMIT %d", ...array_merge($scope_args, $date_args, $search_args, [$limit])), ARRAY_A) ?: [];
+                    return $this->sn_payment_trace_export_rows($rows);
 				}
 				if ($type === 'wallet' && $this->sn_table_exists_quiet($wpdb->prefix . 'sn_wallets')) {
 					return $wpdb->get_results($wpdb->prepare("SELECT COALESCE(u.display_name,CONCAT('#',w.user_id)) user,w.wallet_type,w.balance,w.updated_at FROM {$wpdb->prefix}sn_wallets w LEFT JOIN {$wpdb->users} u ON u.ID=w.user_id ORDER BY w.updated_at DESC LIMIT %d", $limit), ARRAY_A) ?: [];
