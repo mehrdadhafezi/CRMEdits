@@ -40,10 +40,11 @@ print('Completed assertions before failure: '+str(sum(x.startswith('PASS ') for 
 labels=re.findall(r'RuntimeException: FAIL ([A-Za-z0-9 _/()+,.:-]{1,180})',text)
 if labels:print('Assertion label: '+labels[-1].split(' in /',1)[0])
 for line in text.splitlines():
- if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
+ if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES|HTTP_ORIGIN_MATCH|HTTP_API_STATUS|HTTP_API_ERROR) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
 server=pathlib.Path(sys.argv[2]).read_text(errors='replace')
 print('Native HTTP input-limit warning recorded: '+str('Input variables exceeded' in server))
 print('Native HTTP fatal/parse count: '+str(len(re.findall(r'(?:Fatal|Parse) error:',server))))
+print('Native AJAX response statuses: '+repr(re.findall(r'\[([0-9]{3})\]: POST /wp-admin/admin-ajax[.]php',server)[-12:]))
 PY
     exit 1
   fi

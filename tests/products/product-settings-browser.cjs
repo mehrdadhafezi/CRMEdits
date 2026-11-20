@@ -19,7 +19,14 @@ module.exports=async function({base,fixture,output,channel}){
   // missing baseline roles/caps even without a settings save.
   let before=await state(admin.c);ok(before.version==='2.0.241'&&before.max_input_vars===1000,'actual PHP CGI enforces max_input_vars=1000');
   const fields=[];for(let i=0;i<1100;i++)fields.push(['sn_padding_'+i,'synthetic']);fields.push(['action','sn_save_settings'],['nonce',admin.n.sn_admin]);
-  const truncated=await ap.evaluate(async body=>(await fetch('/wp-admin/admin-ajax.php',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body})).status,new URLSearchParams(fields).toString());
+  let truncated;
+  try{truncated=await ap.evaluate(async body=>(await fetch('/wp-admin/admin-ajax.php',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body})).status,new URLSearchParams(fields).toString());}
+  catch(error){
+   console.log('BROWSER_HTTP_ORIGIN_MATCH '+String(new URL(ap.url()).origin===new URL(base).origin));
+   try{const response=await admin.c.request.post(base+'/wp-admin/admin-ajax.php',{headers:{'content-type':'application/x-www-form-urlencoded',connection:'close'},data:new URLSearchParams(fields).toString()});console.log('BROWSER_HTTP_API_STATUS '+response.status());}
+   catch(probe){const message=String(probe.message).split(/\r?\n/,1)[0].replace(/https?:\/\/\S+|[a-f0-9]{24,}/gi,'[redacted]').replace(/[^A-Za-z0-9 _/()+,.:\[\]-]/g,'');console.log('BROWSER_HTTP_API_ERROR '+message.slice(0,180));}
+   throw error;
+  }
   ok(truncated===400,'legacy action-at-end oversized form reproduces HTTP 400');
   const template='Synthetic "quotes" \\ slash متن';const payload={sn_sms_provider:'kavenegar',sn_sms_invoice_template:template};for(let i=0;i<1100;i++)payload['sn_padding_'+i]='synthetic';
   let r=await post(admin.c,'sn_save_settings',admin.n.sn_admin,{payload:JSON.stringify(payload)});ok(r.status===200&&r.body.success,'large JSON settings payload survives native PHP input limit');
