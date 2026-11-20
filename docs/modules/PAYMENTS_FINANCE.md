@@ -48,6 +48,16 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+2.0.240 adds an explicit internal manual-method choice after matched fresh Zibal
+inquiries. `manual_hold` is local intent, not provider cancellation or approved
+money. Existing `proof_data` preserves actor/time/provider observation atomically;
+authority and amount remain intact. Finance freshly re-inquires held requests.
+Verified late callbacks preserve their reference as `reconcile_error` under the
+same stage lock, without duplicate stage/wallet credit. Unreconciled bank payment
+blocks further manual action, including when a later stage is open. Only the
+existing confirmed-terminal statuses retire a request as failed. See
+[2.0.240 task and rollback limits](../tasks/GATEWAY_MANUAL_PAYMENT_240.md).
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features
@@ -67,6 +77,15 @@ flowchart LR
 DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.md). اطلاعات مشتری، مالی، token و snapshot داده حساس‌اند. رابطه‌ای که فقط در کد وجود دارد Foreign Key فرض نشود. حذف history، double-credit و استفاده از رکورد خارج از scope ممنوع است.
 
 ## 8. Testing & Preview
+
+`php tests/payments/gateway-manual-selection.php` requires SQLite3 and uses only
+memory. `gateway-manual-native.php`, `gateway-manual-race.php` and
+`gateway-manual-browser.cjs` require a guarded disposable synthetic WordPress/DB
+site. They are never authorized against Production, an existing customer clone
+or the canonical Staging owner's records. The native suite covers the actual
+handlers, provider mismatches, late callbacks, receipt decisions and report totals;
+race workers use real MySQL locks and independent PHP processes. Browser evidence
+must include actual multipart parsing/MIME validation, not an upload mock.
 
 Read-only approval visibility regression: `php tests/payments/approval-visibility.php`
 requires PHP CLI with SQLite3 and uses an in-memory synthetic schema, without a

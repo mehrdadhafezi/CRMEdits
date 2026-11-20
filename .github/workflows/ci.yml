@@ -190,6 +190,9 @@ jobs:
             test-results/hr/*.json
             test-results/hr/browser/summary.json
             test-results/hr/browser/hr-reissue-*.png
+            test-results/finance/gateway-manual-native.json
+            test-results/finance/gateway-manual-races.json
+            test-results/finance/gateway-browser/gateway-manual-browser.json
           if-no-files-found: error
           retention-days: 14
 

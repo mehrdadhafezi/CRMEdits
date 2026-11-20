@@ -75,6 +75,8 @@ class SN_Invoice {
 				return ['error'=>'اطلاعات مرحله پرداخت تغییر کرده است؛ صفحه را بازخوانی کنید.'];
 			}
             if(class_exists('SN_Receipt_Review')) { $manual=SN_Receipt_Review::stage_amounts($invoice_id,$payment_stage_no);if($manual['approved']>0 || $manual['pending']>0)return ['error'=>'واریزی دستی این مرحله در حال رسیدگی است؛ پرداخت درگاهی هم‌زمان مجاز نیست.']; }
+            $held=$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}sn_payments WHERE invoice_id=%d AND COALESCE(authority,'')<>'' AND ((payment_stage_no=%d AND status='manual_hold') OR status='reconcile_error')",$invoice_id,$payment_stage_no));
+            if($wpdb->last_error!==''||$held===null||$held>0)return ['error'=>'واریز دستی انتخاب شده یا پرداخت درگاه نیازمند تطبیق مالی است؛ درخواست درگاه جدید مجاز نیست.'];
             // The editor uses this same lock. Never send a quote read before an edit to a provider.
             if(class_exists('SN_Subscription_Plus') && SN_Subscription_Plus::instance()->handles_invoice($invoice_id)) {
                 $fresh=$this->get($invoice_id);
@@ -97,10 +99,9 @@ class SN_Invoice {
 				$reused['reused'] = true;
 				return $reused;
 			}
-			$wpdb->query( $wpdb->prepare(
-				"UPDATE {$wpdb->prefix}sn_payments SET status='expired', updated_at=%s WHERE invoice_id=%d AND payment_stage_no=%d AND status='pending' AND authority IS NOT NULL",
-				current_time( 'mysql' ), $invoice_id, $payment_stage_no
-			) );
+            // Age alone cannot cancel a request at the provider or permit another payment.
+            $unresolved=$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}sn_payments WHERE invoice_id=%d AND payment_stage_no=%d AND status='pending' AND COALESCE(authority,'')<>''",$invoice_id,$payment_stage_no));
+            if($wpdb->last_error!==''||$unresolved===null||$unresolved>0)return ['error'=>'درخواست قبلی درگاه هنوز تعیین تکلیف نشده است؛ در مدیریت پرداخت، وضعیت درگاه یا انتخاب واریز دستی را بررسی کنید.'];
 			if ( $this->active_gateway === 'zibal' ) {
 				return $this->zibal_request( $invoice_id, $amount, $description, $mobile, $callback_url, $order_id, $payment_stage_no );
 			}
@@ -118,7 +119,7 @@ class SN_Invoice {
 		$row = $wpdb->get_row( $wpdb->prepare(
 			"SELECT * FROM {$wpdb->prefix}sn_payments
 			 WHERE invoice_id=%d AND payment_stage_no=%d AND status='pending'
-			   AND authority IS NOT NULL AND ABS(amount-%f)<0.5
+			   AND COALESCE(authority,'')<>'' AND ABS(amount-%f)<0.5
 			   AND created_at >= DATE_SUB(%s, INTERVAL 30 MINUTE)
 			 ORDER BY id DESC LIMIT 1",
 			$invoice_id, $payment_stage_no, $amount, current_time( 'mysql' )

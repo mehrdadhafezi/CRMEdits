@@ -59,7 +59,7 @@ all ten default MIS scripts; the optional volume benchmark is excluded. MIS uses
 the existing minimum legacy fixture schema without activating the full CRM;
 native HR/Finance and code rollback separately exercise the activated schema.
 
-`ci-code-state.php` verifies 2.0.239 → 2.0.238 → 2.0.239 code-only rollback while
+`ci-code-state.php` verifies 2.0.240 → 2.0.238 → 2.0.240 code-only preservation while
 preserving financial/HR rows, policy metadata, WordPress role definitions and
 table definitions. No fixture is authorized against existing server databases.
 `ci-mis-bootstrap.php` and `ci-mis-install.php` independently require the hosted
@@ -73,3 +73,9 @@ different base, incomplete evidence or stale PR revision still blocks readiness.
 Only safe summaries/screenshots are uploaded. Configs, fixture passwords, cookies,
 SQL and detailed diagnostic logs remain in the disposable VM. Required native CI
 results remain NOT_RUN until the workflow actually completes successfully.
+
+The 2.0.239 mapping remains historical and unchanged. The separate bounded
+`scripts/gateway_manual_ci.py` mapping ties the 2.0.240 payment fix to eight exact
+runtime changes from 2.0.239 and retains all these suites. Preservation-only
+downgrade is not financial rollback approval when manual-held bank requests exist;
+follow the payment task's reconciliation/forward-fix requirements.

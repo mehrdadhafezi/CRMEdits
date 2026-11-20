@@ -5,7 +5,7 @@ test "${GITHUB_ACTIONS:-}" = true
 test "${RUNNER_ENVIRONMENT:-}" = github-hosted
 test "${SN_TEST_WORDPRESS:-}" = 7.1.4
 test "${SN_TEST_BASELINE:-}" = 2.0.237-installed
-# Reuse the unchanged, guarded provisioning and Finance/browser regression first.
+# Reuse guarded provisioning and the complete Finance/browser regression first.
 # The generated VM, DB, OS account, kernel egress rules and loopback server remain.
 source scripts/test-finance-integration.sh
 test "$(pwd -P)" = "$repo"
@@ -76,7 +76,7 @@ sudo mv "$runtime/hr-238" "$runtime/wordpress/wp-content/plugins/sales-network-v
 phase rollback-238 run_php tests/hr/ci-code-state.php rollback
 sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/hr-238"
 sudo mv "$runtime/hr-candidate" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
-phase reinstall-239 run_php tests/hr/ci-code-state.php restored
+phase reinstall-240 run_php tests/hr/ci-code-state.php restored
 # MIS resets its own separate fresh database. It cannot touch the HR/Finance DB.
 mis_db="sn_approval_${GITHUB_RUN_ID}_hrmis_test"
 sudo env MYSQL_PWD=root mysql --user=root --protocol=socket <<SQL

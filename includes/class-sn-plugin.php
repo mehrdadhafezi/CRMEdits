@@ -7167,6 +7167,10 @@ class SN_Plugin
 			}
 			return ['success'=>true,'already'=>true,'completed'=>$fresh_totals['remaining'] <= 0,'remaining'=>$fresh_totals['remaining'],'paid'=>$fresh_totals['paid'],'total'=>$fresh_totals['total'],'status'=>(string)($fresh->status ?? ($fresh_totals['remaining'] <= 0 ? 'paid' : 'partial_paid'))];
 		}
+		if($pay_method!=='online'){
+            $gateway_error=SN_Payment_Gateway_Guard::manual_approval_error($invoice_id,$stage_no,(string)$invoice->invoice_code);
+            if($gateway_error!==''){$wpdb->query('ROLLBACK');return ['success'=>false,'message'=>$gateway_error];}
+        }
 		$due = max(0, (float) ($stage->requested_amount ?? $totals['due']));
         $receipt_amounts=SN_Receipt_Review::stage_amounts($invoice_id,$stage_no);
         if ($legacy_finance_review) {
@@ -7975,12 +7979,22 @@ class SN_Plugin
 
     public function ajax_payment_gateway_check(): void {
         if(!is_user_logged_in()||!check_ajax_referer('sn_public','nonce',false)){wp_send_json(['success'=>false,'message'=>'نشست یا دسترسی معتبر نیست؛ صفحه را بازخوانی کنید.'],403);return;}
+        $operation=$_POST['operation']??'check';
+        if(!is_string($operation)||!in_array($operation,['check','switch_to_manual'],true)){wp_send_json(['success'=>false,'message'=>'عملیات پرداخت نامعتبر است.'],400);return;}
         $id=is_scalar($_POST['invoice_id']??null)?absint($_POST['invoice_id']):0;
         global $wpdb;$invoice=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_invoices WHERE id=%d",$id));
         if(!$invoice||!$this->sn_can_perform_internal_invoice_payment_action($invoice,'manual_payment')){wp_send_json(['success'=>false,'message'=>'این فاکتور در محدوده مجاز ثبت پرداخت شما نیست.'],403);return;}
-        $rate='sn_gateway_check_'.get_current_user_id().'_'.$id;if(get_transient($rate)){wp_send_json(['success'=>false,'message'=>'استعلام همین فاکتور تازه انجام شده است؛ حدود ۱۵ ثانیه بعد دوباره بررسی کنید.'],429);return;}set_transient($rate,1,15);
+        $rate='sn_gateway_'.$operation.'_'.get_current_user_id().'_'.$id;if(get_transient($rate)){wp_send_json(['success'=>false,'message'=>'استعلام همین فاکتور تازه انجام شده است؛ حدود ۱۵ ثانیه بعد دوباره بررسی کنید.'],429);return;}set_transient($rate,1,15);
         $totals=$this->sn_invoice_payment_totals($invoice);$gateway=new SN_Invoice();
-        $result=SN_Payment_Gateway_Guard::check($id,(int)$totals['stage_no'],function(array $row)use($gateway,$invoice):array{return $gateway->zibal_inquiry(substr((string)$row['authority'],6),(float)$row['amount'],(string)$invoice->invoice_code);});
+        $inquiry=function(array $row)use($gateway,$invoice):array{return $gateway->zibal_inquiry(substr((string)$row['authority'],6),(float)$row['amount'],(string)$invoice->invoice_code);};
+        if($operation==='switch_to_manual'){
+            $result=SN_Payment_Gateway_Guard::switch_to_manual($id,(int)$totals['stage_no'],$inquiry,function($fresh):bool{
+                if(!$this->sn_card_to_card_enabled()||!$this->sn_can_perform_internal_invoice_payment_action($fresh,'manual_payment'))return false;
+                $gate=$this->sn_invoice_customer_payment_gate($fresh,'manual');
+                return !empty($gate['allowed'])&&!in_array((string)$fresh->status,['paid','approved','cancelled','payment_archived'],true);
+            });
+            if(!empty($result['success'])&&empty($result['already']))$this->sn_log_activity($id,(int)$invoice->lead_id,'gateway_manual_selected','انتخاب واریز دستی پس از استعلام همه درخواست‌های زیبال؛ بدون لغو بانکی',['stage_no'=>(int)$totals['stage_no']]);
+        }else $result=SN_Payment_Gateway_Guard::check($id,(int)$totals['stage_no'],$inquiry);
         if(!empty($result['closed_payment_id']))$this->sn_log_activity($id,(int)$invoice->lead_id,'gateway_request_closed','تعیین تکلیف درخواست درگاه پس از استعلام زیبال',['payment_id'=>(int)$result['closed_payment_id'],'provider_status'=>(int)$result['provider_status'],'stage_no'=>(int)$totals['stage_no']]);
         wp_send_json($result,empty($result['success'])?409:200);
     }
@@ -8168,6 +8182,7 @@ class SN_Plugin
         $is_conversion_cash = ($invoice->payment_purpose ?? '') === 'subscription_plus_cash'
             && SN_Dot_Flow::instance()->is_conversion_cash_invoice($invoice_id);
 		$finalize_and_redirect = function(string $source, string $ref_id = '', string $authority = '') use ($invoice_id, $callback_stage_no, $invoice_page, $base_redirect, $wpdb, $fail_and_redirect, $is_conversion_cash) {
+            $result=SN_Payment_Gateway_Guard::verified_callback($invoice_id,$callback_stage_no,$authority,$ref_id,function()use($invoice_id,$callback_stage_no,$source,$ref_id,$authority,$wpdb,$is_conversion_cash):array{
             if ($is_conversion_cash) {
                 $review = SN_Dot_Flow::instance()->hold_verified_online_payment_for_finance($invoice_id, $callback_stage_no, $source, $ref_id, $authority);
                 if (empty($review['success'])) {
@@ -8178,21 +8193,28 @@ class SN_Plugin
                             $ref_id, current_time('mysql'), $invoice_id, $callback_stage_no, $authority
                         ));
                     }
-                    $fail_and_redirect('stage_finalize', $source);
                 }
-                $result = !empty($review['completed']) ? 'success' : (!empty($review['partial']) ? 'partial_success' : 'pending_finance');
-                wp_safe_redirect(add_query_arg(array_merge($base_redirect, ['pay_result'=>$result,'ref_id'=>$ref_id,'gateway'=>$source]), $invoice_page));
-                exit;
+                return $review;
             }
 			// The existing automatic gateway policy applies to other invoices.
 			$result = $this->sn_finalize_current_payment_stage($invoice_id, 'online', $source, $ref_id, 0, 'approved', $callback_stage_no);
 			if (empty($result['success'])) {
 				if ($authority !== '') { $wpdb->update($wpdb->prefix.'sn_payments', $this->sn_filter_existing_columns($wpdb->prefix.'sn_payments', ['status'=>'reconcile_error','updated_at'=>current_time('mysql')]), ['authority'=>$authority]); }
-				$fail_and_redirect('stage_finalize', $source);
+				return $result;
 			}
 			if ($authority !== '') {
-				$wpdb->update($wpdb->prefix.'sn_payments', $this->sn_filter_existing_columns($wpdb->prefix.'sn_payments', ['status'=>'approved','ref_id'=>$ref_id,'pay_method'=>'online','payment_source'=>$source,'updated_at'=>current_time('mysql')]), ['authority'=>$authority]);
+				if(false===$wpdb->update($wpdb->prefix.'sn_payments', $this->sn_filter_existing_columns($wpdb->prefix.'sn_payments', ['status'=>'approved','ref_id'=>$ref_id,'pay_method'=>'online','payment_source'=>$source,'updated_at'=>current_time('mysql')]), ['authority'=>$authority]))return ['success'=>false];
 			}
+            return $result;
+            });
+            if(!empty($result['reconciliation_required'])){
+                wp_safe_redirect(add_query_arg(array_merge($base_redirect,['pay_result'=>'pending_finance','gateway'=>$source]),$invoice_page));exit;
+            }
+            if(empty($result['success']))$fail_and_redirect('stage_finalize',$source);
+            if($is_conversion_cash){
+                $pay_result=!empty($result['completed'])?'success':(!empty($result['partial'])?'partial_success':'pending_finance');
+                wp_safe_redirect(add_query_arg(array_merge($base_redirect,['pay_result'=>$pay_result,'ref_id'=>$ref_id,'gateway'=>$source]),$invoice_page));exit;
+            }
 			if (! is_user_logged_in() && (! class_exists('SN_Dot_Flow') || ! SN_Dot_Flow::instance()->is_dot_invoice_id($invoice_id))) {
 				$customer_id = (int)$wpdb->get_var($wpdb->prepare("SELECT customer_wp_id FROM {$wpdb->prefix}sn_invoices WHERE id=%d",$invoice_id));
 				if ($customer_id) { wp_set_auth_cookie($customer_id, false); }
@@ -37617,11 +37639,12 @@ class SN_Plugin
 				$targets=[['scope'=>'self','user_id'=>$actor,'label'=>'ارجاع به خودم']];
 				if ($can_assign && $this->sn_hr_position_for_user($actor)==='seller' && $this->sn_hr_parent_user_by_position((int)$invoice->seller_id,'supervisor')>0) { $targets[]=['scope'=>'supervisor','user_id'=>0,'label'=>'ارجاع به سرپرست']; }
 				if ($can_assign) { foreach($this->sn_payment_assignment_candidates($actor) as $candidate) { $targets[]=['scope'=>'user','user_id'=>(int)$candidate['user_id'],'label'=>(string)$candidate['label']]; } }
-				$allowed=['check_gateway'=>$manual && $gateway_guard['can_check'],'view'=>true,'assign'=>$can_assign,'issue_stage'=>$can_stage,'register_payment'=>$can_manual,'view_history'=>$can_history,'view_transactions'=>$manual,'copy_link'=>$can_link,'resend_link'=>$can_link];
+				$allowed=['check_gateway'=>$manual && $gateway_guard['can_check'],'switch_to_manual'=>$manual && $this->sn_card_to_card_enabled() && !$closed && !empty($gate['allowed']) && !empty($gateway_guard['can_switch_to_manual']),'view'=>true,'assign'=>$can_assign,'issue_stage'=>$can_stage,'register_payment'=>$can_manual,'view_history'=>$can_history,'view_transactions'=>$manual,'copy_link'=>$can_link,'resend_link'=>$can_link];
 				$blocked=[];
 				foreach($allowed as $action=>$permitted){if(!$permitted)$blocked[$action]='این اقدام در وضعیت فعلی یا محدوده دسترسی حساب مجاز نیست.';}
 				if(!$can_manual)$blocked['register_payment']=!$manual?'ثبت واریزی در محدوده دسترسی این حساب نیست.':(!$this->sn_card_to_card_enabled()?'ثبت واریزی دستی در تنظیمات غیرفعال است.':($due<=0.5?'مرحله پرداخت فعالی وجود ندارد؛ مانده کل فاکتور با مبلغ مرحله متفاوت است.':($available<=0.5?'ظرفیت این مرحله با واریزی‌های قبلی تکمیل شده است.':(string)($gate['message']??'ثبت واریزی مجاز نیست.'))));
-				if($manual && $gateway_guard['blocked']){$blocked['register_payment']=$gateway_guard['message'];$state=$gateway_guard['code'];$description=$gateway_guard['message'];$next='check_gateway';}
+				if($manual && $gateway_guard['blocked']){$blocked['register_payment']=$gateway_guard['message'];$state=$gateway_guard['code'];$description=$gateway_guard['message'];$next=$allowed['switch_to_manual']?'switch_to_manual':($allowed['check_gateway']?'check_gateway':'history');}
+                elseif(!empty($gateway_guard['manual_selected']))$description.=' '.$gateway_guard['message'];
 				if(!$can_stage)$blocked['issue_stage']=$ref_status==='needs_payment_assignment'?'پیش از صدور مرحله باید مسئول تعیین شود.':($due>0.5?'مرحله فعلی هنوز بسته نشده است.':'صدور مرحله فقط برای مسئول فعلی و پس از تأیید مرحله قبلی مجاز است.');
 				if(!$can_assign)$blocked['assign']='تعیین مسئول در اختیار مالک فعلی ارجاع است و فقط در وضعیت نیاز به تعیین مسئول انجام می‌شود.';
 				if(($next==='manual_payment'&&!$can_manual)||($next==='assignment'&&!$can_assign)||($next==='stage'&&!$can_stage))$next='history';
