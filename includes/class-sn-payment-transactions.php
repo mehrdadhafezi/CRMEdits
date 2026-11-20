@@ -12,8 +12,8 @@ class SN_Payment_Transactions
         $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_payments WHERE invoice_id=%d ORDER BY payment_stage_no ASC,id ASC", (int)$invoice->id), ARRAY_A) ?: [];
         foreach ($rows as &$row) {
             $proof = json_decode((string)($row['proof_data'] ?? ''), true);
-            $row['is_transaction'] = is_array($proof);
             $row['is_gateway'] = !empty($row['authority']);
+            $row['is_transaction'] = !$row['is_gateway'] && is_array($proof);
             if (!is_array($proof)) {
                 // Historical rows never had their own proof snapshot.
                 $proof = (int)($row['payment_stage_no'] ?? 1) === (int)($invoice->current_payment_stage ?? 1) && empty($row['authority']) ? (array)$invoice : [];
@@ -24,6 +24,7 @@ class SN_Payment_Transactions
             $row['stage_no'] = (int)($row['payment_stage_no'] ?? 1);
             $row['source_label'] = SN_Helpers::payment_source_label((string)($row['payment_source'] ?? ''));
             $row['status_label'] = ['pending'=>'در انتظار بررسی','approved'=>'تأیید شده','paid'=>'پرداخت شده','verified'=>'پرداخت درگاهی ثبت شده','rejected'=>'رد شده','failed'=>'ناموفق','expired'=>'منقضی'][$row['status']] ?? (string)$row['status'];
+            if($row['is_gateway'])$row['status_label']=['pending'=>'درخواست درگاه؛ پرداخت تأیید نشده','manual_hold'=>'واریز دستی انتخاب شده؛ لغو بانکی نیست','reconcile_error'=>'پرداخت درگاه نیازمند تطبیق مالی'][$row['status']]??$row['status_label'];
             $row['created_at_jalali'] = SN_Helpers::gregorian_to_jalali_date((string)$row['created_at']);
             unset($row['proof_data'], $row['submission_key'], $row['authority']);
         }
@@ -47,8 +48,8 @@ class SN_Payment_Transactions
         $pending = 0.0; $recorded = 0.0; $count = 0; $independent = false;
         foreach ($rows as $row) {
             if ((int)($row['payment_stage_no'] ?? $row['stage_no'] ?? 1) !== $stage_no) { continue; }
-            if (!empty($row['is_transaction']) || !empty($row['proof_data'])) { $independent = true; }
             $is_gateway = !empty($row['authority']) || !empty($row['is_gateway']) || in_array((string)($row['pay_method'] ?? ''), ['online','gateway','zibal','zarinpal'], true);
+            if (!$is_gateway && (!empty($row['is_transaction']) || !empty($row['proof_data']))) { $independent = true; }
             // An unfinished gateway request is not a registered bank transfer.
             if ((string)($row['status'] ?? '') === 'pending' && $is_gateway) { continue; }
             if (in_array((string)($row['status'] ?? ''),['pending','approved','paid','verified'],true)) { $recorded += max(0,(float)$row['amount']); }

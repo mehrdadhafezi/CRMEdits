@@ -138,5 +138,11 @@ done
 test "$server_ready" -eq 1 || { echo 'Disposable loopback PHP server did not become ready'; exit 1; }
 run_test node tests/payments/integration/browser.cjs | tee "$output/browser.txt"
 run_php tests/payments/integration/verify.php final | tee "$output/final.txt"
+# New method-selection regressions are additive; the original Finance tests remain.
+run_php tests/payments/gateway-manual-selection.php | tee "$output/gateway-manual-memory.txt"
+run_php tests/payments/gateway-manual-native.php | tee "$output/gateway-manual-native.txt"
+run_test setpriv --no-new-privs env GITHUB_ACTIONS="$GITHUB_ACTIONS" RUNNER_ENVIRONMENT="$RUNNER_ENVIRONMENT" python3 -B tests/payments/gateway-manual-races.py | tee "$output/gateway-manual-races.txt"
+sudo cp tests/payments/integration/gateway-provider.php "$runtime/wordpress/wp-content/mu-plugins/gateway-provider.php"
+run_test node tests/payments/gateway-manual-browser.cjs | tee "$output/gateway-manual-browser.txt"
 printf 'Tested exact artifact: %s\n' "$(basename "$candidate")"
 cat "$candidate.sha256"

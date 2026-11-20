@@ -94,6 +94,18 @@ Commit به دست می‌آید. هر تغییر ترکیبی در افزونه
 
 ## تست امنیتی اجباری بر اساس ارتباط با تغییر
 
+### Bounded payment-method regression (2.0.240)
+
+The additional mapping in `scripts/gateway_manual_ci.py` accepts only base
+`b0f9db99be57411cae6f9497f95ea5b26730f99f`, eight exact reviewed runtime hashes
+and named test/documentation files. The other 111 runtime files must be identical.
+It retains all four Finance jobs and the existing HR/UI, access, wallet/commission,
+schema/rollback and ten-script disposable MIS job. No required suite is waived.
+Each Finance job additionally runs the manual-method memory/native regressions,
+real parallel PHP/MySQL races and actual HTTP/multipart desktop/mobile browser
+tests. Missing, stale, failed, skipped or proxy-only evidence still blocks CI
+readiness. Native tests never accept a Production or customer-data target.
+
 برای **هر کنترل** زیر نتیجه و شاهد یا دلیل مشخص N/A ثبت شود؛ گروه‌بندی جدول به
 معنی حذف کنترل‌های درون گروه نیست. مطالعه کد می‌تواند شاهد review باشد ولی جای
 تست runtime موردنیاز را نمی‌گیرد.

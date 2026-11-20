@@ -201,8 +201,8 @@ final class SN_Receipt_Review {
                 if((int)$payment->uploaded_by_user_id===$uid)$this->fail('ثبت‌کننده واریز نمی‌تواند همان واریز را تأیید یا رد کند.');
                 if ($guard && is_wp_error($check = $guard($invoice, $payment))) { $this->fail($check->get_error_message()); }
                 if($op==='approve') {
-                    $gateway = SN_Payment_Gateway_Guard::snapshot($id, $stage_no);
-                    if ($gateway['blocked']) { $this->fail($gateway['message']); }
+                    $gateway_error=SN_Payment_Gateway_Guard::manual_approval_error($id,$stage_no,(string)$invoice->invoice_code);
+                    if($gateway_error!=='')$this->fail($gateway_error);
                 } elseif($reason==='')$this->fail('دلیل رد همین واریز الزامی است.');
                 $meta['reviewer_id']=$uid;$meta['reviewed_at']=current_time('mysql');$meta['reason']=$reason;
                 $changes['status']=$op==='approve'?'approved':'rejected';
@@ -271,6 +271,8 @@ final class SN_Receipt_Review {
         }
         $raw=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_payments WHERE invoice_id=%d ORDER BY payment_stage_no,id",$id));
         $rows=SN_Payment_Transactions::rows($invoice);$by=[];foreach($raw ?: [] as $r)$by[(int)$r->id]=$r;
+        $gateway_notices=[];
+        foreach($rows as $r)if(!empty($r['is_gateway'])&&$r['status']==='reconcile_error')$gateway_notices[]='پرداخت درگاه #'.(int)$r['id'].' نیازمند تطبیق مالی است؛ مرجع بانکی حفظ شده و این مبلغ دوباره به فاکتور یا پورسانت اضافه نشده است.';
         $events=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_payment_review_events WHERE invoice_id=%d ORDER BY id DESC LIMIT 200",$id),ARRAY_A) ?: [];
         foreach($events as &$event){$event['actor_name']=self::name((int)$event['actor_user_id']);$event['snapshot']=json_decode($event['snapshot_json'],true);unset($event['snapshot_json']);}unset($event);
         foreach($rows as &$row) {
@@ -289,6 +291,6 @@ final class SN_Receipt_Review {
             $row['history']=array_values(array_filter($events,static fn($e)=>(int)$e['payment_id']===(int)$r->id));
         }unset($row);
         $reference = class_exists('SN_Dot_Flow') ? (SN_Dot_Flow::instance()->conversion_invoice_references([$id])[$id] ?? []) : [];
-        return ['success'=>true,'invoice_id'=>$id,'invoice_code'=>(string)($reference['invoice_code'] ?? $invoice->invoice_code),'invoice'=>['id'=>$id,'code'=>(string)$invoice->invoice_code,'customer_name'=>(string)($invoice->customer_name??''),'customer_phone'=>(string)($invoice->customer_phone??''),'seller_name'=>self::name((int)($invoice->seller_id??0)),'stage_no'=>(int)$invoice->current_payment_stage,'display_stage_no'=>(int)($reference['stage_no'] ?? 0),'status'=>(string)$invoice->status],'payments'=>$rows,'financial_notices'=>array_values(array_map(static fn($e)=>'آثار پورسانت این فاکتور به علت وجود تسویه کیف پول نیازمند تصمیم دستی است؛ وصول یا تهاتر خودکار انجام نشد.',array_filter($events,static fn($e)=>$e['action']==='commission_manual_review'))),'totals'=>($this->policy['totals'])($invoice),'message'=>''];
+        return ['success'=>true,'invoice_id'=>$id,'invoice_code'=>(string)($reference['invoice_code'] ?? $invoice->invoice_code),'invoice'=>['id'=>$id,'code'=>(string)$invoice->invoice_code,'customer_name'=>(string)($invoice->customer_name??''),'customer_phone'=>(string)($invoice->customer_phone??''),'seller_name'=>self::name((int)($invoice->seller_id??0)),'stage_no'=>(int)$invoice->current_payment_stage,'display_stage_no'=>(int)($reference['stage_no'] ?? 0),'status'=>(string)$invoice->status],'payments'=>$rows,'financial_notices'=>array_merge($gateway_notices,array_values(array_map(static fn($e)=>'آثار پورسانت این فاکتور به علت وجود تسویه کیف پول نیازمند تصمیم دستی است؛ وصول یا تهاتر خودکار انجام نشد.',array_filter($events,static fn($e)=>$e['action']==='commission_manual_review')))),'totals'=>($this->policy['totals'])($invoice),'message'=>''];
     }
 }

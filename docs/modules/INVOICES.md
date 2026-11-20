@@ -46,6 +46,13 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+2.0.240 preserves public token validation and provider amount conversion. The
+30-minute window only controls pending-request reuse; age cannot cancel a bank
+request or create a competing request. An unresolved older request needs matched
+inquiry or explicit internal manual-method selection. New bank requests are
+blocked while that stage has a manual hold or the invoice needs reconciliation.
+See [payment contract](PAYMENTS_FINANCE.md).
+
 Owner-approved 2.0.239 adds HR-controlled reissue permission for the existing
 ordinary-seller duplicate check: same seller + normalized customer phone,
 independent of existing invoice status/product. Default prevention is preserved;

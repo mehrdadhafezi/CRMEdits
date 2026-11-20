@@ -22,6 +22,17 @@ packager excludes all test infrastructure.
 
 Coverage:
 
+2.0.240 also runs `gateway-manual-selection.php` (memory),
+`gateway-manual-native.php` (actual WordPress handlers),
+`gateway-manual-races.py` / `gateway-manual-race.php` (parallel native workers),
+and `gateway-manual-browser.cjs` (native HTTP login, MIME rejection and real PNG
+receipt upload at desktop/mobile widths). `gateway-provider.php` is a guarded,
+test-only MU provider, installed after the existing regressions; it never enters
+the runtime ZIP. Generated synthetic credentials/cookies/fixtures stay in the
+disposable root; only sanitized assertions and summaries enter test artifacts.
+Late-bank reconciliation and preservation-only code rollback are distinct: a
+code downgrade does not implement the new live-request guard.
+
 - Actual MySQL aggregates and report queries; ledger/fallback deduplication.
 - Real WordPress login cookies/nonces; guest, missing/invalid/cross-user nonce,
   unrelated role, forged role/seller IDs, array and SQL-like search input.

@@ -541,3 +541,23 @@ Rules:
 - A normal sales manager sees only archive rows whose resolved `sales_manager_user_id` equals the current user.
 - `manage_options` may view all archive rows for diagnostics.
 - This tab is read-only in stage one.
+
+### `wp_ajax_sn_payment_gateway_check` — explicit manual choice in 2.0.240
+
+- Login, existing `sn_public` nonce and the current internal manual-payment record
+  scope are required. No public/customer or guest method-switch endpoint is added.
+- Optional `operation`: omitted / `check` retains inquiry behavior;
+  `switch_to_manual` explicitly chooses manual capture after all matched fresh
+  Zibal inquiries confirm unpaid or existing terminal cancellation/refund states.
+  Arrays and other operations are rejected. The manual-payment setting and fresh
+  invoice/payment gate are rechecked under the stage lock and transaction.
+- Response keeps `success`, `message`, `gateway_guard`. Additive guard fields:
+  `can_switch_to_manual`, `manual_selected`. Payment-management `allowed_actions`
+  adds `switch_to_manual`. Permission hints never substitute for backend checks.
+- Local `manual_hold` retains authority/amount and selection metadata in existing
+  `proof_data`; it is not provider cancellation or financial approval. No token,
+  authority or provider credential is added to the client response.
+- Existing current-stage locks serialize selection, manual submission and verified
+  callbacks. Late verified bank results become `reconcile_error` with retained
+  reference and no duplicate settlement/commission. Unknown or failed inquiries
+  never select a method. See [payment contract](modules/PAYMENTS_FINANCE.md).

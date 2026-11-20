@@ -9,6 +9,7 @@ from urllib.request import Request, urlopen
 
 from risk_report import AUDIT_FILES, LEVELS, SHA, SUITES, IncompleteDiff, git, report
 import hr_reissue_ci as hr_ci
+import gateway_manual_ci as gateway_ci
 
 
 JOBS = {
@@ -135,13 +136,15 @@ def make_plan(pr, merge_sha, selection):
         ]
     if finance:
         suites["finance"] = "REQUIRED"
-    hr_native = not unknown and not tooling_only and hr_ci.scope(pr["base"], pr["head"], paths)
+    gateway_manual = not unknown and not tooling_only and gateway_ci.scope(pr["base"], pr["head"], paths)
+    hr_native = not unknown and not tooling_only and (gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
     return {
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
         "domains": domains, "files": len(files), "finance": finance,
         "campaign_ui": campaign_ui, "tooling_only": tooling_only, "package_parity": package_parity,
         "audit_only": audit_only,
         "hr_native": hr_native,
+        "gateway_manual": gateway_manual,
         "reasons": reasons, "suites": suites,
     }
 
@@ -173,7 +176,7 @@ def audit_job_passed(jobs):
     }
 
 
-def verify_native_output(wordpress, baseline, merge_sha, output, dist):
+def verify_native_output(wordpress, baseline, merge_sha, output, dist, gateway_manual=False):
     if f"Baseline: {baseline}" not in (output / "provisioning.txt").read_text(encoding="utf-8").splitlines():
         raise ValueError("Finance provisioning evidence has the wrong matrix baseline")
     phases = ("upgrade", "rollback", "restored", "final")
@@ -196,6 +199,8 @@ def verify_native_output(wordpress, baseline, merge_sha, output, dist):
     expected = f"{hashlib.sha256(archive.read_bytes()).hexdigest()}  {archive.name}"
     if archive.with_suffix(".zip.sha256").read_text(encoding="utf-8").strip() != expected:
         raise ValueError("Finance ZIP checksum mismatch")
+    if gateway_manual:
+        gateway_ci.verify_finance_output(output, wordpress)
 
 
 def outcome(plan, expected, live, results, run_url, matrix_verified=False, evidence_run=None, evidence_error=None,
@@ -373,13 +378,17 @@ def main():
         pr = revision(event["pull_request"])
         verify_checkout(pr, os.environ["GITHUB_SHA"])
         selection = report(pr["base"], pr["head"], pr["target"])
-        if not hr_ci.scope(pr["base"], pr["head"], {c["path"] for c in selection["changed_files"]}):
+        paths = {c["path"] for c in selection["changed_files"]}
+        if gateway_ci.scope(pr["base"], pr["head"], paths):
+            gateway_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
+        elif hr_ci.scope(pr["base"], pr["head"], paths):
+            hr_ci.verify_output("test-results/hr", os.environ["GITHUB_SHA"])
+        else:
             raise ValueError("HR tests cannot certify unreviewed runtime changes")
-        hr_ci.verify_output("test-results/hr", os.environ["GITHUB_SHA"])
         return 0
     if stage == "verify-finance-output":
         verify_native_output(os.environ["SN_TEST_WORDPRESS"], os.environ["SN_TEST_BASELINE"], os.environ["GITHUB_SHA"],
-                             Path("test-results/finance"), Path("dist"))
+                             Path("test-results/finance"), Path("dist"), gateway_manual=gateway_ci.payload_matches_revision(os.environ["GITHUB_SHA"]))
         return 0
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text(encoding="utf-8"))
     pr = revision(event["pull_request"])
