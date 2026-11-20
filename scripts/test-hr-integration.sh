@@ -34,6 +34,15 @@ phase() {
     if ! kill -0 "$server_pid" 2>/dev/null; then
       if wait "$server_pid"; then printf 'NATIVE_HTTP_SERVER_EXIT=0\n'; else printf 'NATIVE_HTTP_SERVER_EXIT=%s\n' "$?"; fi
     fi
+    run_php -r 'echo "NATIVE_PHP_VERSION=".PHP_VERSION."\nNATIVE_PHP_EXTENSIONS=".implode(",",get_loaded_extensions())."\n";'
+    (umask 077; sudo dmesg > "$runtime/hr-kernel.private.log")
+    python3 - "$runtime/hr-kernel.private.log" <<'PY'
+import pathlib,re,sys
+text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
+crashes=[line for line in text.splitlines() if re.search(r'php(?:8[.]3)?\[[0-9]+\]',line) and re.search(r'segfault|trap|killed',line,re.I)]
+print('NATIVE_PHP_KERNEL_CRASH_COUNT='+str(len(crashes)))
+print('NATIVE_PHP_CRASH_MODULES='+repr(sorted(set(re.findall(r' in ([A-Za-z0-9_.-]+)\[','\n'.join(crashes))))))
+PY
     python3 - "$runtime/hr-$label.private.log" "$server_log" <<'PY'
 import pathlib,re,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')

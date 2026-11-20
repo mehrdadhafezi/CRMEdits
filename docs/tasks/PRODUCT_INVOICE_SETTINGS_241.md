@@ -67,6 +67,9 @@ configuration avoids the file-timestamp path described in PHP's
 [upstream advisory](https://github.com/php/php-src/security/advisories/GHSA-gr4f-wgx5-jpfv).
 This is a test-server mitigation, not a claim that the advisory is the proven
 root cause of that exit or a Production PHP remediation.
+The disposable web server runs without opcode caching or debugger instrumentation
+so parser-boundary behavior can be separated from those optional extensions.
+All native HTTP assertions, the input limit, and retained regressions remain.
 At the end of local validation no commit, push, PR, merge, official RC or canonical
 Stage deployment had been made. Subsequent GitHub metadata records those steps.
 

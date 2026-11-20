@@ -130,7 +130,7 @@ server_log=$(mktemp /tmp/sn-approval-server-XXXXXXXX.log)
 # Parsing warnings happen before WordPress can apply WP_DEBUG_DISPLAY=false.
 # Use the disposable VM syslog until WP selects its private application log.
 test -S /dev/log
-run_test env PHP_CLI_SERVER_WORKERS=4 php8.3 -d sendmail_path=/bin/false -d display_errors=0 -d display_startup_errors=0 -d log_errors=1 -d error_log=syslog -d date.timezone=UTC -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$server_log" 2>&1 &
+run_test env PHP_CLI_SERVER_WORKERS=4 php8.3 -d sendmail_path=/bin/false -d display_errors=0 -d display_startup_errors=0 -d log_errors=1 -d error_log=syslog -d date.timezone=UTC -d opcache.enable=0 -d xdebug.mode=off -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$server_log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 server_ready=0
