@@ -63,7 +63,7 @@ class TraceProofTests(unittest.TestCase):
    'trace242-browser.json':{**common,'desktop_mobile':True,'external_network_blocked':True},
    'trace242-lifecycle.json':{**common,'candidate_commit':'a'*40,'baseline_shas':{'main':trace.BASE,'experimental':trace.EXPERIMENTAL},
     'profiles':[{'track':t,'baseline':s,'passed':True,'fresh_namespace':True,'full_restore':True}for t,s in [('main',trace.BASE),('experimental',trace.EXPERIMENTAL)]],
-    **{k:True for k in ['fresh_namespaces','legacy_identities_preserved','new_financial_state_preserved_on_code_swap','full_backup_restore_verified','outside_tables_preserved']},'code_only_business_rollback_supported':False}
+    **{k:True for k in ['fresh_namespaces','legacy_identities_preserved','new_financial_state_preserved_on_code_swap','full_backup_restore_verified','post_restore_bootstrap_schema_verified','outside_tables_preserved']},'code_only_business_rollback_supported':False}
   })
   for field in ['core_sha256','commission_sha256']:hr['trace242-unit.json'].pop(field)
   return hr,finance

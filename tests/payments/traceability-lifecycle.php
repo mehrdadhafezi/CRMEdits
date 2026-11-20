@@ -26,12 +26,23 @@ if(str_starts_with($phase,'baseline')){
  hr239_ok($legacy()===$state['legacy'],'legacy invoice codes tokens amounts and payment ids survive '.$phase);
  if($phase==='bridge'){$state['stable_snapshot']=$snapshot();}
  if(in_array($phase,['upgrade','reupgrade'],true)){
-  $expected=$state['stable_snapshot']??$state['baseline_snapshot'];hr239_ok($snapshot()===$expected,'accepted stable financial schema data and roles are unchanged by 242 bootstrap');
+  $expected=$state['stable_snapshot']??$state['restored_snapshot']??$state['baseline_snapshot'];hr239_ok($snapshot()===$expected,'accepted stable financial schema data and roles are unchanged by 242 bootstrap');
   $a=$state['legacy']['sn_invoices'][0];$p=$state['legacy']['sn_payments'][0];$invoice=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_invoices WHERE id=%d",(int)$a['id']));$rows=SN_Payment_Transactions::rows($invoice);
   hr239_ok(count($rows)===1&&$rows[0]['transaction_code']==='PAY-'.$p['id'],'legacy actual receipt gets its stable existing payment reference');
   $b=$state['legacy']['sn_invoices'][1];$ref=SN_Payment_Transactions::trace_reference(['payment_id'=>0,'invoice_id'=>(int)$b['id']],[]);hr239_ok($ref['transaction_code']==='','legacy invoice without receipt never gets a fabricated payment');
  }
- if(str_starts_with($phase,'restore')){hr239_ok($snapshot()===$state['baseline_snapshot'],'full backup restore recovers baseline financial schema data and roles');}
+ if(str_starts_with($phase,'restore')){
+  // The parent verifies every table's DDL, effective column metadata and row
+  // checksum both before and after this bootstrap. Raw SHOW CREATE can spell
+  // an equivalent matching charset explicitly after a MySQL restore.
+  $actual=$snapshot();$expected=$state['baseline_snapshot'];
+  foreach($actual['tables']as&$table){unset($table['ddl']);}unset($table);
+  foreach($expected['tables']as&$table){unset($table['ddl']);}unset($table);
+  hr239_ok($actual===$expected,'full backup restore recovers baseline financial data and roles');
+  // Retain the restored raw spelling for the subsequent strict code-upgrade
+  // snapshot; the parent must verify its complete effective schema first.
+  $state['restored_snapshot']=$snapshot();
+ }
 }elseif($phase==='snapshot'){
  $marked=(int)$wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}sn_dot_invoice_links WHERE payment_kind='staged_receipt'");hr239_ok($marked>0,'candidate wrote real new-model synthetic purchases before downgrade');$state['new_snapshot']=$snapshot();$state['marked_count']=$marked;
 }elseif(in_array($phase,['downgrade','resume'],true)){

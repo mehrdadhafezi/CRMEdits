@@ -125,12 +125,13 @@ try:
    print('RESTORE_DIAGNOSTIC '+json.dumps({'track':track,'names_equal':restored_names==base_names,'schema_equal':restored_fingerprint['schema']==base_fingerprint['schema'],'columns_equal':restored_fingerprint['columns']==base_fingerprint['columns'],'rows_equal':restored_fingerprint['rows']==base_fingerprint['rows'],'schema_lines_before':len(left),'schema_lines_after':len(right),'changed_schema_line_prefixes':sorted(set((a[:90] if a.startswith(('SET ','/*!','CREATE TABLE','ALTER TABLE',') ENGINE')) else 'COLUMN_OR_INDEX_DEFINITION')for a,b in zip(left,right)if a!=b)),'synthetic_schema_differences':[{'before':a[:240],'after':b[:240]}for a,b in zip(left,right)if a!=b][:8]}),flush=True)
   ok(restored_names==base_names and restored_fingerprint==base_fingerprint,track+' full backup restores every generated baseline table exactly')
   swap(site,baseline);phase(site,'restore241' if track=='main' else 'restore235');ok(True,track+' old plugin and restored database agree')
+  ok(names(prefix)==base_names and fingerprint(base_names)==base_fingerprint,track+' old bootstrap preserves full restored schema effective columns and rows')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')
   swap(site,profiles['candidate']);phase(site,'reupgrade');ok(True,track+' repeated upgrade after full restore is idempotent')
   profiles_done.append({'track':track,'baseline':baseline['commit'],'passed':True,'fresh_namespace':True,'full_restore':True})
  current=source;ok(fingerprint(before_names)==before,'every preexisting table outside both generated namespaces is preserved')
  summary={'passed':True,'synthetic':True,'assertions':checks,'version':'2.0.242','baseline_shas':{'main':BASE,'experimental':EXPERIMENTAL},'profiles':profiles_done,'fresh_namespaces':True,'legacy_identities_preserved':True,'new_financial_state_preserved_on_code_swap':True,'full_backup_restore_verified':True,'outside_tables_preserved':True,'code_only_business_rollback_supported':False,'production_touched':False}
- summary.update(candidate_commit=profiles['candidate']['commit'],core_sha256=profiles['candidate']['members']['includes/class-sn-plugin.php'],commission_sha256=profiles['candidate']['members']['includes/class-sn-purpose-commission.php'])
+ summary.update(candidate_commit=profiles['candidate']['commit'],core_sha256=profiles['candidate']['members']['includes/class-sn-plugin.php'],commission_sha256=profiles['candidate']['members']['includes/class-sn-purpose-commission.php'],post_restore_bootstrap_schema_verified=True)
  (output/'trace242-lifecycle.json').write_text(json.dumps(summary,indent=2)+'\n');print('SUMMARY '+json.dumps(summary));print('TOTAL '+str(checks))
 finally:
  if cnf.is_file() and not cnf.is_symlink():cnf.unlink()

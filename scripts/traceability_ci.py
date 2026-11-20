@@ -51,7 +51,7 @@ def verify_hr_output(output,merge):
  if lifecycle.get('candidate_commit')!=merge or lifecycle.get('core_sha256')!=RUNTIME['includes/class-sn-plugin.php'] or lifecycle.get('commission_sha256')!=RUNTIME['includes/class-sn-purpose-commission.php']:raise ValueError('Lifecycle evidence belongs to another candidate')
  expected=[{'track':track,'baseline':sha,'passed':True,'fresh_namespace':True,'full_restore':True}for track,sha in [('main',BASE),('experimental',EXPERIMENTAL)]]
  if lifecycle.get('profiles')!=expected:raise ValueError('Incomplete lifecycle track results')
- for flag in ['fresh_namespaces','legacy_identities_preserved','new_financial_state_preserved_on_code_swap','full_backup_restore_verified','outside_tables_preserved']:
+ for flag in ['fresh_namespaces','legacy_identities_preserved','new_financial_state_preserved_on_code_swap','full_backup_restore_verified','post_restore_bootstrap_schema_verified','outside_tables_preserved']:
   if lifecycle.get(flag) is not True:raise ValueError('Incomplete lifecycle proof: '+flag)
  if lifecycle.get('code_only_business_rollback_supported') is not False:raise ValueError('Old code cannot safely continue marked cases')
  if git('rev-parse','HEAD').decode().strip()!=merge or not payload_matches_revision(merge):raise ValueError('Final traceability revision changed')
