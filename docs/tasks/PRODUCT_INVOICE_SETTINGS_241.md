@@ -57,6 +57,10 @@ Committed preflight additionally maps the three existing shared SMS/Dot/Operatio
 files as HIGH/shared, selecting every dependent suite without raising the generic
 blob limit. Runtime certification still requires the exact reviewed payload; a
 different payload cannot select the bounded native proof. Real-Git tests cover it.
+The native HTTP test server also logs parser/startup warnings privately before
+WordPress starts, matching the intended WP_DEBUG_DISPLAY=false boundary. The
+input limit remains 1000 and the HTTP 400 reproduction is still mandatory; no
+network failure is accepted as a substitute for that response.
 At the end of local validation no commit, push, PR, merge, official RC or canonical
 Stage deployment had been made. Subsequent GitHub metadata records those steps.
 

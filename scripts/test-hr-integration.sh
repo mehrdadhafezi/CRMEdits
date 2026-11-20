@@ -31,7 +31,7 @@ phase() {
   (umask 077; : > "$runtime/hr-$label.private.log")
   if ! "$@" > "$runtime/hr-$label.private.log" 2>&1; then
     printf 'FAIL %s; detailed synthetic diagnostics stay inside the disposable VM\n' "$label"
-    python3 - "$runtime/hr-$label.private.log" <<'PY'
+    python3 - "$runtime/hr-$label.private.log" "$server_log" <<'PY'
 import pathlib,re,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
 frames=re.findall(r'([A-Za-z0-9_.-]+\.(?:php|cjs))(?::| on line )(\d+)',text)
@@ -41,6 +41,9 @@ labels=re.findall(r'RuntimeException: FAIL ([A-Za-z0-9 _/()+,.:-]{1,180})',text)
 if labels:print('Assertion label: '+labels[-1].split(' in /',1)[0])
 for line in text.splitlines():
  if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
+server=pathlib.Path(sys.argv[2]).read_text(errors='replace')
+print('Native HTTP input-limit warning recorded: '+str('Input variables exceeded' in server))
+print('Native HTTP fatal/parse count: '+str(len(re.findall(r'(?:Fatal|Parse) error:',server))))
 PY
     exit 1
   fi

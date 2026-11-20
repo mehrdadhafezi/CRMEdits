@@ -23,7 +23,7 @@ RUNTIME={
 NON_RUNTIME={
  'docs/API_CONTRACTS.md','docs/modules/PRODUCTS_CATALOG.md','docs/modules/SMS.md',
  'docs/RELEASE_2.0.241_PRODUCT_SETTINGS.md','docs/tasks/PRODUCT_INVOICE_SETTINGS_241.md',
- 'scripts/product_invoice_ci.py','scripts/fast_track_ci.py','scripts/risk_report.py','scripts/test-hr-integration.sh',
+ 'scripts/product_invoice_ci.py','scripts/fast_track_ci.py','scripts/risk_report.py','scripts/test-hr-integration.sh','scripts/test-finance-integration.sh',
  '.github/workflows/ci.yml','tests/fast_track/test_product_invoice_ci.py','tests/fast_track/test_gateway_manual_ci.py',
  'tests/products/invoice-product-policy.php','tests/products/native-product-settings.php',
  'tests/products/product-provider.php','tests/products/product-settings-browser.cjs',

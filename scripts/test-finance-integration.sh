@@ -127,7 +127,9 @@ run_php tests/payments/integration/reporting.php | tee "$output/reporting-mysql.
 run_php tests/payments/gateway-inquiry.php | tee "$output/gateway.txt"
 run_php tests/payments/receipt-last4.php | tee "$output/last4.txt"
 server_log=$(mktemp /tmp/sn-approval-server-XXXXXXXX.log)
-run_test env PHP_CLI_SERVER_WORKERS=4 php8.3 -d sendmail_path=/bin/false -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$server_log" 2>&1 &
+# Parsing warnings happen before WordPress can apply WP_DEBUG_DISPLAY=false.
+# Preserve them in the private server log instead of corrupting HTTP responses.
+run_test env PHP_CLI_SERVER_WORKERS=4 php8.3 -d sendmail_path=/bin/false -d display_errors=0 -d display_startup_errors=0 -d log_errors=1 -S 127.0.0.1:8877 -t "$runtime/wordpress" > "$server_log" 2>&1 &
 server_pid=$!
 trap 'kill "$server_pid" 2>/dev/null || true' EXIT
 server_ready=0
