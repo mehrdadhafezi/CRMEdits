@@ -7,7 +7,8 @@ const fixture=JSON.parse(fs.readFileSync(path.join(root,'product241-fixture.json
 if(fixture.synthetic!==true||fixture.version!=='2.0.241')throw Error('Synthetic product fixture required');
 run({base:'http://127.0.0.1:8877',fixture,output:process.env.SN_APPROVAL_OUTPUT+'/product-browser'}).catch(error=>{
  console.error('BROWSER_FAILURE_KIND '+String(error.name).replace(/[^A-Za-z]/g,''));
- if(/^[A-Za-z0-9 _/()+,.:-]{1,180}$/.test(error.message))console.error('BROWSER_ASSERTION '+error.message);
+ const headline=String(error.message).split(/\r?\n/,1)[0].replace(/https?:\/\/\S+|[a-f0-9]{24,}/gi,'[redacted]');
+ if(/^[A-Za-z0-9 _/()+,.:\[\]-]{1,180}$/.test(headline))console.error('BROWSER_ASSERTION '+headline);
  const lines=[...String(error.stack).matchAll(/(?:product-settings-browser|ci-browser)\.cjs:([0-9]+):([0-9]+)/g)].map(m=>[Number(m[1]),Number(m[2])]);
  console.error('BROWSER_CODE_LINES '+JSON.stringify(lines));process.exitCode=1;
 });

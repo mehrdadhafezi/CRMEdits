@@ -19,8 +19,8 @@ module.exports=async function({base,fixture,output,channel}){
   // missing baseline roles/caps even without a settings save.
   let before=await state(admin.c);ok(before.version==='2.0.241'&&before.max_input_vars===1000,'actual PHP CGI enforces max_input_vars=1000');
   const fields=[];for(let i=0;i<1100;i++)fields.push(['sn_padding_'+i,'synthetic']);fields.push(['action','sn_save_settings'],['nonce',admin.n.sn_admin]);
-  const truncated=await admin.c.request.post(base+'/wp-admin/admin-ajax.php',{headers:{'content-type':'application/x-www-form-urlencoded'},data:new URLSearchParams(fields).toString()});
-  ok(truncated.status()===400,'legacy action-at-end oversized form reproduces HTTP 400');
+  const truncated=await ap.evaluate(async body=>(await fetch('/wp-admin/admin-ajax.php',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},body})).status,new URLSearchParams(fields).toString());
+  ok(truncated===400,'legacy action-at-end oversized form reproduces HTTP 400');
   const template='Synthetic "quotes" \\ slash متن';const payload={sn_sms_provider:'kavenegar',sn_sms_invoice_template:template};for(let i=0;i<1100;i++)payload['sn_padding_'+i]='synthetic';
   let r=await post(admin.c,'sn_save_settings',admin.n.sn_admin,{payload:JSON.stringify(payload)});ok(r.status===200&&r.body.success,'large JSON settings payload survives native PHP input limit');
   let after=await state(admin.c);ok(after.template===template,'actual HTTP preserves quoted localized SMS template');
