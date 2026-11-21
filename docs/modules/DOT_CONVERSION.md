@@ -4,6 +4,12 @@ Status: OBSERVED static source, baseline 2.0.235 / 2026-11-12. Human specialist:
 
 ## 1. Purpose & Scope
 
+For new marked staged purchases, 2.0.243 commits the exact verified online receipt
+with its stage and aggregate invoice state. A 5m first stage on a 10m purchase
+becomes paid while the purchase remains partial_paid. Invoice id/code/token stay
+fixed; display stage alias and provider order distinguish /1 and /2. Existing
+legacy physical invoices and finance-required cash behavior are unchanged.
+
 گردش ارزیابی، انتخاب، تبدیل و بایگانی عملیاتی. پرداخت واقعی، هدیه ارزیابی و پیش‌فاکتور از هم جدا بمانند. وضعیت‌های فعلی فقط با بررسی transitionهای همان کلاس تغییر کنند. این قرارداد برای توسعه ماژول موجود است؛ بازطراحی فرآیند تجاری خارج از محدوده است.
 
 ## 2. File Structure

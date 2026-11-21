@@ -11,7 +11,7 @@ wp_set_current_user((int)$admin['id']);
 if (in_array($phase, ['upgrade','rollback','restored'], true)) {
     sn_test_ok(sn_test_financial_hash() === $f['financial_hash'], $phase . ': invoice/stage/payment data unchanged by bootstrap');
     sn_test_ok(hash('sha256', wp_json_encode(wp_roles()->roles)) === $f['roles_hash'], $phase . ': existing roles/capabilities preserved');
-    sn_test_ok(SN_VERSION === ($phase === 'rollback' ? $f['baseline_version'] : '2.0.242'), $phase . ': intended runtime version loaded');
+    sn_test_ok(SN_VERSION === ($phase === 'rollback' ? $f['baseline_version'] : '2.0.243'), $phase . ': intended runtime version loaded');
 }
 if ($phase === 'upgrade') {
     foreach (['sn_invoices','sn_invoice_payment_stages','sn_payments','sn_payment_review_events'] as $suffix) {

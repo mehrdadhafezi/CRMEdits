@@ -4,6 +4,13 @@ Status: OBSERVED static source, baseline 2.0.235 / 2026-11-12. Human specialist:
 
 ## 1. Purpose & Scope
 
+2.0.243 fixes the natural pending-to-verified online receipt boundary for new
+staged Dot purchases, and exposes paid stage aliases separately from purchase
+settlement. New Zibal order references are stored in existing proof metadata;
+legacy orders retain unsuffixed inquiry matching. No authorization/token/DDL
+changes or automatic reconciliation of historical failures are included. See
+[the release contract](../RELEASE_2.0.243_STAGED_GATEWAY.md).
+
 پرداخت گروهی، بازبینی رسید، محافظ جلسه درگاه و نمای مالی. کد pending به معنی paid نیست. فقط inquiry قطعی مجاز است درخواست pending را بازنشسته کند. lock مرحله، پرداخت تکراری، مبالغ و عدم double-credit حفظ شوند. approval در هسته نیز قرار دارد. این قرارداد برای توسعه ماژول موجود است؛ بازطراحی فرآیند تجاری خارج از محدوده است.
 
 ## 2. File Structure

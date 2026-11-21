@@ -1,5 +1,16 @@
 # DB_SCHEMA
 
+## 2.0.243 request identity metadata (no DDL)
+
+New Zibal `sn_payments.proof_data` contains `_gateway_order_id` with the exact
+invoice_code/N sent for that stage. It does not replace PAY identity or the
+purchase's stored invoice_code. Manual-selection metadata must preserve it.
+Missing metadata means a historical unsuffixed order; invalid or mismatched
+metadata fails closed. Callback updates its exact pending request to verified
+with the bank reference inside the invoice/stage transaction, then posts that
+receipt with the stage. Failed posting retains a reconciliation reference and
+never demotes already posted receipts. No backfill or live repair is automatic.
+
 ## Unreleased traceability stored-data contract (no DDL)
 
 New classic Dot purchases use `sn_dot_invoice_links.payment_kind=staged_receipt`

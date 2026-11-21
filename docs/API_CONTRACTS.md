@@ -1,5 +1,22 @@
 # API_CONTRACTS
 
+## 2.0.243 staged gateway correction
+
+`sn_payment_management_state.data.finance` adds `stage_invoice_code`,
+`stage_status`, `stage_paid`, and `stage_amount`; existing total/approved/remaining
+retain purchase-wide meaning. Authorized transaction projections and payment/
+successful-payment CSV add `stage_invoice_code`. This alias is invoice_code/N,
+not another invoice or an access credential. Existing nonce/capability/scope and
+public token checks remain mandatory and unchanged.
+
+New Zibal requests send the stage order alias and persist the exact value in the
+payment metadata. Inquiry reads stored identity; absent metadata preserves the
+legacy unsuffixed order. Callback mapping remains by stored authority, invoice,
+stage and requested amount, never by trusting a browser-supplied slash reference.
+Verified staged Dot receipts are committed with the stage/invoice state. The
+reconciliation guard for manual choices and delayed callbacks remains active.
+See [release scope and rollback](RELEASE_2.0.243_STAGED_GATEWAY.md).
+
 ## Unreleased invoice/payment traceability
 
 Authorized transaction/history projections add `transaction_code`, `stage_id`,

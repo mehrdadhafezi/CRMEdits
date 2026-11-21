@@ -7141,7 +7141,7 @@ class SN_Plugin
 		$this->sn_distribution_log((int)$item->id, $status, $actor_id, (int)($item->current_owner_user_id ?? 0), (int)($item->current_owner_user_id ?? 0), (string)($item->current_owner_position ?? ''), (string)($item->current_owner_position ?? ''), 999, $note, ['invoice_id'=>$invoice_id]);
 	}
 
-	private function sn_finalize_current_payment_stage(int $invoice_id, string $pay_method, string $payment_source, string $payment_ref_id = '', int $approved_by = 0, string $final_status = 'paid', int $stage_no_override = 0, bool $legacy_finance_review = false, ?callable $guard = null): array
+	private function sn_finalize_current_payment_stage(int $invoice_id, string $pay_method, string $payment_source, string $payment_ref_id = '', int $approved_by = 0, string $final_status = 'paid', int $stage_no_override = 0, bool $legacy_finance_review = false, ?callable $guard = null, string $verified_authority = ''): array
 	{
 		$this->maybe_create_tables();
 		global $wpdb;
@@ -7175,6 +7175,24 @@ class SN_Plugin
 			}
 			$stage = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$stage_table} WHERE invoice_id=%d AND stage_no=%d FOR UPDATE", $invoice_id, $stage_no));
 		}
+        // Only the verified provider callback passes this authority. Persist the
+        // exact receipt and its reference inside the same stage transaction.
+        if ($pay_method === 'online' && $verified_authority !== '' && SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id)) {
+            $request = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_payments WHERE invoice_id=%d AND payment_stage_no=%d AND authority=%s ORDER BY id DESC LIMIT 1 FOR UPDATE", $invoice_id, $stage_no, $verified_authority));
+            $closed_stage = $stage && in_array((string)$stage->status, ['paid','approved'], true);
+            $same_verified = $request && in_array((string)$request->status, ['verified','paid','approved'], true) && (string)$request->ref_id === $payment_ref_id;
+            if (!$request || $wpdb->last_error !== '' || $payment_ref_id === '' || (string)$request->payment_source !== $payment_source
+                || abs((float)$request->amount - (float)$stage->requested_amount) >= 0.005
+                || ($closed_stage && (!$same_verified || !in_array((string)$request->status, ['paid','approved'], true) || (string)$stage->payment_ref_id !== $payment_ref_id))
+                || (!$closed_stage && !in_array((string)$request->status, ['pending','expired','cancelled','verified'], true))
+                || ((string)$request->status === 'verified' && !$same_verified)) {
+                $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'نتیجه درگاه با درخواست همین مرحله تطبیق ندارد؛ واحد مالی بررسی کند.'];
+            }
+            if (!$closed_stage && (string)$request->status !== 'verified') {
+                $saved = $wpdb->update($wpdb->prefix.'sn_payments', ['status'=>'verified','ref_id'=>$payment_ref_id,'updated_at'=>current_time('mysql')], ['id'=>(int)$request->id,'status'=>(string)$request->status]);
+                if ($saved !== 1) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت تأیید درگاه کامل نشد؛ پرداخت مرحله تغییر نکرد.']; }
+            }
+        }
 		if ($stage && in_array((string)$stage->status, ['paid','approved'], true)) {
 			if (false === $wpdb->query('COMMIT')) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت نهایی تأیید پرداخت انجام نشد']; }
 			$fresh = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$invoice_table} WHERE id=%d", $invoice_id));
@@ -8024,7 +8042,7 @@ class SN_Plugin
         if(!$invoice||!$this->sn_can_perform_internal_invoice_payment_action($invoice,'manual_payment')){wp_send_json(['success'=>false,'message'=>'این فاکتور در محدوده مجاز ثبت پرداخت شما نیست.'],403);return;}
         $rate='sn_gateway_'.$operation.'_'.get_current_user_id().'_'.$id;if(get_transient($rate)){wp_send_json(['success'=>false,'message'=>'استعلام همین فاکتور تازه انجام شده است؛ حدود ۱۵ ثانیه بعد دوباره بررسی کنید.'],429);return;}set_transient($rate,1,15);
         $totals=$this->sn_invoice_payment_totals($invoice);$gateway=new SN_Invoice();
-        $inquiry=function(array $row)use($gateway,$invoice):array{return $gateway->zibal_inquiry(substr((string)$row['authority'],6),(float)$row['amount'],(string)$invoice->invoice_code);};
+        $inquiry=function(array $row)use($gateway,$invoice):array{return $gateway->zibal_inquiry(substr((string)$row['authority'],6),(float)$row['amount'],SN_Invoice::stored_gateway_order_id($row,(string)$invoice->invoice_code));};
         if($operation==='switch_to_manual'){
             $result=SN_Payment_Gateway_Guard::switch_to_manual($id,(int)$totals['stage_no'],$inquiry,function($fresh):bool{
                 if(!$this->sn_card_to_card_enabled()||!$this->sn_can_perform_internal_invoice_payment_action($fresh,'manual_payment'))return false;
@@ -8235,9 +8253,12 @@ class SN_Plugin
                 return $review;
             }
 			// The existing automatic gateway policy applies to other invoices.
-			$result = $this->sn_finalize_current_payment_stage($invoice_id, 'online', $source, $ref_id, 0, 'approved', $callback_stage_no);
+			$result = $this->sn_finalize_current_payment_stage($invoice_id, 'online', $source, $ref_id, 0, 'approved', $callback_stage_no, false, null, $authority);
 			if (empty($result['success'])) {
-				if ($authority !== '') { $wpdb->update($wpdb->prefix.'sn_payments', $this->sn_filter_existing_columns($wpdb->prefix.'sn_payments', ['status'=>'reconcile_error','updated_at'=>current_time('mysql')]), ['authority'=>$authority]); }
+				if ($authority !== '') {
+                    // A failed/replayed callback must never demote already posted money.
+                    $wpdb->query($wpdb->prepare("UPDATE {$wpdb->prefix}sn_payments SET status='reconcile_error',ref_id=IF(COALESCE(ref_id,'')='',%s,ref_id),updated_at=%s WHERE invoice_id=%d AND payment_stage_no=%d AND authority=%s AND status IN ('pending','verified','expired','cancelled')", $ref_id, current_time('mysql'), $invoice_id, $callback_stage_no, $authority));
+                }
 				return $result;
 			}
 			if ($authority !== '') {
@@ -31824,7 +31845,7 @@ class SN_Plugin
 				$payments = $wpdb->prefix . 'sn_payments';
 				$invoices = $wpdb->prefix . 'sn_invoices';
 				if (! $this->sn_table_exists_quiet($payments) || ! $this->sn_table_exists_quiet($invoices)) { return []; }
-				$sql = "SELECT p.id AS payment_row_id,p.payment_stage_no AS trace_stage_no,p.invoice_id,p.authority,p.ref_id,p.amount AS transaction_toman,p.status AS payment_row_status,p.created_at AS payment_created_at,p.updated_at AS payment_updated_at,i.*\n"
+				$sql = "SELECT p.id AS payment_row_id,p.payment_stage_no AS trace_stage_no,p.proof_data AS payment_order_proof,p.invoice_id,p.authority,p.ref_id,p.amount AS transaction_toman,p.status AS payment_row_status,p.created_at AS payment_created_at,p.updated_at AS payment_updated_at,i.*\n"
 					. "FROM {$payments} p INNER JOIN {$invoices} i ON i.id=p.invoice_id\n"
 					. "WHERE (p.payment_source='zibal' OR p.authority LIKE 'zibal:%')\n"
 					. "AND p.status IN ('approved','paid','verified','success','completed') ORDER BY p.id DESC";
@@ -31837,7 +31858,7 @@ class SN_Plugin
 					if ($track_id === '') { continue; }
 					$out[] = [
 						'trackId' => $track_id,
-						'orderId' => (string) ($row['invoice_code'] ?? ''),
+						'orderId' => SN_Invoice::stored_gateway_order_id(['proof_data'=>$row['payment_order_proof']??null,'payment_stage_no'=>$row['trace_stage_no']??1],(string)($row['invoice_code']??'')),
 						'amount' => (string) round(((float) ($row['transaction_toman'] ?? 0)) * 10),
 						'paidAt' => (string) (($row['payment_updated_at'] ?? '') ?: ($row['payment_created_at'] ?? '') ?: ($row['paid_at'] ?? '')),
 						'refNumber' => (string) ($row['ref_id'] ?? ''),
@@ -32082,7 +32103,7 @@ class SN_Plugin
 						$code = (string) ($invoice['invoice_code'] ?? '');
 						if ($code !== '') { $invoice_by_code[$code] = $invoice; }
 					}
-					$order_code = trim((string) ($transaction['orderId'] ?? ''));
+					$order_code = SN_Invoice::gateway_invoice_code(trim((string) ($transaction['orderId'] ?? '')));
 					if ($order_code !== '' && ! isset($invoice_by_code[$order_code])) { $order_codes[] = $order_code; }
 				}
 				$invoice_by_code = array_replace($this->sn_zibal_invoice_map_by_codes($order_codes), $invoice_by_code);
@@ -32120,7 +32141,7 @@ class SN_Plugin
 					$order_id = trim((string) ($transaction['orderId'] ?? ''));
                     // A local payment belongs to this row; another payment on the same invoice is not interchangeable.
                     $local = is_array($transaction['_invoice'] ?? null) ? $transaction['_invoice'] : [];
-                    $invoice = $local ?: ($invoice_by_code[$order_id] ?? []);
+                    $invoice = $local ?: ($invoice_by_code[SN_Invoice::gateway_invoice_code($order_id)] ?? []);
                     $invoice_id = (int)($invoice['id'] ?? 0);
                     $payment_id = (int)($local['payment_row_id'] ?? 0);
                     $stage_no = (int)($local['trace_stage_no'] ?? 0);
@@ -35844,8 +35865,8 @@ class SN_Plugin
 				$map = [
 					'leads' => ['id' => 'ID', 'customer_name' => 'نام', 'national_id' => 'کد ملی', 'marketing_form_id' => 'فرم مارکتینگ', 'phone' => 'موبایل', 'province' => 'استان', 'city' => 'شهر', 'status' => 'وضعیت', 'seller' => 'فروشنده', 'created_at' => 'تاریخ'],
 					'invoices' => ['id' => 'ID', 'invoice_code' => 'کد فاکتور', 'customer_name' => 'مشتری', 'customer_phone' => 'موبایل', 'status' => 'وضعیت', 'amount' => 'مبلغ', 'seller' => 'فروشنده', 'created_at' => 'تاریخ', 'stage_count'=>'تعداد مراحل صادرشده', 'transaction_count'=>'تعداد تراکنش‌های ثبت‌شده'],
-					'successful_payments' => ['payment_at' => 'تاریخ پرداخت', 'invoice_code' => 'کد فاکتور', 'customer_name' => 'مشتری', 'customer_phone' => 'موبایل', 'product_names' => 'محصول/محصولات', 'product_types_label' => 'نوع محصول', 'stage_no' => 'مرحله', 'amount' => 'مبلغ پرداخت', 'pay_method_label' => 'روش پرداخت', 'seller_name' => 'فروشنده', 'payment_status' => 'وضعیت', 'transaction_code'=>'شناسه یکتای تراکنش', 'stage_reference'=>'شناسه مرحله', 'stage_count'=>'تعداد مراحل صادرشده', 'record_reference'=>'شناسه رکورد مبنا', 'record_type_label'=>'نوع سابقه مالی'],
-					'payments' => ['invoice_code' => 'کد فاکتور', 'amount' => 'مبلغ', 'status' => 'وضعیت', 'pay_method' => 'روش', 'created_at' => 'تاریخ', 'transaction_code'=>'شناسه یکتای تراکنش', 'stage_no'=>'شماره مرحله', 'stage_reference'=>'شناسه مرحله', 'stage_count'=>'تعداد مراحل صادرشده', 'transaction_count'=>'تعداد تراکنش‌های فاکتور'],
+					'successful_payments' => ['payment_at' => 'تاریخ پرداخت', 'invoice_code' => 'کد فاکتور', 'customer_name' => 'مشتری', 'customer_phone' => 'موبایل', 'product_names' => 'محصول/محصولات', 'product_types_label' => 'نوع محصول', 'stage_no' => 'مرحله', 'amount' => 'مبلغ پرداخت', 'pay_method_label' => 'روش پرداخت', 'seller_name' => 'فروشنده', 'payment_status' => 'وضعیت', 'transaction_code'=>'شناسه یکتای تراکنش', 'stage_reference'=>'شناسه مرحله', 'stage_count'=>'تعداد مراحل صادرشده', 'record_reference'=>'شناسه رکورد مبنا', 'record_type_label'=>'نوع سابقه مالی', 'stage_invoice_code'=>'کد نمایشی مرحله'],
+					'payments' => ['invoice_code' => 'کد فاکتور', 'amount' => 'مبلغ', 'status' => 'وضعیت', 'pay_method' => 'روش', 'created_at' => 'تاریخ', 'transaction_code'=>'شناسه یکتای تراکنش', 'stage_no'=>'شماره مرحله', 'stage_reference'=>'شناسه مرحله', 'stage_count'=>'تعداد مراحل صادرشده', 'transaction_count'=>'تعداد تراکنش‌های فاکتور', 'stage_invoice_code'=>'کد نمایشی مرحله'],
 					'wallet' => ['user' => 'کاربر', 'wallet_type' => 'نوع کیف پول', 'balance' => 'موجودی', 'updated_at' => 'بروزرسانی'],
 					'commission' => ['rule_name' => 'قانون', 'position_slug' => 'سمت', 'level_slug' => 'سطح', 'is_active' => 'فعال'],
 					'hr_profiles' => ['user_id' => 'کاربر', 'display_name' => 'نام', 'position' => 'سمت', 'level' => 'سطح', 'employment_status' => 'وضعیت همکاری'],
@@ -37730,7 +37751,7 @@ class SN_Plugin
 				$references = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_references([$id]) : [];
 				wp_send_json(['success'=>true,'data'=>[
 					'invoice'=>['id'=>$id,'code'=>(string)$invoice->invoice_code,'display_code'=>(string)($references[$id]['invoice_code'] ?? $invoice->invoice_code),'status'=>(string)$invoice->status],
-					'finance'=>['total'=>(float)$totals['total'],'approved'=>(float)$totals['paid'],'remaining'=>$remaining,'active_due'=>$due,'pending'=>$pending,'available_to_register'=>$can_manual?$available:0,'stage_no'=>(int)$totals['stage_no']],
+					'finance'=>['total'=>(float)$totals['total'],'approved'=>(float)$totals['paid'],'remaining'=>$remaining,'active_due'=>$due,'pending'=>$pending,'available_to_register'=>$can_manual?$available:0,'stage_no'=>(int)$totals['stage_no'],'stage_invoice_code'=>$stage ? (string)$invoice->invoice_code.'/'.(int)$totals['stage_no'] : '','stage_status'=>(string)($stage->status??''),'stage_paid'=>in_array((string)($stage->status??''),['paid','approved'],true),'stage_amount'=>(float)($stage->requested_amount??0)],
 					'referral'=>['status'=>$ref_status,'owner_id'=>$owner_id,'responsible_name'=>$owner_label],
 					'workflow'=>['status'=>(string)$totals['workflow_status'],'state'=>$state,'recommended_action'=>$next,'description'=>$description],
 					'stage_summary'=>$mapped['stage'],'responsible'=>$responsible,'blocked_actions'=>$blocked,

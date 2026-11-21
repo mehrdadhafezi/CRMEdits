@@ -1,6 +1,6 @@
 <?php
 /** Read/check lifecycle phases; only baseline fixture creation writes synthetic rows. */
-$phase=(string)getenv('SN_TRACE_LIFECYCLE_PHASE');$versions=['baseline235'=>'2.0.235','baseline241'=>'2.0.241','bridge'=>'2.0.241','upgrade'=>'2.0.242','snapshot'=>'2.0.242','downgrade'=>'2.0.241','resume'=>'2.0.242','restore235'=>'2.0.235','restore241'=>'2.0.241','reupgrade'=>'2.0.242'];
+$phase=(string)getenv('SN_TRACE_LIFECYCLE_PHASE');$versions=['baseline235'=>'2.0.235','baseline242'=>'2.0.242','bridge'=>'2.0.242','upgrade'=>'2.0.243','snapshot'=>'2.0.243','downgrade'=>'2.0.242','resume'=>'2.0.243','restore235'=>'2.0.235','restore242'=>'2.0.242','reupgrade'=>'2.0.243'];
 if(!isset($versions[$phase]))throw new RuntimeException('Explicit lifecycle phase required');
 require dirname(__DIR__).'/hr/native-support.php';hr239_bootstrap(true,$versions[$phase]);global $wpdb;$root=$GLOBALS['hr239_root'];$file=$root.'/trace242-lifecycle-state.json';
 $state=is_file($file)?json_decode(file_get_contents($file),true,512,JSON_THROW_ON_ERROR):[];
@@ -22,7 +22,7 @@ if(str_starts_with($phase,'baseline')){
  $invoice_id=(int)$state['legacy']['sn_invoices'][0]['id'];$pay=$wpdb->prefix.'sn_payments';
  hr239_ok($wpdb->insert($pay,$filter($pay,['invoice_id'=>$invoice_id,'payment_stage_no'=>1,'amount'=>100000,'status'=>'approved','pay_method'=>'card','payment_source'=>'synthetic_legacy','authority'=>'','created_at'=>$now,'updated_at'=>$now]))!==false,'legacy receipt without rewriting its identity');$pid=(int)$wpdb->insert_id;$row=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$pay} WHERE id=%d",$pid),ARRAY_A);$state['legacy']['sn_payments'][]=array_intersect_key($row,array_flip(['id','invoice_id','payment_stage_no','amount','status','authority','ref_id']));
  $state['baseline_snapshot']=$snapshot();
-}elseif(in_array($phase,['bridge','upgrade','reupgrade','restore235','restore241'],true)){
+}elseif(in_array($phase,['bridge','upgrade','reupgrade','restore235','restore242'],true)){
  hr239_ok($legacy()===$state['legacy'],'legacy invoice codes tokens amounts and payment ids survive '.$phase);
  if($phase==='bridge'){$state['stable_snapshot']=$snapshot();}
  if(in_array($phase,['upgrade','reupgrade'],true)){

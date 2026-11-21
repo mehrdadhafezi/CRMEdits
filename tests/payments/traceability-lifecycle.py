@@ -4,7 +4,7 @@ import importlib.util
 _schema_spec=importlib.util.spec_from_file_location('trace242_schema',pathlib.Path(__file__).resolve().with_name('traceability_schema.py'))
 _schema=importlib.util.module_from_spec(_schema_spec);_schema_spec.loader.exec_module(_schema)
 
-BASE='dac9617874b5d0a53e7f7b5c1fde3e8066402761';EXPERIMENTAL='3f544028bf83b641caade9e5859aa4efd4b3769a'
+BASE='12392d4bf195be0e6c4cf07d127c327de4117d4d';EXPERIMENTAL='3f544028bf83b641caade9e5859aa4efd4b3769a'
 def need(ok,label):
  if not ok:raise RuntimeError(label)
 def sha(body):return hashlib.sha256(body).hexdigest()
@@ -14,7 +14,7 @@ need(source.is_absolute() and source.resolve()==source and not source.is_symlink
 if ci:need(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted' and re.fullmatch('/tmp/sn-approval-[A-Za-z0-9]{8}',str(source)),'Hosted sandbox only')
 else:need(os.geteuid()==1073 and re.fullmatch('/home/crmstg1/private/hr239-[a-z0-9_]{8}',str(source)) and not pathlib.Path('/home/payasetareh').exists(),'Private synthetic account only')
 need(len(sys.argv)==2,'Pinned lifecycle input required');input_path=pathlib.Path(sys.argv[1]).resolve();profiles=json.loads(input_path.read_text())['profiles']
-need(set(profiles)=={'main','experimental','candidate'} and profiles['main']['commit']==BASE and profiles['experimental']['commit']==EXPERIMENTAL and profiles['candidate']['version']=='2.0.242','Verified tracks only')
+need(set(profiles)=={'main','experimental','candidate'} and profiles['main']['commit']==BASE and profiles['experimental']['commit']==EXPERIMENTAL and profiles['candidate']['version']=='2.0.243','Verified tracks only')
 if ci:need(profiles['candidate']['commit']==os.environ.get('GITHUB_SHA') and profiles['candidate'].get('uncommitted') is not True,'Exact CI merge candidate only')
 cfg=(source/'wordpress/wp-config.php').read_text()
 need('CUSTOM_USER_TABLE' not in cfg and 'CUSTOM_USER_META_TABLE' not in cfg,'No shared WordPress identity tables')
@@ -106,7 +106,7 @@ try:
  before_names=names();before=fingerprint(before_names)
  for track in ['main','experimental']:
   baseline=profiles[track];need(baseline['file']=='trace242-'+track+'.zip','Fixed baseline archive name')
-  site,prefix=fresh(baseline);current=site;baseline_phase='baseline241' if track=='main' else 'baseline235'
+  site,prefix=fresh(baseline);current=site;baseline_phase='baseline242' if track=='main' else 'baseline235'
   phase(site,baseline_phase);base_names=names(prefix);base_fingerprint=fingerprint(base_names);base_schema=dump(base_names,False);backup=dump(base_names);backup_path=site/'baseline-backup.private.sql';backup_path.write_bytes(backup);os.chmod(str(backup_path),0o600)
   ok(bool(backup) and sha(backup_path.read_bytes())==sha(backup),track+' private consistent baseline backup verified')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')
@@ -124,13 +124,13 @@ try:
    # Only generated schema metadata, never row contents or credentials.
    print('RESTORE_DIAGNOSTIC '+json.dumps({'track':track,'names_equal':restored_names==base_names,'schema_equal':restored_fingerprint['schema']==base_fingerprint['schema'],'columns_equal':restored_fingerprint['columns']==base_fingerprint['columns'],'rows_equal':restored_fingerprint['rows']==base_fingerprint['rows'],'schema_lines_before':len(left),'schema_lines_after':len(right),'changed_schema_line_prefixes':sorted(set((a[:90] if a.startswith(('SET ','/*!','CREATE TABLE','ALTER TABLE',') ENGINE')) else 'COLUMN_OR_INDEX_DEFINITION')for a,b in zip(left,right)if a!=b)),'synthetic_schema_differences':[{'before':a[:240],'after':b[:240]}for a,b in zip(left,right)if a!=b][:8]}),flush=True)
   ok(restored_names==base_names and restored_fingerprint==base_fingerprint,track+' full backup restores every generated baseline table exactly')
-  swap(site,baseline);phase(site,'restore241' if track=='main' else 'restore235');ok(True,track+' old plugin and restored database agree')
+  swap(site,baseline);phase(site,'restore242' if track=='main' else 'restore235');ok(True,track+' old plugin and restored database agree')
   ok(names(prefix)==base_names and fingerprint(base_names)==base_fingerprint,track+' old bootstrap preserves full restored schema effective columns and rows')
   if track=='experimental':swap(site,profiles['main']);phase(site,'bridge')
   swap(site,profiles['candidate']);phase(site,'reupgrade');ok(True,track+' repeated upgrade after full restore is idempotent')
   profiles_done.append({'track':track,'baseline':baseline['commit'],'passed':True,'fresh_namespace':True,'full_restore':True})
  current=source;ok(fingerprint(before_names)==before,'every preexisting table outside both generated namespaces is preserved')
- summary={'passed':True,'synthetic':True,'assertions':checks,'version':'2.0.242','baseline_shas':{'main':BASE,'experimental':EXPERIMENTAL},'profiles':profiles_done,'fresh_namespaces':True,'legacy_identities_preserved':True,'new_financial_state_preserved_on_code_swap':True,'full_backup_restore_verified':True,'outside_tables_preserved':True,'code_only_business_rollback_supported':False,'production_touched':False}
+ summary={'passed':True,'synthetic':True,'assertions':checks,'version':'2.0.243','baseline_shas':{'main':BASE,'experimental':EXPERIMENTAL},'profiles':profiles_done,'fresh_namespaces':True,'legacy_identities_preserved':True,'new_financial_state_preserved_on_code_swap':True,'full_backup_restore_verified':True,'outside_tables_preserved':True,'code_only_business_rollback_supported':False,'production_touched':False}
  summary.update(candidate_commit=profiles['candidate']['commit'],core_sha256=profiles['candidate']['members']['includes/class-sn-plugin.php'],commission_sha256=profiles['candidate']['members']['includes/class-sn-purpose-commission.php'],post_restore_bootstrap_schema_verified=True)
  public_summary=output/'trace242-lifecycle.json';public_summary.write_text(json.dumps(summary,indent=2)+'\n');os.chmod(str(public_summary),0o644)
  print('SUMMARY '+json.dumps(summary));print('TOTAL '+str(checks))

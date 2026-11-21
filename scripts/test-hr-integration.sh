@@ -92,7 +92,7 @@ import json,pathlib,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
 count=sum(line.startswith('PASS ') for line in text.splitlines())
 assert count==40 and 'TOTAL 40' in text.splitlines()
-pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.242','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.243','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
 PY
 phase product-settings-native run_php tests/products/native-product-settings.php
 phase product-sms-races run_test python3 -B tests/products/product-sms-races.py
@@ -145,8 +145,11 @@ python3 - "$runtime/hr-traceability-memory.private.log" "$output/trace242-unit.j
 import hashlib,json,pathlib,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace');count=sum(x.startswith('PASS ')for x in text.splitlines())
 assert count==21 and 'TOTAL 21' in text.splitlines()
-pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'assertions':count,'version':'2.0.242','payment_model_sha256':hashlib.sha256(pathlib.Path('includes/class-sn-payment-transactions.php').read_bytes()).hexdigest(),'production_touched':False},indent=2)+'\n')
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'assertions':count,'version':'2.0.243','payment_model_sha256':hashlib.sha256(pathlib.Path('includes/class-sn-payment-transactions.php').read_bytes()).hexdigest(),'production_touched':False},indent=2)+'\n')
 PY
+phase staged-gateway-native run_php tests/payments/staged-gateway-native.php
+phase staged-gateway-races run_test python3 -B tests/payments/staged-gateway-races.py
+phase staged-gateway-browser run_test node tests/payments/staged-gateway-ci-browser.cjs
 phase traceability-native run_php tests/payments/traceability-native.php
 phase traceability-races run_test python3 -B tests/payments/traceability-processes.py race
 phase traceability-public-security run_test python3 -B tests/payments/traceability-processes.py public-security

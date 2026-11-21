@@ -16,6 +16,7 @@ class SN_Payment_Transactions
             'transaction_code'=>$payment_id ? 'PAY-'.$payment_id : '',
             'stage_id'=>$stage_id,
             'stage_reference'=>$stage_id ? 'STG-'.$stage_id : '',
+            'stage_invoice_code'=>$stage_id && (string)($row['invoice_code']??$context['invoice_code']??'') !== '' ? (string)($row['invoice_code']??$context['invoice_code']).'/'.$stage_no : '',
             'stage_count'=>(int)($context['stage_count'] ?? 0),
             'transaction_count'=>(int)($context['transaction_count'] ?? 0),
             'record_reference'=>$payment_id ? 'PAY-'.$payment_id : ($invoice_id ? 'INV-'.$invoice_id : ''),
@@ -53,6 +54,7 @@ class SN_Payment_Transactions
         $invoice = (object)$invoice;
         $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_payments WHERE invoice_id=%d ORDER BY payment_stage_no ASC,id ASC", (int)$invoice->id), ARRAY_A) ?: [];
         $context = self::trace_context([(int)$invoice->id])[(int)$invoice->id] ?? [];
+        $context['invoice_code'] = (string)($invoice->invoice_code ?? '');
         foreach ($rows as &$row) {
             $row += self::trace_reference($row, $context);
             $proof = json_decode((string)($row['proof_data'] ?? ''), true);

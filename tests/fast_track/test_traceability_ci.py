@@ -51,9 +51,9 @@ class TraceProofTests(unittest.TestCase):
   hr,finance=historical.ProductProofTests.records()
   for records in [hr,finance]:
    for data in records.values():
-    if 'version'in data:data['version']='2.0.242'
+    if 'version'in data:data['version']='2.0.243'
     if 'core_sha256'in data:data['core_sha256']=trace.RUNTIME['includes/class-sn-plugin.php']
-  common={'passed':True,'synthetic':True,'production_touched':False,'version':'2.0.242','assertions':100,'core_sha256':trace.RUNTIME['includes/class-sn-plugin.php'],'commission_sha256':trace.RUNTIME['includes/class-sn-purpose-commission.php']}
+  common={'passed':True,'synthetic':True,'production_touched':False,'version':'2.0.243','assertions':100,'core_sha256':trace.RUNTIME['includes/class-sn-plugin.php'],'commission_sha256':trace.COMMISSION_SHA}
   hr.update({
    'trace242-unit.json':{**common,'payment_model_sha256':trace.RUNTIME['includes/class-sn-payment-transactions.php']},
    'trace242-native.json':{**common,'wordpress':'7.1.4','mysql':'synthetic-native'},
@@ -65,6 +65,14 @@ class TraceProofTests(unittest.TestCase):
     'profiles':[{'track':t,'baseline':s,'passed':True,'fresh_namespace':True,'full_restore':True}for t,s in [('main',trace.BASE),('experimental',trace.EXPERIMENTAL)]],
     **{k:True for k in ['fresh_namespaces','legacy_identities_preserved','new_financial_state_preserved_on_code_swap','full_backup_restore_verified','post_restore_bootstrap_schema_verified','outside_tables_preserved']},'code_only_business_rollback_supported':False}
   })
+  hr.update({
+   'staged243-native.json':{**common,'wordpress':'7.1.4','actual_public_callback':True,'actual_seller_controller':True,'real_provider_calls':0,'invoice_gateway_sha256':trace.RUNTIME['includes/class-sn-invoice.php']},
+   'staged243-races.json':{**common,'real_parallel_php_processes':True,'actual_public_callbacks':True,'real_provider_calls':0},
+   'staged243-browser.json':{**common,'desktop_mobile':True,'actual_runtime_js':True,'external_network_blocked':True,'real_provider_calls':0}
+  })
+  hr['staged243-native.json'].pop('commission_sha256')
+  for name in ['staged243-races.json','staged243-browser.json']:
+   for field in ['core_sha256','commission_sha256']:hr[name].pop(field)
   for field in ['core_sha256','commission_sha256']:hr['trace242-unit.json'].pop(field)
   return hr,finance
 
@@ -81,7 +89,7 @@ class TraceProofTests(unittest.TestCase):
       p=root/category/name;p.unlink()
       with self.subTest(missing=name),self.assertRaises(FileNotFoundError):trace.verify_hr_output(root/'hr','a'*40)
       p.write_text(json.dumps(data))
-      if not name.startswith('trace242-'):continue
+      if not name.startswith(('trace242-','staged243-')):continue
       for field in data:
        bad={**data,field:None};p.write_text(json.dumps(bad))
        with self.subTest(name=name,field=field),self.assertRaises(ValueError):trace.verify_hr_output(root/'hr','a'*40)
@@ -91,9 +99,9 @@ class TraceProofTests(unittest.TestCase):
 
  def test_runner_keeps_old_suites_and_adds_all_new_real_scenarios(self):
   runner=(ROOT/'scripts/test-hr-integration.sh').read_text()
-  for path in ['native.php','native-invoices.php','native-ledger.php','native-finance.php','tests/mis/run-all.php','tests/products/native-product-settings.php','tests/products/product-sms-races.py','tests/products/ci-browser.cjs','traceability.php','traceability-native.php','traceability-processes.py race','traceability-processes.py public-security','traceability-security.php','traceability-ci-browser.cjs','traceability-lifecycle.py']:
+  for path in ['native.php','native-invoices.php','native-ledger.php','native-finance.php','tests/mis/run-all.php','tests/products/native-product-settings.php','tests/products/product-sms-races.py','tests/products/ci-browser.cjs','traceability.php','traceability-native.php','traceability-processes.py race','traceability-processes.py public-security','traceability-security.php','traceability-ci-browser.cjs','traceability-lifecycle.py','staged-gateway-native.php','staged-gateway-races.py','staged-gateway-ci-browser.cjs']:
    self.assertIn(path,runner)
-  for path in ['traceability-processes.py','traceability-lifecycle.py']:
+  for path in ['traceability-processes.py','traceability-lifecycle.py','staged-gateway-races.py']:
    body=(ROOT/'tests/payments'/path).read_text();self.assertIn("RUNNER_ENVIRONMENT')=='github-hosted'",body);self.assertIn("os.geteuid()==1073",body)
   workflow=(ROOT/'.github/workflows/ci.yml').read_text();self.assertNotIn('baseline-backup.private.sql',workflow);self.assertNotIn('trace242-public-',workflow)
 
