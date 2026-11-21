@@ -75,3 +75,23 @@ credentials remain private and outside Git. Only sanitized evidence may be share
 
 Clean up only the newly created, task-labelled containers, volume and network.
 Do not prune Docker or touch containers belonging to another project.
+
+
+## GitHub CI runner
+
+For PR #25, `scripts/test-invoice-reporting.sh` provisions the above fixture only
+on a GitHub-hosted runner after verifying the exact committed reporting payload.
+It pins image digests, creates its own internal Docker network/volume/containers,
+publishes no ports and mounts plugin source read-only. It runs the 63 memory,
+85 browser/HTTP and 15 native snapshot checks, then copies only sanitized JSON
+and desktop/mobile/financial-column PNGs into `test-results/hr/invoice-report`.
+Private synthetic passwords, env config, raw snapshots and container inspection
+never enter uploaded artifacts. Cleanup checks ownership labels before removal.
+
+This suite runs after the complete existing HR/product/ledger/schema/MIS and
+traceability/lifecycle regressions; all four Finance matrix entries remain
+mandatory. `scripts/invoice_reporting_ci.py` accepts only the reviewed runtime
+hashes/member set and task paths, checks current merge identity and requires all
+older native evidence plus report evidence. Its six regression proof tests run
+with the Fast-Track orchestration suite. It is not an operator for an existing
+WordPress site and accepts no target host/database parameter.

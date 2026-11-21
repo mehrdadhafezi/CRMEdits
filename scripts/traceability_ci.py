@@ -28,15 +28,16 @@ def scope(base,head,paths):
 def verify_finance_output(output,wordpress):
  product.verify_finance_output(output,wordpress,version=VERSION)
 
-def verify_hr_output(output,merge):
- product.verify_hr_output(output,merge,version=VERSION,runtime=RUNTIME,payload_verifier=payload_matches_revision)
+def verify_hr_output(output,merge,*,runtime=None,payload_verifier=None):
+ runtime=RUNTIME if runtime is None else runtime
+ product.verify_hr_output(output,merge,version=VERSION,runtime=runtime,payload_verifier=payload_verifier or payload_matches_revision)
  root=Path(output)
  for name,minimum in {'trace242-unit.json':21,'trace242-native.json':51,'trace242-security.json':30,
                       'trace242-public-security.json':24,'trace242-races.json':10,'trace242-browser.json':16}.items():
   row=completed(root,name,minimum)
   if row.get('version')!=VERSION:raise ValueError('Wrong traceability candidate version: '+name)
-  if name=='trace242-unit.json' and row.get('payment_model_sha256')!=RUNTIME['includes/class-sn-payment-transactions.php']:raise ValueError('Wrong payment model unit evidence')
-  if name!='trace242-unit.json' and (row.get('core_sha256')!=RUNTIME['includes/class-sn-plugin.php'] or row.get('commission_sha256')!=COMMISSION_SHA):raise ValueError('Trace evidence belongs to another runtime: '+name)
+  if name=='trace242-unit.json' and row.get('payment_model_sha256')!=runtime['includes/class-sn-payment-transactions.php']:raise ValueError('Wrong payment model unit evidence')
+  if name!='trace242-unit.json' and (row.get('core_sha256')!=runtime['includes/class-sn-plugin.php'] or row.get('commission_sha256')!=COMMISSION_SHA):raise ValueError('Trace evidence belongs to another runtime: '+name)
  native=json.loads((root/'trace242-native.json').read_text())
  if native.get('wordpress')!='7.1.4' or not native.get('mysql'):raise ValueError('Real retained native runtime required')
  security=json.loads((root/'trace242-security.json').read_text())
@@ -49,7 +50,7 @@ def verify_hr_output(output,merge):
  if browser.get('desktop_mobile') is not True or browser.get('external_network_blocked') is not True:raise ValueError('Affected UI/escaping and retry browser proof required')
  lifecycle=completed(root,'trace242-lifecycle.json',20)
  if lifecycle.get('version')!=VERSION or lifecycle.get('baseline_shas')!={'main':BASE,'experimental':EXPERIMENTAL}:raise ValueError('Both verified tracks must be rehearsed')
- if lifecycle.get('candidate_commit')!=merge or lifecycle.get('core_sha256')!=RUNTIME['includes/class-sn-plugin.php'] or lifecycle.get('commission_sha256')!=COMMISSION_SHA:raise ValueError('Lifecycle evidence belongs to another candidate')
+ if lifecycle.get('candidate_commit')!=merge or lifecycle.get('core_sha256')!=runtime['includes/class-sn-plugin.php'] or lifecycle.get('commission_sha256')!=COMMISSION_SHA:raise ValueError('Lifecycle evidence belongs to another candidate')
  expected=[{'track':track,'baseline':sha,'passed':True,'fresh_namespace':True,'full_restore':True}for track,sha in [('main',BASE),('experimental',EXPERIMENTAL)]]
  if lifecycle.get('profiles')!=expected:raise ValueError('Incomplete lifecycle track results')
  for flag in ['fresh_namespaces','legacy_identities_preserved','new_financial_state_preserved_on_code_swap','full_backup_restore_verified','post_restore_bootstrap_schema_verified','outside_tables_preserved']:
@@ -60,10 +61,10 @@ def verify_hr_output(output,merge):
   if row.get('version')!=VERSION or row.get('real_provider_calls')!=0:raise ValueError('Wrong staged gateway proof: '+name)
   if name=='staged243-native.json':
    if row.get('wordpress')!='7.1.4' or row.get('actual_public_callback')is not True or row.get('actual_seller_controller')is not True:raise ValueError('Real callback and seller controller required')
-   if row.get('core_sha256')!=RUNTIME['includes/class-sn-plugin.php'] or row.get('invoice_gateway_sha256')!=RUNTIME['includes/class-sn-invoice.php']:raise ValueError('Wrong staged callback runtime')
+   if row.get('core_sha256')!=runtime['includes/class-sn-plugin.php'] or row.get('invoice_gateway_sha256')!=runtime['includes/class-sn-invoice.php']:raise ValueError('Wrong staged callback runtime')
   if name=='staged243-races.json' and (row.get('real_parallel_php_processes')is not True or row.get('actual_public_callbacks')is not True):raise ValueError('Real concurrent callbacks required')
   if name=='staged243-browser.json' and (row.get('desktop_mobile')is not True or row.get('actual_runtime_js')is not True or row.get('external_network_blocked')is not True):raise ValueError('Affected seller UI required')
- if git('rev-parse','HEAD').decode().strip()!=merge or not payload_matches_revision(merge):raise ValueError('Final traceability revision changed')
+ if git('rev-parse','HEAD').decode().strip()!=merge or not (payload_verifier or payload_matches_revision)(merge):raise ValueError('Final traceability revision changed')
 
 def archive(members):
  out=BytesIO()

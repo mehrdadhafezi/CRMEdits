@@ -121,3 +121,45 @@ Current final results and revision are maintained in PR #25.
 Checkpoint classification before the CI run:
 
 BLOCKED — MISSING REQUIRED TEST
+
+
+## Additive exact-report CI coverage
+
+Run [44927636103](https://github.com/mehrdadhafezi/CRMEdits/actions/runs/44927636103)
+tested head `9bead81a3244faf98fe76423e9952e661ddeca48`, merge
+`a6cf2f1367fc3c3eb01224429c520dc7370e948a`: all four Finance matrix entries,
+110 Fast-Track tests and syntax/docs/secrets/boundary checks passed. The summary
+correctly remained BLOCKED: shared UI/access/ledger/schema/MIS required native
+coverage, and the older exact-release mapping did not certify this new payload.
+
+The follow-up adds an exact reporting mapping for base
+`f509bfacc79782f843500c06db7554d5d27d23c2`, precisely three frozen runtime hashes,
+122 -> 123 package members and the enumerated 21-file task scope. Any other
+runtime byte, deletion, addition, unknown task path or base is rejected. Every
+suite stays REQUIRED. All four Finance entries AND the comprehensive native
+HR/product/ledger/schema/ten-script MIS/traceability/lifecycle suite must pass.
+The older historical mapping and its default verifier pins are preserved.
+
+The native job also runs `scripts/test-invoice-reporting.sh` in a separate fresh
+Docker WordPress 7.1.4 / PHP 8.3 / MySQL 8.0.46 site. Four container images are
+pinned by digest. Its internal network publishes no ports; plugin source is
+read-only; HTTP/mail/cron/updates are disabled. It accepts no existing host or DB,
+requires GitHub-hosted Actions and the current exact merge, and removes only its
+own labelled containers/volume/network. Synthetic credentials and snapshots stay
+private. Artifacts contain only sanitized JSON and three synthetic screenshots.
+
+The report verifier requires 63 memory, 85 real HTTP/browser and 15 native
+post-bootstrap checks, exact source/merge identity, both desktop/mobile viewports,
+and an unchanged financial snapshot. It runs after all older native phases;
+missing any older or report evidence fails. Six new proof tests cover rejected
+payload mutations, scope, required jobs, missing/stale/partial evidence and the
+combined verifier. The complete CI result for the final revision is maintained
+in PR #25; these runner changes alone are not a claim that CI passed.
+
+Local pre-commit validation: syntax/docs/hygiene PASS (119 PHP / 34 JS / 2542
+links), both Bash runners parse, and all 116 Fast-Track tests PASS in an isolated
+Linux container with read-only source and no network. The unified Windows run
+hit an existing Git environment restoration error after environment-mocking
+tests; it is not counted as passing. The new six tests and original five
+historical proof tests also pass separately on Windows. Gitleaks worktree scan
+passes. Frozen report runtime hashes remain unchanged.

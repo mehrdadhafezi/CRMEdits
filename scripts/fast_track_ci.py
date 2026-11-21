@@ -12,6 +12,7 @@ import hr_reissue_ci as hr_ci
 import gateway_manual_ci as gateway_ci
 import product_invoice_ci as product_ci
 import traceability_ci as trace_ci
+import invoice_reporting_ci as invoice_report_ci
 
 
 JOBS = {
@@ -141,7 +142,8 @@ def make_plan(pr, merge_sha, selection):
     gateway_manual = not unknown and not tooling_only and gateway_ci.scope(pr["base"], pr["head"], paths)
     product_settings = not unknown and not tooling_only and product_ci.scope(pr["base"], pr["head"], paths)
     traceability = not unknown and not tooling_only and trace_ci.scope(pr["base"], pr["head"], paths)
-    hr_native = not unknown and not tooling_only and (traceability or product_settings or gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
+    invoice_reporting = not unknown and not tooling_only and invoice_report_ci.scope(pr["base"], pr["head"], paths)
+    hr_native = not unknown and not tooling_only and (invoice_reporting or traceability or product_settings or gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
     return {
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
         "domains": domains, "files": len(files), "finance": finance,
@@ -151,6 +153,7 @@ def make_plan(pr, merge_sha, selection):
         "gateway_manual": gateway_manual,
         "product_settings": product_settings,
         "traceability": traceability,
+        "invoice_reporting": invoice_reporting,
         "reasons": reasons, "suites": suites,
     }
 
@@ -215,6 +218,11 @@ def outcome(plan, expected, live, results, run_url, matrix_verified=False, evide
     plan_matches = (isinstance(plan, dict) and plan.get("risk") in (*LEVELS, "UNKNOWN")
                     and isinstance(plan.get("suites"), dict) and plan["suites"].keys() == SUITES.keys()
                     and all(plan.get(key) == value for key, value in expected.items())
+                    and type(plan.get("invoice_reporting", False)) is bool
+                    and (not plan.get("invoice_reporting") or (
+                        plan["risk"] == "HIGH" and plan.get("hr_native") is True and plan.get("finance") is True
+                        and all(value == "REQUIRED" for value in plan["suites"].values())
+                    ))
                     and type(plan.get("audit_only", False)) is bool
                     and (not plan.get("audit_only") or (
                         plan["risk"] == "HIGH" and plan.get("package_parity") is True
@@ -385,7 +393,9 @@ def main():
         verify_checkout(pr, os.environ["GITHUB_SHA"])
         selection = report(pr["base"], pr["head"], pr["target"])
         paths = {c["path"] for c in selection["changed_files"]}
-        if trace_ci.scope(pr["base"], pr["head"], paths):
+        if invoice_report_ci.scope(pr["base"], pr["head"], paths):
+            invoice_report_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
+        elif trace_ci.scope(pr["base"], pr["head"], paths):
             trace_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
         elif product_ci.scope(pr["base"], pr["head"], paths):
             product_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])

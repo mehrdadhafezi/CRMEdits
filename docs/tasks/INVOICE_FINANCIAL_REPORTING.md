@@ -122,3 +122,11 @@ Rollback محلی: برگرداندن فقط patch همین تسک پس از ح�
 و `tests/payments/integration/browser.cjs` برای همگام‌سازی بررسی فوکوس پس از
 بازخوانی واقعی جدول. هش‌های مجاز و منطق گیت runtime و شروط آزمون حفظ شده‌اند.
 [شرح شواهد و نتایج جاری](INVOICE_FINANCIAL_REPORTING_VALIDATION.md).
+
+
+CI اکنون برای همین سه فایل runtime یک نگاشت محدود و مستقل دارد. تمام suiteها
+REQUIRED می‌مانند: چهار سناریوی Finance، مجموعهٔ کامل HR/ledger/schema/MIS و
+traceability/lifecycle، به‌علاوهٔ تست مستقل گزارش در WordPress/MySQL ساختگی.
+اعتبارسنجی هش، merge و شاهد تست حذف نشده است. شرح اجرای قبلیِ مسدود و پوشش
+افزوده در [گزارش اعتبارسنجی](INVOICE_FINANCIAL_REPORTING_VALIDATION.md) آمده است؛
+نتیجهٔ نهایی فقط پس از CI همان revision در PR #25 ثبت می‌شود.
