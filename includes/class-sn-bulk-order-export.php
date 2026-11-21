@@ -84,7 +84,7 @@ class SN_Bulk_Order_Export
         if ($stream === false) { wp_die('فضای موقت برای ساخت خروجی در دسترس نیست.'); }
         try {
             if ($selected) {
-                $where .= ' AND id IN (' . implode(',', array_fill(0, count($selected), '%d')) . ')';
+                $where .= ' AND i.id IN (' . implode(',', array_fill(0, count($selected), '%d')) . ')';
                 $args = array_merge($args, $selected);
             }
             $tables = [];
@@ -99,7 +99,7 @@ class SN_Bulk_Order_Export
             $last_id = 0;
             $row_count = 0;
             do {
-                $batch = self::query("SELECT * FROM {$wpdb->prefix}sn_invoices WHERE ({$where}) AND id > %d ORDER BY id ASC LIMIT 200", array_merge($args, [$last_id]));
+                $batch = self::query("SELECT i.* FROM {$wpdb->prefix}sn_invoices i WHERE ({$where}) AND i.id > %d ORDER BY i.id ASC LIMIT 200", array_merge($args, [$last_id]));
                 if (! $batch) { break; }
                 $ids = array_map('intval', array_column($batch, 'id'));
                 $in = implode(',', $ids);

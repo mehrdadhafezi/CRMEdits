@@ -46,6 +46,13 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Local 2026-11-21 invoice reporting keeps stored follow-up/document/payment states
+separate from ledger-confirmed receipts and settlement. The admin page and all
+four CSV/XLS views use the same filters. Invoice IDs and original invoice codes
+are preserved; a shared historical purchase reference is a separate column.
+No status, invoice identity, financial row, schema or authorization is repaired.
+See the [report semantics and compatibility contract](../tasks/INVOICE_FINANCIAL_REPORTING.md).
+
 Unreleased local work separates invoice identity from receipt/stage references.
 New classic Dot purchases retain one invoice across installments; existing old
 child invoices are preserved. See the [traceability contract and release limits](../tasks/INVOICE_PAYMENT_TRACEABILITY.md).
@@ -84,6 +91,11 @@ invoice_code و access_token قرارداد عمومی‌اند. کد کوتاه
 DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.md). اطلاعات مشتری، مالی، token و snapshot داده حساس‌اند. رابطه‌ای که فقط در کد وجود دارد Foreign Key فرض نشود. حذف history، double-credit و استفاده از رکورد خارج از scope ممنوع است.
 
 ## 8. Testing & Preview
+
+Invoice report regression: `tests/reporting/invoice-financial.php` uses synthetic
+SQLite memory. Guarded native MySQL and real browser/CSV/XLS tests are documented
+in [the reporting test guide](../../tests/reporting/README.md). These tests do not
+authorize access to an existing site or establish production data parity.
 
 Approval visibility regression: `php tests/payments/approval-visibility.php`
 (standalone CLI, SQLite3, synthetic memory only). A stale pending compatibility
