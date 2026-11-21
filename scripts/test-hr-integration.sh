@@ -21,7 +21,7 @@ export SN_PLAYWRIGHT_MODULE="$runtime/browser/node_modules/playwright"
 export SN_MIS_TEST_ALLOW_RESET=YES SN_MIS_TEST_BOOTSTRAP="$repo/tests/hr/ci-mis-bootstrap.php"
 export SN_MIS_TEST_OUTPUT="$runtime/mis/evidence"
 run_test() {
-  sudo --preserve-env=SN_APPROVAL_ROOT,SN_APPROVAL_OUTPUT,SN_APPROVAL_ALLOW_SYNTHETIC,SN_PAYMENT_TEST_BOOTSTRAP,SN_PLAYWRIGHT_MODULE,PLAYWRIGHT_BROWSERS_PATH,SN_HR_BROWSER_NATIVE,SN_MIS_TEST_ALLOW_RESET,SN_MIS_TEST_BOOTSTRAP,SN_MIS_TEST_OUTPUT,GITHUB_ACTIONS,RUNNER_ENVIRONMENT \
+  sudo --preserve-env=SN_APPROVAL_ROOT,SN_APPROVAL_OUTPUT,SN_APPROVAL_ALLOW_SYNTHETIC,SN_PAYMENT_TEST_BOOTSTRAP,SN_PLAYWRIGHT_MODULE,PLAYWRIGHT_BROWSERS_PATH,SN_HR_BROWSER_NATIVE,SN_MIS_TEST_ALLOW_RESET,SN_MIS_TEST_BOOTSTRAP,SN_MIS_TEST_OUTPUT,GITHUB_ACTIONS,GITHUB_SHA,RUNNER_ENVIRONMENT \
     -u sn-approval-test setpriv --no-new-privs "$@"
 }
 run_php() { run_test php8.3 -d sendmail_path=/bin/false -d zend.exception_ignore_args=1 "$@"; }
@@ -44,7 +44,7 @@ print('NATIVE_PHP_KERNEL_CRASH_COUNT='+str(len(crashes)))
 print('NATIVE_PHP_CRASH_MODULES='+repr(sorted(set(re.findall(r' in ([A-Za-z0-9_.-]+)\[','\n'.join(crashes))))))
 PY
     python3 - "$runtime/hr-$label.private.log" "$server_log" <<'PY'
-import pathlib,re,sys
+import json,pathlib,re,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
 frames=re.findall(r'([A-Za-z0-9_.-]+\.(?:php|cjs))(?::| on line )(\d+)',text)
 print('Diagnostic code locations: '+repr(frames[-8:]))
@@ -52,6 +52,9 @@ print('Completed assertions before failure: '+str(sum(x.startswith('PASS ') for 
 labels=re.findall(r'RuntimeException: FAIL ([A-Za-z0-9 _/()+,.:-]{1,180})',text)
 if labels:print('Assertion label: '+labels[-1].split(' in /',1)[0])
 for line in text.splitlines():
+ if line.startswith('RESTORE_DIAGNOSTIC '):
+  diagnostic=json.loads(line.split(' ',1)[1])
+  if set(diagnostic)=={'track','names_equal','schema_equal','columns_equal','rows_equal','schema_lines_before','schema_lines_after','changed_schema_line_prefixes','synthetic_schema_differences'}:print('Synthetic restore diagnostic: '+json.dumps(diagnostic,sort_keys=True))
  if re.fullmatch(r'BROWSER_(?:ASSERTION|FAILURE_KIND|CODE_LINES|HTTP_ORIGIN_MATCH|HTTP_API_STATUS|HTTP_API_ERROR) [A-Za-z0-9 _/()+,.:\[\]-]{1,200}',line):print(line)
 server=pathlib.Path(sys.argv[2]).read_text(errors='replace')
 print('Native HTTP input-limit warning recorded: '+str('Input variables exceeded' in server))
@@ -89,7 +92,7 @@ import json,pathlib,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
 count=sum(line.startswith('PASS ') for line in text.splitlines())
 assert count==40 and 'TOTAL 40' in text.splitlines()
-pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.241','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.242','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
 PY
 phase product-settings-native run_php tests/products/native-product-settings.php
 phase product-sms-races run_test python3 -B tests/products/product-sms-races.py
@@ -105,7 +108,7 @@ sudo mv "$runtime/hr-238" "$runtime/wordpress/wp-content/plugins/sales-network-v
 phase rollback-238 run_php tests/hr/ci-code-state.php rollback
 sudo mv "$runtime/wordpress/wp-content/plugins/sales-network-v4" "$runtime/hr-238"
 sudo mv "$runtime/hr-candidate" "$runtime/wordpress/wp-content/plugins/sales-network-v4"
-phase reinstall-241 run_php tests/hr/ci-code-state.php restored
+phase reinstall-candidate run_php tests/hr/ci-code-state.php restored
 # MIS resets its own separate fresh database. It cannot touch the HR/Finance DB.
 mis_db="sn_approval_${GITHUB_RUN_ID}_hrmis_test"
 sudo env MYSQL_PWD=root mysql --user=root --protocol=socket <<SQL
@@ -135,3 +138,21 @@ assert count>=100
 pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'assertions':count,'scripts':10,'isolated_database':True,'production_touched':False},indent=2)+'\n')
 PY
 printf 'HR_NATIVE_REGRESSION_COMPLETE\n'
+# Traceability proof is additive: every earlier Finance/product/HR/ledger/MIS
+# scenario above remains mandatory for this exact revision.
+phase traceability-memory run_php tests/payments/traceability.php
+python3 - "$runtime/hr-traceability-memory.private.log" "$output/trace242-unit.json" <<'PY'
+import hashlib,json,pathlib,sys
+text=pathlib.Path(sys.argv[1]).read_text(errors='replace');count=sum(x.startswith('PASS ')for x in text.splitlines())
+assert count==21 and 'TOTAL 21' in text.splitlines()
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'assertions':count,'version':'2.0.242','payment_model_sha256':hashlib.sha256(pathlib.Path('includes/class-sn-payment-transactions.php').read_bytes()).hexdigest(),'production_touched':False},indent=2)+'\n')
+PY
+phase traceability-native run_php tests/payments/traceability-native.php
+phase traceability-races run_test python3 -B tests/payments/traceability-processes.py race
+phase traceability-public-security run_test python3 -B tests/payments/traceability-processes.py public-security
+phase traceability-security run_php tests/payments/traceability-security.php
+phase traceability-browser run_test node tests/payments/traceability-ci-browser.cjs
+python3 -B scripts/traceability_ci.py lifecycle-inputs --output "$runtime/trace242-inputs"
+sudo chown -R sn-approval-test "$runtime/trace242-inputs"
+phase traceability-upgrade-restore run_test python3 -B tests/payments/traceability-lifecycle.py "$runtime/trace242-inputs/inputs.json"
+printf 'TRACEABILITY_REGRESSION_COMPLETE\n'

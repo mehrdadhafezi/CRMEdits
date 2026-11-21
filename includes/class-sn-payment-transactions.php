@@ -5,12 +5,56 @@ require_once __DIR__.'/class-sn-payment-gateway-guard.php';
 /** Independent bank transactions; invoice fields are only a compatibility projection. */
 class SN_Payment_Transactions
 {
+    /** Read-only identifiers. A stage/legacy summary is never a bank transaction. */
+    public static function trace_reference(array $row, array $context = []): array
+    {
+        $payment_id = max(0, (int)($row['payment_id'] ?? $row['id'] ?? 0));
+        $invoice_id = max(0, (int)($row['invoice_id'] ?? 0));
+        $stage_no = max(1, (int)($row['payment_stage_no'] ?? $row['stage_no'] ?? 1));
+        $stage_id = (int)($context['stage_ids'][$stage_no] ?? 0);
+        return [
+            'transaction_code'=>$payment_id ? 'PAY-'.$payment_id : '',
+            'stage_id'=>$stage_id,
+            'stage_reference'=>$stage_id ? 'STG-'.$stage_id : '',
+            'stage_count'=>(int)($context['stage_count'] ?? 0),
+            'transaction_count'=>(int)($context['transaction_count'] ?? 0),
+            'record_reference'=>$payment_id ? 'PAY-'.$payment_id : ($invoice_id ? 'INV-'.$invoice_id : ''),
+            'record_type_label'=>$payment_id ? 'تراکنش ثبت‌شده' : 'خلاصه فاکتور؛ تراکنش مستقل ثبت نشده',
+        ];
+    }
+
+    /** Caller must supply only invoices already authorized by its existing scope. */
+    public static function trace_context(array $invoice_ids): array
+    {
+        global $wpdb;
+        $ids = array_values(array_unique(array_filter(array_map('absint', $invoice_ids))));
+        $result = [];
+        foreach ($ids as $id) { $result[$id] = ['stage_count'=>0,'transaction_count'=>0,'stage_ids'=>[]]; }
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $marks = implode(',', array_fill(0, count($chunk), '%d'));
+            $stages = $wpdb->get_results($wpdb->prepare("SELECT id,invoice_id,stage_no FROM {$wpdb->prefix}sn_invoice_payment_stages WHERE invoice_id IN ({$marks}) ORDER BY invoice_id,stage_no", ...$chunk), ARRAY_A);
+            if ($wpdb->last_error !== '' || !is_array($stages)) { throw new RuntimeException('خواندن شناسه مراحل پرداخت کامل نشد.'); }
+            foreach ($stages as $stage) {
+                $id = (int)$stage['invoice_id']; $no = (int)$stage['stage_no'];
+                if (!isset($result[$id]) || $no < 1 || isset($result[$id]['stage_ids'][$no])) { throw new RuntimeException('ارتباط مرحله پرداخت نیازمند بررسی است.'); }
+                $result[$id]['stage_ids'][$no] = (int)$stage['id'];
+                ++$result[$id]['stage_count'];
+            }
+            $counts = $wpdb->get_results($wpdb->prepare("SELECT invoice_id,COUNT(*) transaction_count FROM {$wpdb->prefix}sn_payments WHERE invoice_id IN ({$marks}) GROUP BY invoice_id", ...$chunk), ARRAY_A);
+            if ($wpdb->last_error !== '' || !is_array($counts)) { throw new RuntimeException('خواندن تعداد تراکنش‌ها کامل نشد.'); }
+            foreach ($counts as $count) { $result[(int)$count['invoice_id']]['transaction_count'] = (int)$count['transaction_count']; }
+        }
+        return $result;
+    }
+
     public static function rows($invoice): array
     {
         global $wpdb;
         $invoice = (object)$invoice;
         $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}sn_payments WHERE invoice_id=%d ORDER BY payment_stage_no ASC,id ASC", (int)$invoice->id), ARRAY_A) ?: [];
+        $context = self::trace_context([(int)$invoice->id])[(int)$invoice->id] ?? [];
         foreach ($rows as &$row) {
+            $row += self::trace_reference($row, $context);
             $proof = json_decode((string)($row['proof_data'] ?? ''), true);
             $row['is_gateway'] = !empty($row['authority']);
             $row['is_transaction'] = !$row['is_gateway'] && is_array($proof);

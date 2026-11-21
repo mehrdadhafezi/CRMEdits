@@ -13,7 +13,8 @@ class ProductProofTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.before=committed_members(ROOT,product.BASE)
-        cls.after={**cls.before,**{'sales-network-v4/'+name:(ROOT/name).read_bytes().replace(b'\r\n',b'\n') for name in product.RUNTIME}}
+        # This proof certifies the historical 241 payload, not whichever source is currently checked out.
+        cls.after=committed_members(ROOT,'dac9617874b5d0a53e7f7b5c1fde3e8066402761')
 
     def test_only_twelve_exact_runtime_changes_and_two_additions_are_accepted(self):
         self.assertTrue(product.bounded_payload(self.before,self.after))

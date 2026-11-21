@@ -46,6 +46,10 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Unreleased local work separates invoice identity from receipt/stage references.
+New classic Dot purchases retain one invoice across installments; existing old
+child invoices are preserved. See the [traceability contract and release limits](../tasks/INVOICE_PAYMENT_TRACEABILITY.md).
+
 2.0.240 preserves public token validation and provider amount conversion. The
 30-minute window only controls pending-request reuse; age cannot cancel a bank
 request or create a competing request. An unresolved older request needs matched

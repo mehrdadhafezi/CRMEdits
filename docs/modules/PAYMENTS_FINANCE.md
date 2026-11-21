@@ -48,6 +48,11 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Unreleased local traceability adds stable PAY/STG references to authorized read
+projections and CSV exports. New classic Dot purchases use canonical invoice
+stages and an explicit adapter marker, without changing legacy receipts. See the
+[scope, compatibility and rollback limits](../tasks/INVOICE_PAYMENT_TRACEABILITY.md).
+
 2.0.240 adds an explicit internal manual-method choice after matched fresh Zibal
 inquiries. `manual_hold` is local intent, not provider cancellation or approved
 money. Existing `proof_data` preserves actor/time/provider observation atomically;

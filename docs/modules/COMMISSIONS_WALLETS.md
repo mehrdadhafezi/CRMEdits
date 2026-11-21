@@ -44,6 +44,13 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+The owner-approved local traceability change releases commission per approved
+receipt only for new Dot purchases marked `staged_receipt`. Frozen rates and
+recipients remain; idempotency and metadata include the actual payment id.
+Legacy release timing is unchanged. See the [transaction, retry and rollback
+contract](../tasks/INVOICE_PAYMENT_TRACEABILITY.md). Future service-status rules
+are deferred, not inferred by this change.
+
 کلاس‌ها و متدهای بخش ۲ interface فعلی‌اند؛ امضا، مقدار پیش‌فرض و return type از سورس مرجع حفظ شوند. برای ورودی و خروجی کامل هر درخواست [API_CONTRACTS.md](../API_CONTRACTS.md) و handler متناظر را با هم بخوانید. شِمای exhaustively verified برای همه payloadها: UNVERIFIED؛ lexical index جایگزین بررسی handler نیست. خطاهای کاربر فارسی و امن باشند و رفتار فعلی status/redirect حفظ شود.
 
 ## 6. Adding or Modifying Features

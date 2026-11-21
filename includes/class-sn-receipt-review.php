@@ -8,6 +8,10 @@ final class SN_Receipt_Review {
     private static function name(int $id): string { $u=get_userdata($id); return $u?(string)($u->display_name ?: $u->user_login):'کاربر سابق'; }
     public function __construct(array $policy) { $this->policy = $policy; }
     private function allowed(string $key, ...$args): bool { return isset($this->policy[$key]) && (bool)($this->policy[$key])(...$args); }
+    private function reconcile_receipt_commission(int $invoice_id): bool {
+        if (!class_exists('SN_Purpose_Commission') || !class_exists('SN_Dot_Flow') || !SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id)) { return true; }
+        return empty(SN_Purpose_Commission::instance()->reconcile_invoice($invoice_id)['blocked']);
+    }
     public static function modern($row): bool { return empty($row->authority) && trim((string)($row->proof_data ?? ''))!==''; }
     public static function metadata($row): array { $p=json_decode((string)($row->proof_data ?? ''),true); return is_array($p['_review'] ?? null)?$p['_review']:[]; }
     public static function install(): void {
@@ -192,6 +196,7 @@ final class SN_Receipt_Review {
                 if($payment->status==='approved' && $op==='approve') {
                     $amounts = self::stage_amounts($id, $stage_no);
                     $wpdb->query('ROLLBACK');
+                    if (!$this->reconcile_receipt_commission($id)) { return ['success'=>false,'decision_saved'=>true,'commission_pending'=>true,'message'=>'تأیید واریز محفوظ است؛ ثبت پورسانت کامل نشد و باید دوباره بررسی شود.']; }
                     if ($this->ready_to_finalize($stage, $amounts)) {
                         return $this->finalize_saved_decision($id, $stage_no);
                     }
@@ -236,7 +241,9 @@ final class SN_Receipt_Review {
             if(!$fresh)$this->fail('خواندن نتیجه ثبت انجام نشد.');
             $this->event($invoice,$fresh,$op,$reason,$before,$this->snapshot($fresh),$revision+1);
             $ready=$this->sync($invoice,$stage)['ready'];
+            if (class_exists('SN_Dot_Flow') && !SN_Dot_Flow::instance()->staged_conversion_financial_apply_in_transaction($id)) { $this->fail('ثبت مبلغ تأییدشده در پرونده کامل نشد.'); }
             $this->must($wpdb->query('COMMIT'));$committed=true;SN_Helpers::commit_receipt_uploads($keep);
+            if ($op === 'approve' && !$this->reconcile_receipt_commission($id)) { return ['success'=>false,'decision_saved'=>true,'commission_pending'=>true,'message'=>'تأیید واریز محفوظ است؛ ثبت پورسانت کامل نشد و باید دوباره بررسی شود.']; }
             if($ready) {
                 $result = $this->finalize_saved_decision($id, $stage_no);
                 if (empty($result['success'])) { return $result; }
@@ -284,7 +291,8 @@ final class SN_Receipt_Review {
             $decidable=$current && self::modern($r) && $r->status==='pending' && !$own_payment;
             $editable=$current && $this->editable($invoice,$r);
             $row['actions']=['approve'=>$decidable && $this->allowed('approve'),'reject'=>$decidable && $this->allowed('reject'),'correct'=>$editable,'appeal'=>$editable && $r->status==='rejected',
-                'retry_finalize'=>$current && $retry_finalize && self::modern($r) && $r->status==='approved'];
+                'retry_finalize'=>$current && $retry_finalize && self::modern($r) && $r->status==='approved',
+                'retry_commission'=>$current && $this->allowed('approve') && self::modern($r) && $r->status==='approved' && !in_array((string)$invoice->status,['cancelled','payment_archived','rejected'],true) && class_exists('SN_Dot_Flow') && SN_Dot_Flow::instance()->is_staged_conversion_invoice($id)];
             $row['uploaded_by_name']=!empty($r->uploaded_by_user_id)?self::name((int)$r->uploaded_by_user_id):'ثبت‌کننده قدیمی / درگاه';
             if($current && $finance && $r->status==='pending' && $own_payment && self::modern($r))$row['action_hint']='تأیید یا رد این واریز باید توسط کارشناس مالی دیگری انجام شود.';
             $row['duplicates']=$this->duplicates($invoice,$r,$row['proof']);
