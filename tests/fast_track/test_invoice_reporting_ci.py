@@ -124,6 +124,8 @@ class InvoiceReportingProofTests(unittest.TestCase):
         for text in ['RUNNER_ENVIRONMENT','github-hosted','--internal','readonly','SN_REPORTING_TEST_SANDBOX','WP_HTTP_BLOCK_EXTERNAL','pre_wp_mail','invoice-financial-native.php setup','invoice-financial-browser.cjs','invoice-financial-native.php verify','com.crmedits.invoice-report']:
             self.assertIn(text,runner)
         self.assertNotIn('--network host',runner);self.assertNotIn('--publish',runner)
+        self.assertIn('docker exec "$web" php -n /var/www/html/wp-content/plugins/sales-network-v4/tests/reporting/invoice-financial.php',runner)
+        self.assertNotIn('php8.3 tests/reporting/invoice-financial.php',runner)
         parent=(ROOT/'scripts/test-hr-integration.sh').read_text()
         for text in ['native-ledger.php','mis-ten-script-regression','traceability-upgrade-restore','staged-gateway-races','scripts/test-invoice-reporting.sh']:
             self.assertIn(text,parent)

@@ -65,7 +65,7 @@ wp_report option update timezone_string Asia/Tehran
 wp_report plugin activate sales-network-v4
 wp_report eval 'do_action("admin_init");' --user=synthetic_admin
 wp_report eval-file /var/www/html/wp-content/plugins/sales-network-v4/tests/reporting/invoice-financial-native.php setup
-php8.3 tests/reporting/invoice-financial.php > "$runtime_report/memory.log"
+docker exec "$web" php -n /var/www/html/wp-content/plugins/sales-network-v4/tests/reporting/invoice-financial.php > "$runtime_report/memory.log"
 docker run --rm --network "$network" --shm-size=1g \
   --mount "type=bind,source=$runtime_report/browser,target=/tooling,readonly" \
   --mount "type=bind,source=$runtime_report,target=/evidence" \

@@ -163,3 +163,14 @@ hit an existing Git environment restoration error after environment-mocking
 tests; it is not counted as passing. The new six tests and original five
 historical proof tests also pass separately on Windows. Gitleaks worktree scan
 passes. Frozen report runtime hashes remain unchanged.
+
+
+Run [44929799574](https://github.com/mehrdadhafezi/CRMEdits/actions/runs/44929799574)
+on head `a4b4e30c1f9fce75ff756455a357bf0726bfcf63` passed Finance x4, all
+116 orchestration tests, and every existing HR/product/ledger/schema/MIS/
+traceability/lifecycle phase. The additional report phase stopped at the SQLite
+memory test on the host's PHP 8.3.6. The same 63 checks pass in the pinned report
+PHP 8.3 container. The runner now executes them with `php -n` there, keeping their
+full assertions and using the same fixed runtime as native report validation.
+This avoids host PHP/SQLite/config variation; no runtime product bytes or
+required scenarios changed. This revision still requires a fresh full CI run.
