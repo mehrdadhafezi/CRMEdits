@@ -229,6 +229,26 @@ class SN_Invoice {
 		return [ 'success' => false, 'code' => $code, 'raw' => $body ];
 	}
 
+    /** Public order reference identifies a stage, never another purchase invoice. */
+    public static function stage_order_reference(string $invoice_code, int $stage_no): string {
+        return $invoice_code !== '' ? $invoice_code.'/'.max(1,$stage_no) : '';
+    }
+
+    /** Lookup only the parent invoice; an order alias is never a receipt identity. */
+    public static function gateway_invoice_code(string $order_id): string {
+        return preg_match('~^([^/]+)/[1-9][0-9]*$~D',$order_id,$m) ? $m[1] : $order_id;
+    }
+
+    /** Missing metadata means a historical request that used the unsuffixed code. */
+    public static function stored_gateway_order_id(array $payment, string $invoice_code): string {
+        $raw = trim((string)($payment['proof_data'] ?? ''));
+        $proof = $raw !== '' ? json_decode($raw,true) : [];
+        if (!is_array($proof)) { return ''; }
+        if (!array_key_exists('_gateway_order_id',$proof)) { return $invoice_code; }
+        $value = $proof['_gateway_order_id'];
+        return is_string($value) && $value === self::stage_order_reference($invoice_code,(int)($payment['payment_stage_no']??1)) ? $value : '';
+    }
+
 	/** ایجاد درخواست پرداخت زیبال - مبلغ ورودی تومان است و برای زیبال به ریال تبدیل می‌شود. */
 	public function zibal_request( int $invoice_id, float $amount, string $description, string $mobile, string $callback_url, string $order_id = '', int $payment_stage_no = 1 ): array {
 		$merchant = $this->zibal_test_mode ? 'zibal' : trim( $this->zibal_merchant );
@@ -242,8 +262,9 @@ class SN_Invoice {
 			'callbackUrl' => $callback_url,
 			'description' => $description,
 		];
-		if ( $order_id !== '' ) {
-			$payload['orderId'] = $order_id;
+		$gateway_order_id = self::stage_order_reference($order_id,$payment_stage_no);
+		if ( $gateway_order_id !== '' ) {
+			$payload['orderId'] = $gateway_order_id;
 		}
 		if ( $mobile !== '' ) {
 			$payload['mobile'] = $mobile;
@@ -278,6 +299,7 @@ class SN_Invoice {
 			'status'     => 'pending',
 			'pay_method' => 'online',
 			'payment_source' => 'zibal',
+            'proof_data' => wp_json_encode(['_gateway_order_id'=>$gateway_order_id]),
 			'created_at' => current_time( 'mysql' ),
 			'updated_at' => current_time( 'mysql' ),
 		] );

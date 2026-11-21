@@ -108,7 +108,7 @@ final class SN_Payment_Gateway_Guard {
         if($wpdb->last_error!==''||!$rows||count($rows)>10)return 'خواندن درخواست‌های درگاه کامل نشد؛ تأیید مالی انجام نشد.';
         $gateway=new SN_Invoice();
         foreach($rows as $row){
-            $reply=$gateway->zibal_inquiry(substr((string)$row['authority'],6),(float)$row['amount'],$order_id);
+            $reply=$gateway->zibal_inquiry(substr((string)$row['authority'],6),(float)$row['amount'],SN_Invoice::stored_gateway_order_id($row,$order_id));
             if(empty($reply['success'])||!in_array($reply['status']??null,[-1,3,15,18],true))return 'پیش از تأیید فیش، پرداخت‌نشدن درخواست قبلی درگاه باید تأیید شود؛ واحد مالی وضعیت درگاه را بررسی کند.';
         }
         return '';
