@@ -132,6 +132,7 @@ try:
  current=source;ok(fingerprint(before_names)==before,'every preexisting table outside both generated namespaces is preserved')
  summary={'passed':True,'synthetic':True,'assertions':checks,'version':'2.0.242','baseline_shas':{'main':BASE,'experimental':EXPERIMENTAL},'profiles':profiles_done,'fresh_namespaces':True,'legacy_identities_preserved':True,'new_financial_state_preserved_on_code_swap':True,'full_backup_restore_verified':True,'outside_tables_preserved':True,'code_only_business_rollback_supported':False,'production_touched':False}
  summary.update(candidate_commit=profiles['candidate']['commit'],core_sha256=profiles['candidate']['members']['includes/class-sn-plugin.php'],commission_sha256=profiles['candidate']['members']['includes/class-sn-purpose-commission.php'],post_restore_bootstrap_schema_verified=True)
- (output/'trace242-lifecycle.json').write_text(json.dumps(summary,indent=2)+'\n');print('SUMMARY '+json.dumps(summary));print('TOTAL '+str(checks))
+ public_summary=output/'trace242-lifecycle.json';public_summary.write_text(json.dumps(summary,indent=2)+'\n');os.chmod(str(public_summary),0o644)
+ print('SUMMARY '+json.dumps(summary));print('TOTAL '+str(checks))
 finally:
  if cnf.is_file() and not cnf.is_symlink():cnf.unlink()
