@@ -11,8 +11,9 @@ ROOT=pathlib.Path(__file__).resolve().parents[2]
 
 class TraceProofTests(unittest.TestCase):
  def test_payload_accepts_only_reviewed_bytes_and_member_set(self):
-  before=committed_members(ROOT,trace.BASE);after=dict(before)
-  for name in trace.RUNTIME:after['sales-network-v4/'+name]=(ROOT/name).read_bytes()
+  before=committed_members(ROOT,trace.BASE)
+  # Historical 243 proof must not depend on the current checkout's runtime bytes.
+  after=committed_members(ROOT,'6a8251699d948e584f5f2376a5cc2fa26defb100')
   self.assertTrue(trace.bounded_payload(before,after))
   for name in after:
    with self.subTest(path=name):self.assertFalse(trace.bounded_payload(before,{**after,name:after[name]+b'\n'}))

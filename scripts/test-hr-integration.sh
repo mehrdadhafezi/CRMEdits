@@ -159,3 +159,8 @@ python3 -B scripts/traceability_ci.py lifecycle-inputs --output "$runtime/trace2
 sudo chown -R sn-approval-test "$runtime/trace242-inputs"
 phase traceability-upgrade-restore run_test python3 -B tests/payments/traceability-lifecycle.py "$runtime/trace242-inputs/inputs.json"
 printf 'TRACEABILITY_REGRESSION_COMPLETE\n'
+
+# Add this exact reporting payload's independent WordPress/MySQL/browser suite.
+if python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA"; then
+  phase invoice-financial-reports bash scripts/test-invoice-reporting.sh
+fi

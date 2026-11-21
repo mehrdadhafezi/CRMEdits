@@ -632,3 +632,22 @@ Rules:
   uses `sn_invoice_sms_delivery_<id>` options, with autoload disabled. No DDL or
   historical data repair is introduced. Existing Woo product-save hooks still run
   during a normal product update; they were not executed on Production here.
+
+## Admin invoice financial export — local 2026-11-21
+
+The existing authenticated GET `admin.php?sn_export=invoices` retains
+`manage_options` and nonce `sn_export_invoices`. Optional scalar
+`sn_invoice_report` is allowlisted to `invoices` (default), `payments`, `sellers`,
+`customers`; `sn_format` to `csv` (default) or `xls`. Page and export consume the
+same hierarchy/search/status/created-date filters and `sn_finance` settlement or
+discrepancy filter. Invalid dates are rejected, not silently removed.
+
+Invoice CSV/XLS retains original invoice ID/code and appends distinct ledger,
+settlement, discrepancy and purchase-reference fields. Export headings are more
+explicit and payment statuses are Persian; consumers relying on older headings
+or canonicalized purchase codes must adapt. Amount/count XLS cells are numeric;
+identifiers/phones remain text. Payment export is one ledger record per row and
+never exports access tokens, raw proof or gateway authority. Existing bulk-order
+XLS retains its separate per-item row contract and nonce `sn_export_bulk_orders`.
+No AJAX, REST, public token, payment callback or schema contract changes.
+See the [full financial report contract](tasks/INVOICE_FINANCIAL_REPORTING.md).

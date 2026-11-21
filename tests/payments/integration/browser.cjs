@@ -105,7 +105,15 @@ async function pollMoney(page, selector, expected) {
         ok(await wraps.first().evaluate(el => el.scrollWidth <= el.clientWidth + 1 || ['auto','scroll'].includes(getComputedStyle(el).overflowX)), 'invoice table remains scrollable at ' + label + ' width ' + who);
       }
       await page.setViewportSize({width:1440,height:1000});
-      await page.locator(who === 'seller' ? '#sn-seller-invoice-search' : '#sn-supervisor-invoice-search').focus();
+      const search = page.locator(who === 'seller' ? '#sn-seller-invoice-search' : '#sn-supervisor-invoice-search');
+      await search.focus();
+      // Viewport/window focus can refresh the list: test Tab only after the real rows return.
+      await page.waitForFunction(selector => {
+        const list = document.querySelector(selector);
+        return list && list.textContent.includes('SYN-FINAL') && (!window.jQuery || window.jQuery.active === 0);
+      }, target);
+      await search.focus();
+      ok(await search.evaluate(el => document.activeElement === el), 'invoice search receives keyboard focus ' + who);
       await page.keyboard.press('Tab');
       ok(await page.evaluate(() => document.activeElement !== document.body), 'invoice controls retain keyboard focus ' + who);
       if (who === 'seller') {

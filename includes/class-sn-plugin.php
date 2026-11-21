@@ -6,6 +6,7 @@ if (! defined('ABSPATH')) {
 require_once __DIR__ . '/class-sn-hr-workforce-filters.php';
 require_once __DIR__ . '/class-sn-hr-invoice-reissue.php';
 require_once __DIR__ . '/class-sn-invoice-sms-policy.php';
+require_once __DIR__ . '/reports/class-sn-invoice-financial-report.php';
 require_once __DIR__ . '/trait-sn-mis-portal.php';
 require_once __DIR__ . '/trait-sn-sales-branches.php';
 
@@ -2993,46 +2994,73 @@ class SN_Plugin
 
 	private function export_invoices_csv(): void
 	{
-		global $wpdb;
 		$filters = $this->get_invoice_filters();
+		if ($filters['date_error']) { wp_die(esc_html($filters['date_error'])); }
+		$view = is_scalar($_GET['sn_invoice_report'] ?? '') ? sanitize_key(wp_unslash($_GET['sn_invoice_report'] ?? 'invoices')) : '';
+		$format = is_scalar($_GET['sn_format'] ?? '') ? sanitize_key(wp_unslash($_GET['sn_format'] ?? 'csv')) : '';
+		if (!in_array($view,['invoices','payments','sellers','customers'],true) || !in_array($format,['csv','xls'],true)) { wp_die('نوع گزارش یا قالب خروجی معتبر نیست.'); }
 		[$where, $args] = $this->build_invoices_where($filters);
-		$sql = "SELECT * FROM {$wpdb->prefix}sn_invoices WHERE {$where} ORDER BY id DESC";
-		$rows = $args ? $wpdb->get_results($wpdb->prepare($sql, ...$args), ARRAY_A) : $wpdb->get_results($sql, ARRAY_A);
-		$seller_ids = [];
-		foreach ((array) $rows as $r) { $seller_ids[] = $this->sn_invoice_effective_seller_id_for_admin((array) $r); }
-		$chain_map = $this->sn_admin_invoice_hr_chain_map($seller_ids);
-		$references = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_references(array_column((array)$rows, 'id')) : [];
-		$branch_map = $this->sn_sales_branch_map($seller_ids, $chain_map);
-		$this->sn_csv_header('sales-network-invoices-' . SN_Helpers::tehran_format('Y-m-d') . '.csv');
-		$out = fopen('php://output', 'w');
-		fputcsv($out, ['ID', 'کد فاکتور', 'مشتری', 'موبایل', 'استان', 'شهر', 'محصول', 'مبلغ', 'فروشنده', 'سرپرست', 'سرپرست ارشد', 'مدیر فروش', 'معاونت', 'وضعیت', 'وضعیت پرداخت', 'روش پرداخت', 'تاریخ پرداخت', 'تاریخ ایجاد', 'شعبه فعلی', 'مرحله پرداخت']);
-		foreach ((array) $rows as $r) {
-			$seller_id = $this->sn_invoice_effective_seller_id_for_admin((array) $r);
-			$chain = $chain_map[$seller_id] ?? [];
-			fputcsv($out, [
-				$r['id'] ?? '',
-				$references[(int)$r['id']]['invoice_code'] ?? $r['invoice_code'] ?? '',
-				$r['customer_name'] ?? '',
-				$r['customer_phone'] ?? '',
-				$r['province'] ?? '',
-				$r['city'] ?? '',
-				$this->sn_invoice_items_label((int) ($r['id'] ?? 0), (int) ($r['product_id'] ?? 0)),
-				$this->sn_invoice_amount_from_row((array) $r),
-				$chain['seller_name'] ?? $this->sn_user_label($seller_id),
-				$chain['supervisor_name'] ?? '',
-				$chain['senior_supervisor_name'] ?? '',
-				$chain['sales_manager_name'] ?? '',
-				$chain['deputy_name'] ?? '',
-				$this->sn_invoice_status_label_for_admin((array) $r),
-				(string) (($r['payment_status'] ?? '') ?: ($r['invoice_status'] ?? '')),
-				$this->sn_invoice_pay_method_label((string) ($r['pay_method'] ?? '')),
-				$r['paid_at'] ?? '',
-				$r['created_at'] ?? '',
-				$this->sn_sales_branch_csv_label($branch_map, $seller_id),
-				$references[(int)$r['id']]['stage_no'] ?? $r['current_payment_stage'] ?? 1,
-			]);
+		$report = $this->sn_admin_invoice_financial_report();
+		$stream = tmpfile();
+		if ($stream === false) { wp_die('فضای موقت برای ساخت خروجی در دسترس نیست.'); }
+		$xls = $format === 'xls';
+		try {
+			if ($xls) { fwrite($stream, '<?xml version="1.0" encoding="UTF-8"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Report" ss:RightToLeft="1"><Table>'); }
+			else { fwrite($stream, "\xEF\xBB\xBF"); }
+			$count = 0;
+			$write = static function(array $values, array $numeric = []) use ($stream,$xls,&$count): void {
+				if ($xls && ++$count > 65536) { throw new LengthException('خروجی XLS حداکثر ۶۵۵۳۵ ردیف داده دارد؛ بازه را کوچک‌تر کنید یا CSV بگیرید.'); }
+				SN_Invoice_Financial_Report::write_row($stream,$values,$xls,$numeric);
+			};
+			$groups = $report->groups($where,$args);
+			$chain_map = $this->sn_admin_invoice_hr_chain_map(array_column($groups,'group_key'));
+			$branch_map = $this->sn_sales_branch_map(array_column($groups,'group_key'),$chain_map);
+			if (in_array($view,['sellers','customers'],true)) {
+				$write(array_merge($view==='sellers' ? ['شناسه فروشنده','فروشنده','سرپرست','سرپرست ارشد','مدیر فروش','معاونت'] : ['شناسه مشتری (موبایل نرمال‌شده یا شناسه فاکتور بدون موبایل)','نام مشتری'],
+					['تعداد فاکتور','پیش‌فاکتور بدون دریافت','فاکتور دارای دریافت تأییدشده','مشتری دارای دریافت تأییدشده','واریزی ثبت‌شده','واریزی تأییدشده','جمع مبلغ فاکتورها (تومان)','دریافتی تأییدشده دفتر (تومان)','در انتظار بررسی مالی (تومان)','مانده اسناد باز طبق دفتر (تومان)','مانده حسابی لغو یا بایگانی‌شده؛ طلب نیست (تومان)','دریافت آنلاین (تومان)','دریافت کارت‌به‌کارت (تومان)','دریافت با روش دیگر یا نامشخص (تومان)','درگاه نیازمند ثبت یا تطبیق (تومان)','تعداد مغایرت']));
+				foreach ($view==='customers' ? $report->groups($where,$args,'customers') : $groups as $g) {
+					$c = $chain_map[(int)$g['group_key']] ?? [];
+					$identity = $view==='sellers' ? [$g['group_key'],$c['seller_name'] ?? '—',$c['supervisor_name'] ?? '',$c['senior_supervisor_name'] ?? '',$c['sales_manager_name'] ?? '',$c['deputy_name'] ?? ''] : [$g['group_key'],$g['customer_name']];
+					$write(array_merge($identity,array_map(static fn($key) => $g[$key],['invoice_count','pre_invoice_count','paid_count','paying_customers','transaction_count','confirmed_count','total_amount','confirmed_amount','pending_amount','active_remaining_amount','closed_remaining_amount','online_amount','card_amount','other_amount','unapplied_amount','discrepancy_count'])),range(count($identity),count($identity)+15));
+				}
+			} elseif ($view==='payments') {
+				$write(['شناسه تراکنش','شناسه فاکتور','کد فاکتور ثبت‌شده','مشتری','موبایل','شناسه فروشنده','فروشنده','شماره مرحله','مبلغ مرحله (تومان؛ غیرقابل جمع بین ردیف‌ها)','مبلغ همین تراکنش (تومان)','وضعیت تراکنش','روش انتقال وجه','مسیر ثبت','نوع رکورد','زمان ثبت','زمان آخرین تغییر']);
+				$after = 0;
+				do {
+					$batch = $report->payments($where,$args,$after);
+					foreach ($batch as $r) {
+						$label = SN_Invoice_Financial_Report::status_label((string)$r['status']);
+						if ($r['is_gateway'] && $r['status']==='pending') { $label = 'درخواست درگاه؛ واریز تأیید نشده'; }
+						$write(['PAY-'.$r['id'],$r['invoice_id'],$r['invoice_code'],$r['customer_name'],$r['customer_phone'],$r['seller_id'],$chain_map[(int)$r['seller_id']]['seller_name'] ?? '—',$r['payment_stage_no'],$r['stage_amount'] ?? '',$r['amount'],$label,SN_Invoice_Financial_Report::method_label((string)$r['pay_method']),SN_Invoice_Financial_Report::source_label((string)$r['payment_source']),$r['is_gateway'] ? 'رکورد درگاه' : 'واریز ثبت‌شده',SN_Helpers::gregorian_to_jalali_date((string)$r['created_at']),SN_Helpers::gregorian_to_jalali_date((string)$r['updated_at'])],[7,8,9]);
+						$after = (int)$r['id'];
+					}
+				} while (count($batch)===200);
+			} else {
+				$write(['ID','کد فاکتور ثبت‌شده','مشتری','موبایل','استان','شهر','محصول','مبلغ فاکتور (تومان)','فروشنده','سرپرست','سرپرست ارشد','مدیر فروش','معاونت','وضعیت پیگیری/فرآیند','وضعیت پرداخت ثبت‌شده','روش پرداخت ثبت‌شده فاکتور','تاریخ پرداخت','تاریخ ایجاد','شعبه فعلی','مرحله پرداخت','وضعیت سند ثبت‌شده','وضعیت مالی دفتر','وضعیت تسویه براساس دفتر','دریافتی تأییدشده (تومان)','در انتظار بررسی مالی (تومان)','مانده طبق دفتر (تومان)','تعداد واریزی ثبت‌شده','تعداد واریزی تأییدشده','دریافت آنلاین (تومان)','دریافت کارت‌به‌کارت (تومان)','دریافت با روش دیگر یا نامشخص (تومان)','پرداخت درگاه نیازمند ثبت یا تطبیق (تومان)','مبلغ پرداخت‌شده ذخیره‌شده فاکتور (تومان)','اختلاف فاکتور با دفتر (تومان)','کد خرید مرجع (ممکن است مشترک باشد)']);
+				$after = 0;
+				do {
+					$batch = $report->invoices($where,$args,$after);
+					$item_labels = $report->item_labels(array_column($batch,'id'));
+					$references = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_references(array_column($batch,'id')) : [];
+					foreach ($batch as $r) {
+						$c = $chain_map[(int)$r['seller_id']] ?? [];
+						$write([$r['id'],$r['invoice_code'],$r['customer_name'],$r['customer_phone'],$r['province'],$r['city'],($item_labels[(int)$r['id']] ?? ((int)$r['product_id']>0 ? (string)get_the_title((int)$r['product_id']) : '—')),$r['total_amount'],$c['seller_name'] ?? '—',$c['supervisor_name'] ?? '',$c['senior_supervisor_name'] ?? '',$c['sales_manager_name'] ?? '',$c['deputy_name'] ?? '',SN_Invoice_Financial_Report::status_label((string)$r['status']),SN_Invoice_Financial_Report::status_label((string)$r['payment_status']),SN_Invoice_Financial_Report::method_label((string)$r['pay_method']),$r['paid_at'] ?? '',$r['created_at'],$this->sn_sales_branch_csv_label($branch_map,(int)$r['seller_id']),$references[(int)$r['id']]['stage_no'] ?? $r['current_payment_stage'],SN_Invoice_Financial_Report::status_label((string)$r['invoice_status']),SN_Invoice_Financial_Report::finance_label($r),SN_Invoice_Financial_Report::settlement($r),$r['confirmed_amount'],$r['pending_amount'],$r['remaining_amount'],$r['transaction_count'],$r['confirmed_count'],$r['online_amount'],$r['card_amount'],$r['other_amount'],$r['unapplied_amount'],$r['stored_paid_amount'],$r['discrepancy_amount'],$references[(int)$r['id']]['invoice_code'] ?? $r['invoice_code']],[7,19,23,24,25,26,27,28,29,30,31,32,33]);
+						$after = (int)$r['id'];
+					}
+				} while (count($batch)===200);
+			}
+			if ($xls) { fwrite($stream,'</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><DisplayRightToLeft/></WorksheetOptions></Worksheet></Workbook>'); }
+		} catch (Throwable $e) {
+			fclose($stream);
+			wp_die($e instanceof LengthException ? esc_html($e->getMessage()) : 'ساخت گزارش کامل نشد؛ ساختار دفتر پرداخت و فضای موقت را بررسی کنید.');
+			return;
 		}
-		exit;
+		rewind($stream);
+		while (ob_get_level()) { if (!ob_end_clean()) { break; } }
+		nocache_headers();
+		header('Content-Type: ' . ($xls ? 'application/vnd.ms-excel' : 'text/csv') . '; charset=UTF-8');
+		header('Content-Disposition: attachment; filename="invoice-report-' . $view . '-' . gmdate('Y-m-d-His') . '.' . $format . '"');
+		fpassthru($stream); fclose($stream); exit;
 	}
 
 	private function export_customer_profiles_csv(): void
@@ -3354,19 +3382,23 @@ class SN_Plugin
 
 	private function get_invoice_filters(): array
 	{
-		return [
-			'status' => sanitize_text_field(wp_unslash($_GET['sn_status'] ?? 'all')),
-			'search' => sanitize_text_field(wp_unslash($_GET['sn_search'] ?? '')),
+		require_once __DIR__ . '/reports/class-sn-report-service.php';
+		$scalar = static fn($value): string => is_scalar($value) ? sanitize_text_field(wp_unslash((string)$value)) : '';
+		$dates = SN_Report_Service::date_filters([
+			'date_from'=>$_GET['sn_date_from'] ?? '', 'date_to'=>$_GET['sn_date_to'] ?? '',
+			'time_from'=>$_GET['sn_time_from'] ?? '', 'time_to'=>$_GET['sn_time_to'] ?? '',
+		]);
+		if (($dates['time_from'] && !$dates['date_from']) || ($dates['time_to'] && !$dates['date_to'])) { $dates['date_error'] = 'برای فیلتر ساعت تهران، تاریخ همان ابتدا یا انتهای بازه را نیز انتخاب کنید.'; }
+		return $dates + [
+			'status' => $scalar($_GET['sn_status'] ?? 'all'),
+			'finance' => $scalar($_GET['sn_finance'] ?? 'all'),
+			'search' => $scalar($_GET['sn_search'] ?? ''),
 			'sales_manager_ids' => $this->sn_admin_request_id_list('sn_sales_manager_ids', 'sn_sales_manager_id'),
 			'senior_supervisor_ids' => $this->sn_admin_request_id_list('sn_senior_supervisor_ids', 'sn_senior_supervisor_id'),
 			'supervisor_ids' => $this->sn_admin_request_id_list('sn_supervisor_ids', 'sn_supervisor_id'),
 			'seller_ids' => $this->sn_admin_request_id_list('sn_seller_ids', 'sn_seller_id'),
-			'supervisor_id' => absint($_GET['sn_supervisor_id'] ?? 0),
-			'seller_id' => absint($_GET['sn_seller_id'] ?? 0),
-			'date_from' => sanitize_text_field(wp_unslash($_GET['sn_date_from'] ?? '')),
-			'date_to' => sanitize_text_field(wp_unslash($_GET['sn_date_to'] ?? '')),
-			'time_from' => sanitize_text_field(wp_unslash($_GET['sn_time_from'] ?? '')),
-			'time_to' => sanitize_text_field(wp_unslash($_GET['sn_time_to'] ?? '')),
+			'supervisor_id' => absint($scalar($_GET['sn_supervisor_id'] ?? 0)),
+			'seller_id' => absint($scalar($_GET['sn_seller_id'] ?? 0)),
 		];
 	}
 
@@ -3375,7 +3407,7 @@ class SN_Plugin
 		$raw = $_GET[$multi_key] ?? [];
 		if (! is_array($raw)) { $raw = [$raw]; }
 		if ($single_key !== '' && isset($_GET[$single_key]) && ! is_array($_GET[$single_key])) { $raw[] = $_GET[$single_key]; }
-		return array_values(array_unique(array_filter(array_map('absint', array_map('wp_unslash', $raw)))));
+		return array_values(array_unique(array_filter(array_map('absint', array_map('wp_unslash', array_filter($raw, 'is_scalar'))))));
 	}
 
 	private function sn_admin_invoice_user_options(array $positions, array $legacy_roles = []): array
@@ -3459,16 +3491,15 @@ class SN_Plugin
 		global $wpdb;
 		$where = ['1=1'];
 		$args = [];
-		if ($f['status'] === 'needs_review') {
-			$where[] = "(status IN ('receipt_uploaded','pending_financial_approval') OR payment_status IN ('receipt_uploaded','pending_financial_approval') OR invoice_status IN ('receipt_uploaded','pending_financial_approval'))";
-		} elseif ($f['status'] !== '' && $f['status'] !== 'all') {
-			$where[] = 'status = %s';
-			$args[] = $f['status'];
-		}
+		if (!empty($f['date_error'])) { return ['0=1', []]; }
+		[$status_where, $status_args] = SN_Invoice_Financial_Report::condition($wpdb, (string)$f['status']);
+		$where[] = $status_where; $args = array_merge($args, $status_args);
+		[$finance_where, $finance_args] = SN_Invoice_Financial_Report::financial_condition($wpdb, (string)($f['finance'] ?? 'all'));
+		$where[] = $finance_where; $args = array_merge($args, $finance_args);
 		if ($f['search'] !== '') {
 			$conversion_ids = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_ids_for_code($f['search']) : [];
-			$code_match = $conversion_ids ? ' OR id IN (' . implode(',', array_fill(0, count($conversion_ids), '%d')) . ')' : '';
-			$where[] = '(invoice_code LIKE %s OR customer_name LIKE %s OR customer_phone LIKE %s OR city LIKE %s' . $code_match . ')';
+			$code_match = $conversion_ids ? ' OR i.id IN (' . implode(',', array_fill(0, count($conversion_ids), '%d')) . ')' : '';
+			$where[] = '(i.invoice_code LIKE %s OR i.customer_name LIKE %s OR i.customer_phone LIKE %s OR i.city LIKE %s' . $code_match . ')';
 			$like = '%' . $wpdb->esc_like($f['search']) . '%';
 			array_push($args, $like, $like, $like, $like, ...$conversion_ids);
 		}
@@ -3480,14 +3511,16 @@ class SN_Plugin
 		if ($has_hierarchy_filter) {
 			$seller_ids = $this->sn_admin_invoice_selected_scope_seller_ids($f);
 			if (! $seller_ids) { $where[] = '0=1'; }
-			else { [$owner_where, $owner_args] = $this->sn_admin_invoice_owner_where_for_user_ids($seller_ids); $where[] = $owner_where; $args = array_merge($args, $owner_args); }
+			else { [$owner_where, $owner_args] = $this->sn_admin_invoice_owner_where_for_user_ids($seller_ids, 'i'); $where[] = $owner_where; $args = array_merge($args, $owner_args); }
 		}
-		$date_from = SN_Helpers::jalali_to_gregorian_date((string) $f['date_from']);
-		$date_to = SN_Helpers::jalali_to_gregorian_date((string) $f['date_to']);
-		if ($date_from) { $where[] = 'DATE(created_at) >= %s'; $args[] = $date_from; }
-		if ($date_to) { $where[] = 'DATE(created_at) <= %s'; $args[] = $date_to; }
-		if (preg_match('/^\d{2}:\d{2}$/', $f['time_from'])) { $where[] = 'TIME(created_at) >= %s'; $args[] = $f['time_from'] . ':00'; }
-		if (preg_match('/^\d{2}:\d{2}$/', $f['time_to'])) { $where[] = 'TIME(created_at) <= %s'; $args[] = $f['time_to'] . ':59'; }
+		$site_timezone = function_exists('wp_timezone') ? wp_timezone() : SN_Helpers::tehran_timezone();
+		foreach (['from'=>'>=','to'=>'<='] as $edge=>$operator) {
+			if (!$f['date_'.$edge]) { continue; }
+			$time = $f['time_'.$edge] ?: ($edge==='from' ? '00:00' : '23:59');
+			$seconds = $edge==='from' ? ':00' : ':59';
+			$bound = new DateTimeImmutable($f['date_'.$edge].' '.$time.$seconds, SN_Helpers::tehran_timezone());
+			$where[] = 'i.created_at '.$operator.' %s'; $args[] = $bound->setTimezone($site_timezone)->format('Y-m-d H:i:s');
+		}
 		return [implode(' AND ', $where), $args];
 	}
 
@@ -3564,15 +3597,12 @@ class SN_Plugin
 	private function sn_invoice_status_label_for_admin(array $invoice): string
 	{
 		$status = (string) (($invoice['status'] ?? '') ?: ($invoice['invoice_status'] ?? '') ?: ($invoice['payment_status'] ?? ''));
-		$labels = ['pre_invoice'=>'پیش‌فاکتور','pending'=>'در انتظار پرداخت','pending_payment'=>'در انتظار پرداخت','receipt_uploaded'=>'فیش بارگذاری‌شده','pending_financial_approval'=>'در انتظار تایید مالی','paid'=>'پرداخت‌شده','approved'=>'تاییدشده','cancelled'=>'لغوشده','rejected'=>'ردشده'];
-		return $labels[$status] ?? ($status !== '' ? $status : '—');
+		return SN_Invoice_Financial_Report::status_label($status);
 	}
 
 	private function sn_invoice_pay_method_label(string $method): string
 	{
-		if ($method === 'online') { return 'آنلاین'; }
-		if (in_array($method, ['card','card_to_card','receipt'], true)) { return 'کارت‌به‌کارت'; }
-		return $method !== '' ? $method : '—';
+		return SN_Invoice_Financial_Report::method_label($method);
 	}
 
 	private function sn_invoice_is_paid_for_admin(array $invoice): bool
@@ -3775,18 +3805,24 @@ class SN_Plugin
 		return $this->sn_resolve_sales_manager_card_for_seller($seller_id);
 	}
 
-	private function sn_admin_invoice_group_stats(array $filters): array
+	private function sn_admin_invoice_financial_report(): SN_Invoice_Financial_Report
 	{
 		global $wpdb;
+		$columns = $this->sn_table_columns($wpdb->prefix . 'sn_invoices');
+		$fields = array_intersect(['seller_id','original_seller_id','commission_seller_id','seller_user_id','sales_user_id','lead_seller_id','assigned_seller_id'], $columns);
+		$parts = array_map(static fn($field) => "NULLIF(i.{$field},0)", array_values($fields));
+		$seller = $parts ? 'COALESCE(' . implode(',', $parts) . ',0)' : '0';
+		return new SN_Invoice_Financial_Report($wpdb, $seller);
+	}
+
+	private function sn_admin_invoice_group_stats(array $filters): array
+	{
 		[$where, $args] = $this->build_invoices_where($filters);
-		$sql = "SELECT * FROM {$wpdb->prefix}sn_invoices WHERE {$where} ORDER BY id DESC LIMIT 5000";
-		$rows = $args ? $wpdb->get_results($wpdb->prepare($sql, ...$args), ARRAY_A) : $wpdb->get_results($sql, ARRAY_A);
-		$groups = []; $seller_ids = [];
-		foreach ((array) $rows as $r) { $seller_id = $this->sn_invoice_effective_seller_id_for_admin((array) $r); $seller_ids[] = $seller_id; if (! isset($groups[$seller_id])) { $groups[$seller_id] = ['seller_id'=>$seller_id,'invoice_count'=>0,'paid_count'=>0,'revenue'=>0.0]; } $groups[$seller_id]['invoice_count']++; if ($this->sn_invoice_is_paid_for_admin((array) $r)) { $groups[$seller_id]['paid_count']++; $groups[$seller_id]['revenue'] += $this->sn_invoice_amount_from_row((array) $r); } }
-		$chain_map = $this->sn_admin_invoice_hr_chain_map($seller_ids);
-		foreach ($groups as $seller_id => &$g) { $g['chain'] = $chain_map[$seller_id] ?? ['seller_name' => $seller_id ? $this->sn_user_label((int) $seller_id) : '—']; }
-		unset($g); usort($groups, static fn($a, $b) => ((float) $b['revenue'] <=> (float) $a['revenue']) ?: ((int) $b['invoice_count'] <=> (int) $a['invoice_count']));
-		return array_slice($groups, 0, 50);
+		$groups = $this->sn_admin_invoice_financial_report()->groups($where, $args);
+		$chain_map = $this->sn_admin_invoice_hr_chain_map(array_column($groups, 'group_key'));
+		foreach ($groups as &$g) { $g['chain'] = $chain_map[(int)$g['group_key']] ?? ['seller_name'=>'—']; }
+		unset($g);
+		return $groups;
 	}
 
 	private function sn_admin_money_filter_value($value): ?float
@@ -27147,105 +27183,113 @@ class SN_Plugin
 
 	public function render_admin_invoices(): void
 	{
+		if (!current_user_can('manage_options')) { wp_die('گزارش فاکتورها فقط برای مدیر کل مجاز است.'); }
 		global $wpdb;
-		$page = max(1, absint($_GET['paged'] ?? 1));
 		$filters = $this->get_invoice_filters();
 		[$where, $args] = $this->build_invoices_where($filters);
-		$per = 50;
-		$offset = ($page - 1) * $per;
-		$count_sql = "SELECT COUNT(*) FROM {$wpdb->prefix}sn_invoices i WHERE {$where}";
-		$total = (int) ($args ? $wpdb->get_var($wpdb->prepare($count_sql, ...$args)) : $wpdb->get_var($count_sql));
-		$pages = max(1, (int) ceil($total / $per));
-		$list_sql = "SELECT i.* FROM {$wpdb->prefix}sn_invoices i WHERE {$where} ORDER BY i.id DESC LIMIT %d OFFSET %d";
-		$invs = $wpdb->get_results($wpdb->prepare($list_sql, ...array_merge($args, [$per, $offset])), ARRAY_A) ?: [];
-		$amount_expr = $this->sn_admin_invoice_amount_expr('i');
-		$total_amount_sql = "SELECT COALESCE(SUM({$amount_expr}),0) FROM {$wpdb->prefix}sn_invoices i WHERE {$where}";
-		$filtered_amount = (float) ($args ? $wpdb->get_var($wpdb->prepare($total_amount_sql, ...$args)) : $wpdb->get_var($total_amount_sql));
-		$paid_condition = $this->sn_admin_invoice_paid_condition('i');
-		$paid_amount = (float) $wpdb->get_var("SELECT COALESCE(SUM({$amount_expr}),0) FROM {$wpdb->prefix}sn_invoices i WHERE {$paid_condition}");
-		$pending_review = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}sn_invoices WHERE status IN ('receipt_uploaded','pending_financial_approval') OR payment_status IN ('receipt_uploaded','pending_financial_approval') OR invoice_status IN ('receipt_uploaded','pending_financial_approval')");
-
-		$group_stats = $this->sn_admin_invoice_group_stats($filters);
-		$seller_ids = [];
-		foreach ($invs as $inv) { $seller_ids[] = $this->sn_invoice_effective_seller_id_for_admin((array) $inv); }
+		$report = $this->sn_admin_invoice_financial_report();
+		try {
+			$summary = $report->summary($where,$args);
+			$total = (int)$summary['invoice_count']; $per = 50; $pages = max(1,(int)ceil($total/$per));
+			$page = min($pages,max(1,absint($_GET['paged'] ?? 1)));
+			$list = "SELECT i.* FROM {$wpdb->prefix}sn_invoices i WHERE {$where} ORDER BY i.id DESC LIMIT %d OFFSET %d";
+			$invs = $wpdb->get_results($wpdb->prepare($list,...array_merge($args,[$per,($page-1)*$per])),ARRAY_A);
+			if ($wpdb->last_error !== '' || !is_array($invs)) { throw new RuntimeException('Invoice read failed'); }
+			$financial = $report->for_ids(array_column($invs,'id'));
+			$item_labels = $report->item_labels(array_column($invs,'id'));
+			$group_stats = $this->sn_admin_invoice_group_stats($filters);
+			$review_filters = array_replace($filters,['status'=>'needs_review']);
+			[$review_where,$review_args] = $this->build_invoices_where($review_filters);
+			$pending_review = (int)$wpdb->get_var($review_args ? $wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}sn_invoices i WHERE {$review_where}",...$review_args) : "SELECT COUNT(*) FROM {$wpdb->prefix}sn_invoices i WHERE {$review_where}");
+			if ($wpdb->last_error !== '') { throw new RuntimeException('Review count failed'); }
+		} catch (Throwable $e) {
+			echo '<div class="wrap"><div class="notice notice-error"><p>گزارش مالی کامل خوانده نشد؛ ساختار جدول‌ها را بررسی کنید. هیچ مبلغی به‌عنوان صفر فرض نشده است.</p></div></div>';
+			return;
+		}
+		$seller_ids = array_map(fn($inv) => $this->sn_invoice_effective_seller_id_for_admin($inv),$invs);
 		$chain_map = $this->sn_admin_invoice_hr_chain_map($seller_ids);
-		$references = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_references(array_column($invs, 'id')) : [];
-		$branch_map = $this->sn_sales_branch_map($seller_ids, $chain_map);
-		$export_url = wp_nonce_url(add_query_arg(array_merge($_GET, ['sn_export' => 'invoices']), admin_url('admin.php')), 'sn_export_invoices');
-		$status_map = ['pre_invoice' => ['📋 پیش‌فاکتور', '#f59e0b'], 'pending' => ['📋 پیش‌فاکتور', '#f59e0b'], 'pending_payment' => ['📋 پیش‌فاکتور', '#f59e0b'], 'partial_paid' => ['🟠 پرداخت مرحله‌ای', '#ea580c'], 'payment_archived' => ['🗄 بایگانی انصرافی', '#64748b'], 'receipt_uploaded' => ['📎 نیاز به بررسی فیش', '#3b82f6'], 'pending_financial_approval' => ['📎 نیاز به بررسی فیش', '#3b82f6'], 'paid' => ['✅ فاکتور تایید‌شده', '#16a34a'], 'approved' => ['✅ فاکتور تایید‌شده', '#16a34a'], 'cancelled' => ['❌ لغوشده', '#ef4444'], 'rejected' => ['❌ ردشده', '#ef4444']];
-		$filter_labels = ['all' => 'همه', 'pre_invoice' => 'پیش‌فاکتور', 'needs_review' => '⚠️ نیاز به بررسی فیش', 'paid' => 'فاکتور تایید‌شده', 'cancelled' => 'لغوشده'];
+		$branch_map = $this->sn_sales_branch_map($seller_ids,$chain_map);
+		$references = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_references(array_column($invs,'id')) : [];
+		$filter_labels = ['all'=>'همه','pre_invoice'=>'پیش‌فاکتور بدون دریافت','needs_review'=>'نیازمند بررسی مالی','paid'=>'دارای دریافت تأییدشده','recontact_requested'=>'درخواست تماس مجدد','cancelled'=>'لغو یا بایگانی‌شده'];
+		$finance_labels = ['all'=>'همه وضعیت‌های مالی','unpaid'=>'بدون دریافت تأییدشده','partial'=>'تسویه ناقص','settled'=>'تسویه کامل','overpaid'=>'دریافت بیش از مبلغ','mismatch'=>'مغایرت فاکتور با دفتر','unapplied'=>'درگاه نیازمند ثبت یا تطبیق'];
 		?>
 		<div class="wrap sn-admin" dir="rtl">
-			<h1>پیش‌فاکتورها و فاکتورها</h1>
-			<div class="notice notice-info inline"><p>فیلترهای سلسله‌مراتبی به دراپ‌داون چک‌باکسی تبدیل شدند. با انتخاب هر سطح، گزینه‌های سطح بعدی همان‌جا محدود می‌شوند.</p></div>
-			<div style="display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:10px;margin:14px 0">
-				<div class="sn-card"><strong><?php echo number_format_i18n($total); ?></strong><br><span>تعداد مطابق فیلتر</span></div>
-				<div class="sn-card"><strong><?php echo SN_Helpers::format_price($filtered_amount); ?></strong><br><span>مبلغ مطابق فیلتر</span></div>
-				<div class="sn-card"><strong><?php echo SN_Helpers::format_price($paid_amount); ?></strong><br><span>کل فروش تاییدشده</span></div>
-				<div class="sn-card"><strong><?php echo number_format_i18n($pending_review); ?></strong><br><span>فیش نیازمند بررسی</span></div>
+			<h1>پیش‌فاکتورها، پرداخت‌ها و گزارش مالی</h1>
+			<style>
+			.sn-admin table.sn-invoice-report-table{display:table!important;table-layout:auto!important;white-space:normal!important}
+			.sn-admin table.sn-invoice-report-table thead{display:table-header-group!important}
+			.sn-admin table.sn-invoice-report-table tbody{display:table-row-group!important}
+			.sn-admin table.sn-invoice-report-table tr{display:table-row!important}
+			.sn-admin table.sn-invoice-report-table th,.sn-admin table.sn-invoice-report-table td{display:table-cell!important;min-width:110px;max-width:240px;white-space:normal!important;vertical-align:top}
+			.sn-admin table.sn-invoice-report-table th:first-child,.sn-admin table.sn-invoice-report-table td:first-child{min-width:45px}
+			</style>
+			<?php if ($filters['date_error']) : ?><div class="notice notice-error"><p><?php echo esc_html($filters['date_error']); ?></p></div><?php endif; ?>
+			<div class="notice notice-info inline"><p>مبنای دریافتی، تراکنش‌های «تأیید مالی‌شده» و «پرداخت‌شده» در دفتر پرداخت است. درخواست درگاه، واریز در انتظار بررسی و مبلغ ذخیره‌شده روی فاکتور، دریافتی قطعی محسوب نمی‌شوند. نبود رکورد دفتر، اثبات عدم وصول بانکی نیست؛ سوابق قدیمی نیازمند تطبیق‌اند. ماندهٔ اسناد لغو یا بایگانی‌شده طلب محسوب نمی‌شود. مانده و مغایرت برای بررسی هستند و سوابق را اصلاح نمی‌کنند. بازهٔ تاریخ و ساعت بر زمان ایجاد فاکتور اعمال می‌شود؛ مبالغ پرداخت‌ها مربوط به تمام عمر همان فاکتورها هستند. همهٔ مبالغ به تومان‌اند.</p></div>
+			<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:14px 0">
+				<?php foreach (['invoice_count'=>'تعداد فاکتور مطابق فیلتر','total_amount'=>'مبلغ فاکتورها','confirmed_amount'=>'دریافتی تأییدشده دفتر','pending_amount'=>'واریز در انتظار بررسی','active_remaining_amount'=>'مانده اسناد باز طبق دفتر','discrepancy_count'=>'فاکتور دارای مغایرت'] as $key=>$label) : ?>
+				<div class="sn-card"><strong><?php echo esc_html(in_array($key,['invoice_count','discrepancy_count'],true) ? number_format_i18n((int)$summary[$key]) : SN_Helpers::format_price((float)$summary[$key])); ?></strong><br><span><?php echo esc_html($label); ?></span></div>
+				<?php endforeach; ?>
 			</div>
-			<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;align-items:center">
-				<?php foreach ($filter_labels as $key => $lbl) : $url = add_query_arg(array_merge($_GET, ['page' => 'sn-invoices', 'sn_status' => $key, 'paged' => false])); $active = $filters['status'] === $key; $badge = ($key === 'needs_review' && $pending_review > 0) ? " <span style='background:#ef4444;color:#fff;padding:1px 7px;border-radius:10px;font-size:11px'>$pending_review</span>" : ''; ?>
-					<a href="<?php echo esc_url($url); ?>" style="padding:6px 14px;border-radius:6px;text-decoration:none;font-weight:600;font-size:13px;<?php echo $active ? 'background:#1d4ed8;color:#fff' : 'background:#f1f5f9;color:#1e293b'; ?>"><?php echo esc_html($lbl); ?><?php echo $badge; ?></a>
+			<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+				<?php foreach ($filter_labels as $key=>$label) : $url=add_query_arg(array_merge($_GET,['page'=>'sn-invoices','sn_status'=>$key,'paged'=>false,'sn_export'=>false,'_wpnonce'=>false])); ?>
+				<a class="button <?php echo $filters['status']===$key ? 'button-primary' : ''; ?>" href="<?php echo esc_url($url); ?>"><?php echo esc_html($label . ($key==='needs_review' ? ' (' . number_format_i18n($pending_review) . ')' : '')); ?></a>
 				<?php endforeach; ?>
 			</div>
 			<form id="sn-bulk-invoice-filters" method="get" class="sn-card sn-admin-filterbar sn-hierarchy-form" style="margin-bottom:14px">
 				<input type="hidden" name="page" value="sn-invoices"><input type="hidden" name="sn_status" value="<?php echo esc_attr($filters['status']); ?>">
 				<label>جستجو<br><input type="search" name="sn_search" value="<?php echo esc_attr($filters['search']); ?>" placeholder="کد، مشتری، موبایل"></label>
 				<?php $this->sn_admin_render_hierarchy_checkdrops($filters); ?>
-				<label>از تاریخ<br><input type="text" class="sn-jalali-date" name="sn_date_from" value="<?php echo esc_attr($filters['date_from']); ?>" placeholder="1403/02/18"></label>
-				<label>تا تاریخ<br><input type="text" class="sn-jalali-date" name="sn_date_to" value="<?php echo esc_attr($filters['date_to']); ?>" placeholder="1403/02/18"></label>
+				<label>وضعیت مالی<br><select name="sn_finance"><?php foreach ($finance_labels as $key=>$label) : ?><option value="<?php echo esc_attr($key); ?>" <?php selected($filters['finance'],$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></label>
+				<label>از تاریخ<br><input type="text" class="sn-jalali-date" name="sn_date_from" value="<?php echo esc_attr(SN_Helpers::gregorian_to_jalali_input_value($filters['date_from'])); ?>" placeholder="1405/08/01"></label>
+				<label>تا تاریخ<br><input type="text" class="sn-jalali-date" name="sn_date_to" value="<?php echo esc_attr(SN_Helpers::gregorian_to_jalali_input_value($filters['date_to'])); ?>" placeholder="1405/08/30"></label>
 				<label>از ساعت تهران<br><input type="time" name="sn_time_from" value="<?php echo esc_attr($filters['time_from']); ?>"></label>
 				<label>تا ساعت تهران<br><input type="time" name="sn_time_to" value="<?php echo esc_attr($filters['time_to']); ?>"></label>
-				<button class="button button-primary">فیلتر</button><a class="button" href="<?php echo esc_url(admin_url('admin.php?page=sn-invoices')); ?>">پاک کردن</a><a class="button button-secondary" href="<?php echo esc_url($export_url); ?>">خروجی اکسل</a><?php wp_nonce_field('sn_export_bulk_orders', '_sn_bulk_nonce', false); ?><button type="submit" name="sn_export" value="bulk_orders" class="button button-secondary">خروجی سفارش گروهی (XLS)</button>
-                <p style="flex-basis:100%;margin:8px 0 0">خروجی سفارش گروهی: ردیف‌های انتخاب‌شده یا، در صورت انتخاب نکردن، همهٔ فاکتورهای مطابق فیلتر. هر کالا یک ردیف؛ شناسهٔ فاکتور عددی است. پیش‌واریزی فقط اولین مرحلهٔ پیش‌پرداخت تأییدشده و فقط در ردیف اول است. مبالغ به تومان، تاریخ‌ها شمسی و ساعت‌ها تهران هستند. اطلاعات ناموجود خالی می‌مانند؛ نقدی/چکی، تخفیف هر کالا و شناسهٔ حساب مقصد نیاز به تطبیق دارند.</p>
+				<button class="button button-primary">فیلتر</button><a class="button" href="<?php echo esc_url(admin_url('admin.php?page=sn-invoices')); ?>">پاک کردن</a>
+				<label>نمای خروجی<br><select name="sn_invoice_report"><option value="invoices">یک ردیف برای هر فاکتور</option><option value="payments">ریز پرداخت‌ها؛ یک ردیف برای هر رکورد دفتر</option><option value="sellers">جمع فروشندگان</option><option value="customers">جمع مشتریان</option></select></label>
+				<label>قالب خروجی<br><select name="sn_format"><option value="csv">CSV</option><option value="xls">Excel (XLS)</option></select></label>
+				<?php wp_nonce_field('sn_export_invoices','_wpnonce',false); ?>
+				<button class="button button-secondary" name="sn_export" value="invoices">دریافت گزارش مالی</button>
+				<?php wp_nonce_field('sn_export_bulk_orders','_sn_bulk_nonce',false); ?><button class="button" name="sn_export" value="bulk_orders">خروجی سفارش گروهی (XLS)</button>
+				<p style="flex-basis:100%">گزارش فاکتورها با شناسهٔ عددی فاکتور شمرده می‌شود. کد خرید مرجع ممکن است برای مراحل قدیمی مشترک باشد. ریز پرداخت‌ها شامل درخواست‌های تأییدنشدهٔ درگاه نیز هست؛ وضعیت هر ردیف را بررسی کنید. خروجی سفارش گروهی همچنان برای هر کالا یک ردیف دارد.</p>
 			</form>
 			<div class="sn-card" style="margin-bottom:14px;overflow:auto">
-				<h2 style="margin-top:0">آمار مطابق فیلتر بر اساس فروشنده</h2>
-				<table class="widefat striped"><thead><tr><th>فروشنده</th><th>سرپرست</th><th>سرپرست ارشد</th><th>مدیر فروش</th><th>معاونت</th><th>تعداد فاکتور</th><th>پرداخت/تایید</th><th>مبلغ تاییدشده</th></tr></thead><tbody>
-				<?php foreach ($group_stats as $g) : $c = (array) ($g['chain'] ?? []); ?>
-					<tr><td><?php echo esc_html((string) ($c['seller_name'] ?? '—')); ?></td><td><?php echo esc_html((string) ($c['supervisor_name'] ?? '—')); ?></td><td><?php echo esc_html((string) ($c['senior_supervisor_name'] ?? '—')); ?></td><td><?php echo esc_html((string) ($c['sales_manager_name'] ?? '—')); ?></td><td><?php echo esc_html((string) ($c['deputy_name'] ?? '—')); ?></td><td><?php echo number_format_i18n((int) ($g['invoice_count'] ?? 0)); ?></td><td><?php echo number_format_i18n((int) ($g['paid_count'] ?? 0)); ?></td><td><?php echo esc_html(SN_Helpers::format_price((float) ($g['revenue'] ?? 0))); ?></td></tr>
+				<h2>آمار فروشندگان مطابق فیلتر</h2>
+				<?php if (count($group_stats)>50) : ?><p>۵۰ فروشندهٔ نخست نمایش داده می‌شوند؛ جمع‌ها شامل همهٔ فاکتورها هستند و خروجی فروشندگان تمام افراد را دارد.</p><?php endif; ?>
+				<table class="widefat striped sn-invoice-report-table" style="min-width:1600px"><thead><tr><th>فروشنده</th><th>مدیر فروش</th><th>فاکتور</th><th>پیش‌فاکتور بدون دریافت</th><th>فاکتور دارای دریافت</th><th>مشتری دارای دریافت</th><th>واریزی ثبت‌شده</th><th>دریافتی تأییدشده</th><th>در انتظار بررسی</th><th>مانده اسناد باز</th><th>آنلاین</th><th>کارت‌به‌کارت</th><th>روش دیگر/نامشخص</th><th>مغایرت</th></tr></thead><tbody>
+				<?php foreach (array_slice($group_stats,0,50) as $g) : $c=$g['chain']; ?>
+				<tr><td><?php echo esc_html($c['seller_name'] ?? '—'); ?></td><td><?php echo esc_html($c['sales_manager_name'] ?? '—'); ?></td>
+				<?php foreach (['invoice_count','pre_invoice_count','paid_count','paying_customers','transaction_count','confirmed_amount','pending_amount','active_remaining_amount','online_amount','card_amount','other_amount','discrepancy_count'] as $key) : ?><td><?php echo esc_html(str_ends_with($key,'amount') ? SN_Helpers::format_price((float)$g[$key]) : number_format_i18n((int)$g[$key])); ?></td><?php endforeach; ?></tr>
 				<?php endforeach; ?>
-				<?php if (empty($group_stats)) : ?><tr><td colspan="8">آماری برای فیلتر فعلی وجود ندارد.</td></tr><?php endif; ?>
+				<?php if (!$group_stats) : ?><tr><td colspan="14">آماری مطابق فیلتر وجود ندارد.</td></tr><?php endif; ?>
 				</tbody></table>
 			</div>
-			<table class="wp-list-table widefat fixed striped">
-				<thead><tr><th style="width:45px">انتخاب</th><th style="width:120px">کد</th><th>مشتری</th><th>موبایل</th><th>محصول</th><th>مبلغ</th><th>فروشنده</th><th>سرپرست</th><th>ارشد</th><th>مدیر فروش</th><th>شعبه فعلی</th><th>معاونت</th><th>وضعیت</th><th>روش پرداخت</th><th>تاریخ</th><th style="width:200px">عملیات</th></tr></thead>
-				<tbody>
-				<?php foreach ($invs as $inv) :
-					$seller_id = $this->sn_invoice_effective_seller_id_for_admin((array) $inv);
-					$chain = $chain_map[$seller_id] ?? [];
-					$status_value = (string) (($inv['status'] ?? '') ?: ($inv['invoice_status'] ?? '') ?: ($inv['payment_status'] ?? ''));
-					[$slabel, $scolor] = $status_map[$status_value] ?? [$this->sn_invoice_status_label_for_admin((array) $inv), '#64748b'];
-					$is_receipt = in_array($status_value, ['receipt_uploaded', 'pending_financial_approval'], true) || in_array((string) ($inv['payment_status'] ?? ''), ['receipt_uploaded', 'pending_financial_approval'], true);
-				?>
-					<tr style="<?php echo esc_attr($is_receipt ? 'background:#eff6ff' : ''); ?>">
-						<td><input type="checkbox" form="sn-bulk-invoice-filters" name="sn_bulk_ids[]" value="<?php echo esc_attr((string) $inv['id']); ?>" aria-label="<?php echo esc_attr('انتخاب فاکتور ' . (string) $inv['invoice_code']); ?>"></td>
-                        <td><code style="font-size:11px"><?php echo esc_html((string) ($references[(int)$inv['id']]['invoice_code'] ?? $inv['invoice_code'] ?? '')); ?></code>
-                        <?php if (isset($references[(int)$inv['id']])) : ?><br><small>مرحله <?php echo esc_html(number_format_i18n((int)$references[(int)$inv['id']]['stage_no'])); ?></small><?php endif; ?></td>
-						<td><?php echo esc_html((string) ($inv['customer_name'] ?? '')); ?></td>
-						<td><?php echo esc_html((string) ($inv['customer_phone'] ?? '')); ?></td>
-						<td><?php echo esc_html($this->sn_invoice_items_label((int) ($inv['id'] ?? 0), (int) ($inv['product_id'] ?? 0))); ?></td>
-						<td><strong><?php echo esc_html(SN_Helpers::format_price($this->sn_invoice_amount_from_row((array) $inv))); ?></strong></td>
-						<td><?php echo esc_html((string) ($chain['seller_name'] ?? ($seller_id ? $this->sn_user_label($seller_id) : '—'))); ?></td>
-						<td><?php echo esc_html((string) ($chain['supervisor_name'] ?? '—')); ?></td>
-						<td><?php echo esc_html((string) ($chain['senior_supervisor_name'] ?? '—')); ?></td>
-						<td><?php echo esc_html((string) ($chain['sales_manager_name'] ?? '—')); ?></td>
-						<td><?php echo esc_html($branch_map[$seller_id]['label'] ?? '—'); ?></td>
-						<td><?php echo esc_html((string) ($chain['deputy_name'] ?? '—')); ?></td>
-						<td><span style="background:<?php echo esc_attr($scolor); ?>;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;white-space:nowrap"><?php echo esc_html($slabel); ?></span></td>
-						<td><?php echo esc_html($this->sn_invoice_pay_method_label((string) ($inv['pay_method'] ?? ''))); ?></td>
-						<td style="font-size:12px"><?php echo esc_html(SN_Helpers::gregorian_to_jalali_date((string) ($inv['created_at'] ?? ''))); ?></td>
-						<td><?php $as_url = $this->sn_after_sales_context_url((string) ($inv['invoice_code'] ?? '')); if ($as_url) : ?><a href="<?php echo esc_url($as_url); ?>" class="button button-small sn-internal-context-link">پرونده خدمات پس از فروش</a><?php endif; ?><?php echo SN_Helpers::receipt_links($inv); ?><?php if ($is_receipt) : ?><button class="button button-primary sn-confirm-payment" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="display:block;width:100%;margin:4px 0">✅ تایید مالی</button><button class="button sn-cancel-payment" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="display:block;width:100%;margin-bottom:6px">❌ رد فیش</button><?php endif; ?><select class="sn-admin-status-sel" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="width:100%;margin-top:4px;font-size:11px"><option value="">✏ تغییر وضعیت...</option><option value="pre_invoice">📋 پیش‌فاکتور</option><option value="paid">✅ تبدیل به فاکتور</option><option value="cancelled">❌ لغو کردن</option></select></td>
-					</tr>
+			<div style="overflow:auto" tabindex="0" role="region" aria-label="جدول فاکتورها؛ برای دیدن ستون‌ها پیمایش افقی کنید"><table class="wp-list-table widefat striped sn-invoice-report-table" style="min-width:2400px">
+				<thead><tr><th>انتخاب</th><th>کد فاکتور / شناسه یکتا</th><th>مشتری</th><th>پیگیری / فرآیند</th><th>وضعیت سند ثبت‌شده</th><th>وضعیت مالی دفتر</th><th>تسویه / دریافتی / مانده</th><th>مغایرت با دفتر</th><th>مبلغ فاکتور</th><th>موبایل</th><th>روش ثبت‌شده فاکتور</th><th>محصول</th><th>فروشنده</th><th>سرپرست</th><th>ارشد</th><th>مدیر فروش</th><th>شعبه فعلی</th><th>معاونت</th><th>تاریخ</th><th>عملیات</th></tr></thead><tbody>
+				<?php foreach ($invs as $inv) : $seller_id=$this->sn_invoice_effective_seller_id_for_admin($inv); $chain=$chain_map[$seller_id] ?? []; $f=$financial[(int)$inv['id']]; $is_receipt=(bool)$f['review_required']; ?>
+				<tr>
+					<td><input type="checkbox" form="sn-bulk-invoice-filters" name="sn_bulk_ids[]" value="<?php echo esc_attr((string)$inv['id']); ?>" aria-label="<?php echo esc_attr('انتخاب فاکتور ' . $inv['invoice_code']); ?>"></td>
+					<td><code><?php echo esc_html($inv['invoice_code']); ?></code><br><small>شناسه <?php echo esc_html((string)$inv['id']); ?></small><?php if (isset($references[(int)$inv['id']])) : ?><br><small>خرید مرجع: <?php echo esc_html($references[(int)$inv['id']]['invoice_code']); ?>؛ مرحله <?php echo esc_html((string)$references[(int)$inv['id']]['stage_no']); ?></small><?php endif; ?></td>
+					<td><?php echo esc_html((string)$inv['customer_name']); ?></td>
+					<td><?php echo esc_html(SN_Invoice_Financial_Report::status_label((string)$inv['status'])); ?></td><td><?php echo esc_html(SN_Invoice_Financial_Report::status_label((string)$inv['invoice_status'])); ?></td>
+					<td><?php echo esc_html(SN_Invoice_Financial_Report::finance_label($f)); ?><br><small>ثبت‌شده فاکتور: <?php echo esc_html(SN_Invoice_Financial_Report::status_label((string)$inv['payment_status'])); ?></small></td>
+					<td><?php echo esc_html(SN_Invoice_Financial_Report::settlement($f)); ?><br>تأییدشده: <?php echo esc_html(SN_Helpers::format_price((float)$f['confirmed_amount'])); ?><br>در انتظار بررسی: <?php echo esc_html(SN_Helpers::format_price((float)$f['pending_amount'])); ?><br>مانده: <?php echo esc_html(SN_Helpers::format_price((float)$f['remaining_amount'])); ?></td>
+					<td><?php echo esc_html(abs((float)$f['discrepancy_amount'])>0.005 ? SN_Helpers::format_price((float)$f['discrepancy_amount']) . '؛ نیازمند بررسی' : 'بدون مغایرت مبلغ'); ?></td>
+					<td><?php echo esc_html(SN_Helpers::format_price((float)$f['total_amount'])); ?></td><td><?php echo esc_html((string)$inv['customer_phone']); ?></td>
+					<td><?php echo esc_html(SN_Invoice_Financial_Report::method_label((string)$inv['pay_method'])); ?><br><small>مسیر: <?php echo esc_html(SN_Invoice_Financial_Report::source_label((string)($inv['payment_source'] ?? ''))); ?></small></td>
+					<td><?php echo esc_html(($item_labels[(int)$inv['id']] ?? ((int)$inv['product_id']>0 ? (string)get_the_title((int)$inv['product_id']) : '—'))); ?></td>
+					<?php foreach (['seller_name','supervisor_name','senior_supervisor_name','sales_manager_name'] as $key) : ?><td><?php echo esc_html($chain[$key] ?? '—'); ?></td><?php endforeach; ?>
+					<td><?php echo esc_html($branch_map[$seller_id]['label'] ?? '—'); ?></td><td><?php echo esc_html($chain['deputy_name'] ?? '—'); ?></td>
+					<td><?php echo esc_html(SN_Helpers::gregorian_to_jalali_date((string)$inv['created_at'])); ?></td>
+					<td><?php $as_url = $this->sn_after_sales_context_url((string) ($inv['invoice_code'] ?? '')); if ($as_url) : ?><a href="<?php echo esc_url($as_url); ?>" class="button button-small sn-internal-context-link">پرونده خدمات پس از فروش</a><?php endif; ?><?php echo SN_Helpers::receipt_links($inv); ?><?php if ($is_receipt) : ?><button class="button button-primary sn-confirm-payment" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="display:block;width:100%;margin:4px 0">✅ تایید مالی</button><button class="button sn-cancel-payment" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="display:block;width:100%;margin-bottom:6px">❌ رد فیش</button><?php endif; ?><select class="sn-admin-status-sel" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="width:100%;margin-top:4px;font-size:11px"><option value="">✏ تغییر وضعیت...</option><option value="pre_invoice">📋 پیش‌فاکتور</option><option value="paid">✅ تبدیل به فاکتور</option><option value="cancelled">❌ لغو کردن</option></select></td>
+				</tr>
 				<?php endforeach; ?>
-				<?php if (empty($invs)) : ?><tr><td colspan="16" style="text-align:center;padding:24px;color:#64748b">فاکتوری مطابق فیلتر فعلی یافت نشد. برای مشاهده همه فاکتورها، فیلترها را پاک کنید.</td></tr><?php endif; ?>
-				</tbody>
-			</table>
-			<?php if ($pages > 1) : ?><div class="tablenav bottom" style="margin-top:12px"><div class="tablenav-pages"><?php echo paginate_links(['total' => $pages, 'current' => $page, 'add_args' => array_filter($_GET)]); ?></div></div><?php endif; ?>
+				<?php if (!$invs) : ?><tr><td colspan="20">فاکتوری مطابق فیلتر فعلی یافت نشد.</td></tr><?php endif; ?>
+				</tbody></table></div>
+			<?php if ($pages>1) : ?><div class="tablenav bottom"><div class="tablenav-pages"><?php echo paginate_links(['total'=>$pages,'current'=>$page,'add_args'=>array_filter($_GET)]); ?></div></div><?php endif; ?>
 		</div>
 		<?php
 	}
+
 
 			public function render_admin_settings(): void
 			{

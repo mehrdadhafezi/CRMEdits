@@ -46,6 +46,15 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Local 2026-11-21 adds a read-only
+[invoice financial reporting projection](../../includes/reports/class-sn-invoice-financial-report.php).
+Admin `sn-invoices` uses approved/paid ledger rows for received money, separate
+pending manual receipts, gateway reconciliation amounts, open/closed balances
+and stored-vs-ledger discrepancies. Complete seller/customer aggregates have no
+5000-invoice cutoff. Original invoice IDs/codes, typed XLS cells and formula-safe
+CSV are specified in the [task contract](../tasks/INVOICE_FINANCIAL_REPORTING.md).
+Existing report-panel successful-payment fallback semantics are unchanged.
+
 Unreleased local traceability appends separate invoice/stage/transaction metadata
 to existing authorized exports; amount units and totals stay unchanged. See the
 [column semantics and compatibility limits](../tasks/INVOICE_PAYMENT_TRACEABILITY.md).
@@ -69,6 +78,11 @@ scope گزارش و export یکسان بماند. خروجی هویتی/مالی
 DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.md). اطلاعات مشتری، مالی، token و snapshot داده حساس‌اند. رابطه‌ای که فقط در کد وجود دارد Foreign Key فرض نشود. حذف history، double-credit و استفاده از رکورد خارج از scope ممنوع است.
 
 ## 8. Testing & Preview
+
+Invoice report regression: `tests/reporting/invoice-financial.php` uses synthetic
+SQLite memory. Guarded native MySQL and real browser/CSV/XLS tests are documented
+in [the reporting test guide](../../tests/reporting/README.md). These tests do not
+authorize access to an existing site or establish production data parity.
 
 `php tests/payments/approval-visibility.php` checks the successful-payment report
 with a standalone synthetic SQLite adapter: approved receipts count once, pending

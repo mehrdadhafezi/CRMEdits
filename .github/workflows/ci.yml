@@ -193,6 +193,8 @@ jobs:
             test-results/hr/product-browser/product241-browser.json
             test-results/hr/product-browser/product241-browser-errors.json
             test-results/hr/product-browser/*.png
+            test-results/hr/invoice-report/*.json
+            test-results/hr/invoice-report/*.png
             test-results/finance/gateway-manual-native.json
             test-results/finance/gateway-manual-races.json
             test-results/finance/gateway-browser/gateway-manual-browser.json
