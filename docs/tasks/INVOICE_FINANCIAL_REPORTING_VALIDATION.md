@@ -93,6 +93,31 @@ the old per-invoice lookup is not used by this page/export. No product/catalog
 write behavior was changed. All page/export native assertions were repeated on
 this final source after that performance correction.
 
+## CI follow-up for Issue #24
+
+The first full PR run [44926325829](https://github.com/mehrdadhafezi/CRMEdits/actions/runs/44926325829)
+tested head `e73200ecc06aab86addd4c0447a61a1a6562ccf4` with merge revision
+`793ad79c4a2e0137fe8672b417fd71ddf1e4a3f9`. Base syntax/docs/secrets/boundary and
+three Finance matrix entries passed. Two failures require a new exact-head run:
+
+- Historical 2.0.243 proof used mutable checkout bytes. Its positive fixture is
+  now the original main-ancestor commit `6a8251699d948e584f5f2376a5cc2fa26defb100`.
+  Both the original commit and approved main match the existing 122-member/hash
+  gate; the new 123-member reporting payload remains rejected by that historical
+  gate. Runtime proof pins and production validation logic are unchanged.
+- The WP 7.1.4 / installed-2.0.237 keyboard check ran during a list refresh after
+  viewport/focus changes. The failure screenshot shows loading placeholders.
+  The test now waits for actual fixture rows and AJAX completion after focusing,
+  asserts search focus, then retains the original strict Tab-focus assertion.
+  No assertion, security case, provider guard or financial scenario is removed.
+
+These follow-ups add only `tests/fast_track/test_traceability_ci.py` and
+`tests/payments/integration/browser.cjs` to the original 12-file task scope.
+The five focused historical-proof tests pass locally. GitHub reruns the full
+orchestration suite and all four Finance entries. The runtime source remains
+byte-for-byte identical to the locally native-tested reporting implementation.
+Current final results and revision are maintained in PR #25.
+
 Checkpoint classification before the CI run:
 
 BLOCKED — MISSING REQUIRED TEST

@@ -113,3 +113,12 @@ Rollback محلی: برگرداندن فقط patch همین تسک پس از ح�
 این تغییر migration، repair یا اثر مالی جدید ندارد؛ بازگشت کد، مغایرت‌های تاریخی
 را اصلاح نمی‌کند. مرحله: PR Delivery؛ Commit/Push و Draft PR برای اجرای CI طبق درخواست مالک مجاز شده‌اند.
 نتیجهٔ همان Head/Base در توضیحات PR ثبت می‌شود؛ Merge/Deploy مرحلهٔ مجاز جداگانه است.
+
+
+## تکمیل گیت CI
+
+در PR #25، محدودهٔ اصلاح لازم برای اجرای CI شامل دو تست موجود نیز شد:
+`tests/fast_track/test_traceability_ci.py` برای Fixture تاریخی مستقل از checkout،
+و `tests/payments/integration/browser.cjs` برای همگام‌سازی بررسی فوکوس پس از
+بازخوانی واقعی جدول. هش‌های مجاز و منطق گیت runtime و شروط آزمون حفظ شده‌اند.
+[شرح شواهد و نتایج جاری](INVOICE_FINANCIAL_REPORTING_VALIDATION.md).
