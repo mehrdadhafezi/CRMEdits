@@ -110,3 +110,9 @@ has 102 native assertions (95 regression assertions plus seven fixture checks).
 The Fast-Track summary requires every existing suite, all four Finance entries
 and successful new editor evidence. See the
 [CI delivery contract](../../docs/tasks/PREPAYMENT_INVOICE_EDIT_VALIDATION.md).
+
+On Linux the scratch directory must allow Apache traversal (0711); keep
+`private-state.json`, `fixture.json`, `db.env` and `wp.env` owner-only (0600).
+The native fixture writes a separate `browser-page.json` (0644) containing only
+three synthetic invoice IDs; the MU fixture never reads the credential-bearing
+full fixture. The CI runner asserts these modes and the exact public key set.

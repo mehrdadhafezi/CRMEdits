@@ -49,3 +49,19 @@ by CI publication. Rollback remains code-only; no automatic data rollback exists
 
 At commit time: Draft / CI pending. The associated PR is the live evidence record.
 BLOCKED — MISSING REQUIRED TEST
+
+
+## CI runner correction after first execution
+
+Run 45033367453 passed all four Finance matrix entries and all prior native
+HR/ledger/MIS/traceability/report phases. The editor's 102 native checks passed;
+its browser could not find the invoice button because Apache could not traverse
+the Linux `mktemp` directory (0700). Windows bind mounts had not exposed this
+permission difference. Production PHP/JS is unchanged.
+
+The runner now allows directory traversal (0711) while private state, credentials,
+env config and the full fixture remain 0600. The MU page reads only a separate
+0644 JSON with three synthetic invoice IDs. Native fixture creation writes both
+files; runner assertions verify the exact public key set and private file modes.
+No private fixture or raw diagnostics are uploaded. All required suites must run
+again on the follow-up commit; the first failed run is not readiness evidence.

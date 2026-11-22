@@ -8,6 +8,11 @@ if (!defined('DOING_AJAX')) { define('DOING_AJAX',true); }
 sn_bootstrap_plugin_instance(true);
 global $wpdb,$fixture,$checks;$wpdb->hide_errors();$checks=0;
 function prep_ok($value,$label){global $checks;if(!$value)throw new RuntimeException('FAIL '.$label);++$checks;echo 'PASS '.$label.PHP_EOL;}
+function prep_write_fixture(array $fixture):void{
+    file_put_contents('/evidence/fixture.json',wp_json_encode($fixture));chmod('/evidence/fixture.json',0600);
+    $page=array_intersect_key($fixture,array_flip(['browser_invoice','browser_sender_invoice','browser_locked_invoice']));
+    file_put_contents('/evidence/browser-page.json',wp_json_encode($page));chmod('/evidence/browser-page.json',0644);
+}
 function prep_insert($suffix,$data){global $wpdb;if(false===$wpdb->insert($wpdb->prefix.$suffix,$data))throw new RuntimeException('Synthetic insert failed '.$suffix);return (int)$wpdb->insert_id;}
 function prep_request(int $actor,array $data,bool $nonce=true,string $failure=''):array{
     static $cookies=[];
@@ -57,7 +62,7 @@ if($mode==='browser-reset'){
     $fixture['browser_invoice']=prep_invoice();$fixture['browser_sender_invoice']=prep_invoice();
     $fixture['browser_identity']=$wpdb->get_row($wpdb->prepare("SELECT id,invoice_code,access_token FROM {$wpdb->prefix}sn_invoices WHERE id=%d",$fixture['browser_invoice']),ARRAY_A);
     prep_insert('sn_activity_logs',['invoice_id'=>$fixture['browser_sender_invoice'],'user_id'=>$fixture['admin_id'],'action'=>'invoice_sms_resent','description'=>'Synthetic last sender','created_at'=>current_time('mysql')]);
-    file_put_contents('/evidence/fixture.json',wp_json_encode($fixture));echo 'BROWSER_FIXTURES_READY_AFTER_ACCOUNT_BOOTSTRAP'.PHP_EOL;return;
+    prep_write_fixture($fixture);echo 'BROWSER_FIXTURES_READY_AFTER_ACCOUNT_BOOTSTRAP'.PHP_EOL;return;
 }
 
 if($mode==='verify'){
@@ -138,6 +143,6 @@ foreach([['product_ids'=>[$fixture['products'][1]]],['product_qtys'=>[2]],['cata
 }
 $fixture['browser_identity']=$wpdb->get_row($wpdb->prepare("SELECT id,invoice_code,access_token FROM {$wpdb->prefix}sn_invoices WHERE id=%d",$fixture['browser_invoice']),ARRAY_A);
 $fixture['admin_id']=$admin;
-file_put_contents('/evidence/fixture.json',wp_json_encode($fixture));
+prep_write_fixture($fixture);
 file_put_contents('/evidence/native-summary.json',wp_json_encode(['passed'=>true,'checks'=>$checks,'wordpress'=>get_bloginfo('version'),'woocommerce'=>WC_VERSION,'php'=>PHP_VERSION,'mysql'=>$wpdb->db_version(),'synthetic'=>true]));
 echo 'NATIVE_PREPAYMENT_TOTAL '.$checks.PHP_EOL;

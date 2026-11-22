@@ -7,7 +7,7 @@ if(($_SERVER['HTTP_X_SYNTHETIC_PREPAYMENT_FAILURE']??'')==='stage-write'){add_fi
 add_action('template_redirect',static function(){
  if(!isset($_GET['sn_prepayment_fixture']))return;
  if(!is_user_logged_in()){wp_safe_redirect(wp_login_url());exit;}
- $f=json_decode(file_get_contents('/evidence/fixture.json'),true);
+ $f=json_decode(file_get_contents('/evidence/browser-page.json'),true);
  wp_enqueue_style('prep-public',plugins_url('sales-network-v4/assets/css/public.css'),[],filemtime(WP_PLUGIN_DIR.'/sales-network-v4/assets/css/public.css'));
  wp_enqueue_script('prep-shell',plugins_url('sales-network-v4/assets/js/public-shell.js'),[],filemtime(WP_PLUGIN_DIR.'/sales-network-v4/assets/js/public-shell.js'),true);
  wp_add_inline_script('prep-shell','window.snAjax='.wp_json_encode(['ajaxurl'=>admin_url('admin-ajax.php'),'nonce'=>wp_create_nonce('sn_public')]).';','before');

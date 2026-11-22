@@ -112,6 +112,14 @@ class PrepaymentProofTests(unittest.TestCase):
         for text in ['RUNNER_ENVIRONMENT','github-hosted','scripts/prepayment_edit_ci.py','--internal','readonly','SN_PREPAYMENT_TEST_SANDBOX','WP_HTTP_BLOCK_EXTERNAL','tests/invoices/sandbox.php','woocommerce.10.4.3.zip','sha256sum --check','pre-payment-edit-native.php setup','pre-payment-edit-native.php verify','pre-payment-edit-browser.cjs','com.crmedits.prepayment-edit']:
             self.assertIn(text,runner)
         self.assertNotIn('--network host',runner);self.assertNotIn('--publish',runner)
+        self.assertIn('root.chmod(0o711)',runner)
+        self.assertIn("['fixture.json','private-state.json','db.env','wp.env']",runner)
+        sandbox=(ROOT/'tests/invoices/sandbox.php').read_text()
+        self.assertIn('/evidence/browser-page.json',sandbox);self.assertNotIn('/evidence/fixture.json',sandbox)
+        native=(ROOT/'tests/invoices/pre-payment-edit-native.php').read_text()
+        self.assertIn("chmod('/evidence/fixture.json',0600)",native)
+        self.assertIn("array_flip(['browser_invoice','browser_sender_invoice','browser_locked_invoice'])",native)
+
         parent=(ROOT/'scripts/test-hr-integration.sh').read_text()
         for text in ['native-ledger.php','mis-ten-script-regression','traceability-upgrade-restore','staged-gateway-races','scripts/test-invoice-reporting.sh','scripts/test-prepayment-edit.sh']:self.assertIn(text,parent)
         workflow=(ROOT/'.github/workflows/ci.yml').read_text();self.assertIn('test-results/hr/prepayment-edit/*.json',workflow);self.assertNotIn('private-state.json',workflow)

@@ -10,7 +10,7 @@ import traceability_ci as trace
 
 BASE = 'd0ca8e8bc9c12fb79187dea0c1a0f0ad0079685d'
 CHANGES = {'includes/class-sn-plugin.php': '3dbc14a8bd2d557780081a5370739284d7b74a4694ca140a1700f8b425913240', 'assets/js/public-shell.js': 'acebd84e630e5a9cf16b9fd8814977c2f0a230a38cd556edb362c9ce410d1cdb', 'includes/class-sn-invoice-edit-quote.php': 'da0cedf04103d3b42360c8d2f8eef5b07ac873c277021e43f9ca55bc525459ec'}
-FIXTURES = {'tests/invoices/pre-payment-edit-guards.php': 'bd2bfbe3beff4997ca45a491520d6ffe40cd6d97af815247f54fed5170d74df3', 'tests/invoices/pre-payment-edit-pricing.php': '8ff492e9ff6c33309327cc0d3e1d2982d642946ca4b46fefec8fb0eeaa069451', 'tests/invoices/pre-payment-edit-native.php': '355b8ef3d277425e662d47d6b4179bf7b099648c9d404571692dba3436e0e42b', 'tests/invoices/pre-payment-edit-browser.cjs': '6fb8890664a8d35bb44aa82af9d399f9aa9c3f5c4d2cc42f047c390cc7cf8c81', 'tests/invoices/sandbox.php': '000c6b9a34ff98390fd6112f4ad975d9aac0db4a9eba1adc035953e6ba717371'}
+FIXTURES = {'tests/invoices/pre-payment-edit-guards.php': 'bd2bfbe3beff4997ca45a491520d6ffe40cd6d97af815247f54fed5170d74df3', 'tests/invoices/pre-payment-edit-pricing.php': '8ff492e9ff6c33309327cc0d3e1d2982d642946ca4b46fefec8fb0eeaa069451', 'tests/invoices/pre-payment-edit-native.php': '32c088931a19a5ab5cee2bde5421108b3a1ab6dff9d204d921cd4bfcbd1ee6a6', 'tests/invoices/pre-payment-edit-browser.cjs': '6fb8890664a8d35bb44aa82af9d399f9aa9c3f5c4d2cc42f047c390cc7cf8c81', 'tests/invoices/sandbox.php': '0986f6104074f32caf321361878dc0563754269c5baeb008d32d589e70f311a4'}
 RUNTIME = {**reports.RUNTIME, **CHANGES}
 REPORT_RUNTIME = {**reports.CHANGES, 'includes/class-sn-plugin.php': CHANGES['includes/class-sn-plugin.php']}
 NON_RUNTIME = set(FIXTURES) | {

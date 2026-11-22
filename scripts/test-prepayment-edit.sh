@@ -35,6 +35,9 @@ db='sn_prepaid_'+secrets.token_hex(5)+'_test'
 (root/'db.env').write_text('MYSQL_RANDOM_ROOT_PASSWORD=1\nMYSQL_DATABASE='+db+'\nMYSQL_USER=synthetic_preedit\nMYSQL_PASSWORD='+password+'\n')
 extra="define('WP_ENVIRONMENT_TYPE','local');define('SN_PREPAYMENT_TEST_SANDBOX',true);define('DISABLE_WP_CRON',true);define('AUTOMATIC_UPDATER_DISABLED',true);define('WP_HTTP_BLOCK_EXTERNAL',true);define('DISALLOW_FILE_MODS',true);"
 (root/'wp.env').write_text('WORDPRESS_DB_HOST=prepay-db:3306\nWORDPRESS_DB_NAME='+db+'\nWORDPRESS_DB_USER=synthetic_preedit\nWORDPRESS_DB_PASSWORD='+password+'\nWORDPRESS_CONFIG_EXTRA='+extra+'\n')
+for name in ['private-state.json','db.env','wp.env']:(root/name).chmod(0o600)
+# Apache may traverse to the ID-only page fixture; credentials stay owner-only.
+root.chmod(0o711)
 PY
 cp tests/invoices/sandbox.php "$runtime_preedit/mu-plugins/sandbox.php"
 docker network create --internal --label "com.crmedits.prepayment-edit=$suffix" "$network" >/dev/null
@@ -71,6 +74,14 @@ docker cp "$runtime_preedit/dependencies/woocommerce" "$web:/var/www/html/wp-con
 wp_preedit plugin activate woocommerce sales-network-v4
 wp_preedit eval 'do_action("admin_init");' --skip-plugins=woocommerce --user=synthetic_admin
 wp_preedit eval-file /var/www/html/wp-content/plugins/sales-network-v4/tests/invoices/pre-payment-edit-native.php setup
+python3 - "$runtime_preedit" <<'PYPERM'
+import json,pathlib,stat,sys
+root=pathlib.Path(sys.argv[1])
+assert set(json.loads((root/'browser-page.json').read_text()))=={'browser_invoice','browser_sender_invoice','browser_locked_invoice'}
+for name in ['fixture.json','private-state.json','db.env','wp.env']:
+ assert stat.S_IMODE((root/name).stat().st_mode)==0o600
+assert stat.S_IMODE(root.stat().st_mode)==0o711
+PYPERM
 docker exec "$web" php -n /var/www/html/wp-content/plugins/sales-network-v4/tests/invoices/pre-payment-edit-guards.php > "$runtime_preedit/guards.log"
 docker exec "$web" php -n /var/www/html/wp-content/plugins/sales-network-v4/tests/invoices/pre-payment-edit-pricing.php > "$runtime_preedit/pricing.log"
 docker run --rm --network "$network" --shm-size=1g \
