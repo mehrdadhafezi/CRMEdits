@@ -164,3 +164,9 @@ printf 'TRACEABILITY_REGRESSION_COMPLETE\n'
 if python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA"; then
   phase invoice-financial-reports bash scripts/test-invoice-reporting.sh
 fi
+
+# This bounded editor revision retains the reports and adds real prepayment AJAX/UI.
+if python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA"; then
+  phase invoice-financial-reports bash scripts/test-invoice-reporting.sh
+  phase prepayment-editor bash scripts/test-prepayment-edit.sh
+fi

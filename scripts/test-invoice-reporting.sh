@@ -6,7 +6,9 @@ test "${RUNNER_ENVIRONMENT:-}" = github-hosted
 test -n "${GITHUB_SHA:-}"
 repo=$(pwd -P)
 test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA"
+if ! python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA"; then
+  python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA"
+fi
 runtime_report=$(mktemp -d /tmp/sn-report-XXXXXXXX)
 suffix=${runtime_report##*/}
 network="$suffix-net"; web="$suffix-web"; database="$suffix-db"; volume="$suffix-wp"
