@@ -44,13 +44,15 @@ def scope(base, head, paths):
             and payload_matches_revision(head))
 
 
-def verify_report_output(output, merge):
+def verify_report_output(output, merge, *, runtime=None, payload_verifier=None):
+    runtime = CHANGES if runtime is None else runtime
+    payload_verifier = payload_verifier or payload_matches_revision
     root = Path(output)
     identity = json.loads((root/'identity.json').read_text())
     native = json.loads((root/'native-summary.json').read_text())
     browser = json.loads((root/'browser-summary.json').read_text())
     memory = json.loads((root/'memory-summary.json').read_text())
-    if (identity.get('merge') != merge or identity.get('runtime') != CHANGES
+    if (identity.get('merge') != merge or identity.get('runtime') != runtime
             or identity.get('synthetic') is not True or identity.get('network_internal') is not True
             or identity.get('published_ports') is not False or identity.get('readonly_source') is not True
             or type(identity.get('native_assertions')) is not int or identity['native_assertions'] < 15):
@@ -70,7 +72,7 @@ def verify_report_output(output, merge):
     for name in ['invoice-report-desktop.png','invoice-report-mobile.png','invoice-report-financial-columns.png']:
         if not (root/name).is_file() or (root/name).stat().st_size < 1000:
             raise ValueError('Report screenshot evidence missing')
-    if git('rev-parse','HEAD').decode().strip() != merge or not payload_matches_revision(merge):
+    if git('rev-parse','HEAD').decode().strip() != merge or not payload_verifier(merge):
         raise ValueError('Report proof does not belong to the current tested merge')
 
 

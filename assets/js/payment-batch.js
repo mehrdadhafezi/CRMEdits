@@ -69,6 +69,7 @@
     row.append(title, grid); files.set(row, []);
     var amount = field(grid, 'مبلغ این واریزی (تومان)', 'amount', 'text'); amount.inputMode = 'decimal'; amount.placeholder = 'مثلاً ۴۰۰٬۰۰۰';
     var method = field(grid, 'روش ثبت', 'entry_mode', 'select', [['receipt','بارگذاری فیش'],['info','ورود اطلاعات واریزی']]); method.value = mode === 'info' ? 'info' : 'receipt';
+    var tracking = field(grid, 'شماره پیگیری (اختیاری)', 'manual_tracking_number', 'text'); tracking.maxLength = 64; tracking.dir = 'ltr'; tracking.autocomplete = 'off'; tracking.placeholder = 'شماره کامل؛ مثلاً 001234567890';
     if (current.internal) {
       var receiptCards = el('div','sn-batch-receipt-cards sn-batch-grid'); row.append(receiptCards);
       ['from','to'].forEach(function (side) { var input = field(receiptCards, '۴ رقم آخر کارت ' + (side === 'from' ? 'مبدأ' : 'مقصد') + ' (اختیاری)', 'receipt_card_' + side, 'text'); input.maxLength = 4; input.inputMode = 'numeric'; input.autocomplete = 'off'; });
@@ -118,6 +119,7 @@
       if (amount === null) throw new Error('واریزی ' + (index+1) + ': مبلغ معتبر وارد کنید.');
       row.querySelectorAll('[name]').forEach(function (input) { data[input.name] = en(input.value).trim(); });
       data.amount = (amount / 100).toFixed(2); data.receipt_count = selected(row).length;
+      if (data.manual_tracking_number && !/^[A-Za-z0-9][A-Za-z0-9._/-]{0,63}$/.test(data.manual_tracking_number)) throw new Error('واریزی ' + (index+1) + ': شماره پیگیری معتبر وارد کنید (حداکثر ۶۴ کاراکتر).');
       if (data.entry_mode === 'receipt') {
         data.card_from = data.receipt_card_from || ''; data.card_to = data.receipt_card_to || '';
         ['card_from','card_to'].forEach(function (name) { if (data[name] && !/^\d{4}$/.test(data[name])) throw new Error('واریزی ' + (index+1) + ': چهار رقم کارت اختیاری است؛ در صورت ورود باید دقیقاً چهار رقم باشد.'); });
@@ -244,7 +246,7 @@
       if(prefix){next.mode=root.getAttribute('data-entry-mode')==='receipt'?'receipt':'info';['amount','card_from','card_to','manual_transfer_type'].forEach(function(name){var suffix={card_from:'card-from',card_to:'card-to',manual_transfer_type:'transfer-type'}[name]||name;seed[name]=value('#'+prefix+'-'+suffix);});var date=value('#'+prefix+'-paid-date')||value('#'+prefix+'-date');
         var hour=value('#'+prefix+'-hour'), minute=value('#'+prefix+'-minute');
         seed.paid_at=date&&hour&&minute?date+' '+hour+':'+minute:'';
-        ['manual_account_last6','manual_tracking_last6','manual_account_owner'].forEach(function(name){seed[name]=value('[name="'+name+'"]');});receipt=root.querySelector('#'+prefix+'-receipt');}
+        ['manual_tracking_number','manual_account_last6','manual_tracking_last6','manual_account_owner'].forEach(function(name){seed[name]=value('[name="'+name+'"]');});receipt=root.querySelector('#'+prefix+'-receipt');}
       else if(root.id==='sn-card-info'){next.mode=value('#sn-card-from4')?'info':'receipt';seed.amount=value(next.mode==='info'?'#sn-card-amount':'#sn-receipt-amount');seed.card_from=value('#sn-card-from4');seed.paid_at=value('#sn-card-paid-at');receipt=root.querySelector(next.mode==='info'?'#sn-card-manual-receipt':'#sn-receipt-file');}
       else if(root.matches('[data-sn-ops-manual-payment]')){seed.amount=value('[name="ops_manual_amount"]');seed.card_from=value('[name="ops_card_last4"]');seed.card_to=value('[name="ops_destination_last4"]');seed.paid_at=value('[name="ops_paid_at_jalali"]')+' '+value('[name="ops_paid_time"]');receipt=root.querySelector('[name="ops_receipt"]');next.mode=seed.card_from?'info':'receipt';}
       else{seed.amount=value('[id$="-amount"]');seed.card_to=value('[id$="-card-to"]');receipt=root.querySelector('input[type="file"]');}

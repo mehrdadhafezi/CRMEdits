@@ -3,6 +3,7 @@ if (! defined('ABSPATH')) {
 	exit;
 }
 
+require_once __DIR__ . '/class-sn-payment-tracking.php';
 require_once __DIR__ . '/class-sn-hr-workforce-filters.php';
 require_once __DIR__ . '/class-sn-hr-invoice-reissue.php';
 require_once __DIR__ . '/class-sn-invoice-sms-policy.php';
@@ -548,11 +549,11 @@ class SN_Plugin
 		wp_enqueue_script('sn-public-shell', SN_PLUGIN_URL . 'assets/js/public-shell.js', [], $shell_js_version, true);
 		$handle = 'sn-public-' . $asset_key;
 		$deps = ['jquery', 'sn-public-shell', 'sn-payment-transactions', 'sn-unified-invoice-payments', 'sn-plus-invoice-editor', 'sn-receipt-review'];
-        wp_enqueue_script('sn-receipt-review', SN_PLUGIN_URL . 'assets/js/receipt-review.js', ['sn-payment-transactions'], SN_VERSION, true);
-        wp_enqueue_script('sn-payment-transactions', SN_PLUGIN_URL . 'assets/js/payment-transactions.js', ['jquery','sn-public-shell'], SN_VERSION, true);
+        wp_enqueue_script('sn-receipt-review', SN_PLUGIN_URL . 'assets/js/receipt-review.js', ['sn-payment-transactions'], SN_VERSION . '-' . substr((string)hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/receipt-review.js'),0,12), true);
+        wp_enqueue_script('sn-payment-transactions', SN_PLUGIN_URL . 'assets/js/payment-transactions.js', ['jquery','sn-public-shell'], SN_VERSION . '-' . substr((string)hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/payment-transactions.js'),0,12), true);
         wp_enqueue_script('sn-unified-invoice-payments', SN_PLUGIN_URL . 'assets/js/unified-invoice-payments.js', ['sn-payment-transactions', 'sn-payment-batch'], SN_VERSION, true);
         wp_enqueue_script('sn-plus-invoice-editor', SN_PLUGIN_URL . 'assets/js/plus-invoice-editor.js', ['sn-public-shell'], SN_VERSION, true);
-        wp_enqueue_script('sn-payment-batch', SN_PLUGIN_URL . 'assets/js/payment-batch.js', ['sn-public-shell'], SN_VERSION, true);
+        wp_enqueue_script('sn-payment-batch', SN_PLUGIN_URL . 'assets/js/payment-batch.js', ['sn-public-shell'], SN_VERSION . '-' . substr((string)hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/payment-batch.js'),0,12), true);
         wp_enqueue_style('sn-payment-batch', SN_PLUGIN_URL . 'assets/css/payment-batch.css', [], SN_VERSION);
 		// public.js contains the generic portal tab engine and HR workforce helpers.
 		// Keep manager/supervisor standalone to avoid duplicate heavy Ajax handlers, but load base for seller/HR.
@@ -3486,6 +3487,13 @@ class SN_Plugin
 		return array_values(array_unique(array_filter($ids)));
 	}
 
+	private function sn_invoice_tracking_search(string $invoice_id, string $query): array
+	{
+		global $wpdb;
+		$table = $wpdb->prefix . 'sn_payments';
+		return SN_Payment_Tracking::condition($invoice_id, $table, $query, $this->sn_table_columns($table));
+	}
+
 	private function build_invoices_where(array $f): array
 	{
 		global $wpdb;
@@ -3499,9 +3507,10 @@ class SN_Plugin
 		if ($f['search'] !== '') {
 			$conversion_ids = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_ids_for_code($f['search']) : [];
 			$code_match = $conversion_ids ? ' OR i.id IN (' . implode(',', array_fill(0, count($conversion_ids), '%d')) . ')' : '';
-			$where[] = '(i.invoice_code LIKE %s OR i.customer_name LIKE %s OR i.customer_phone LIKE %s OR i.city LIKE %s' . $code_match . ')';
+			[$tracking_sql, $tracking_args] = $this->sn_invoice_tracking_search('i.id', $f['search']);
+			$where[] = '(i.invoice_code LIKE %s OR i.customer_name LIKE %s OR i.customer_phone LIKE %s OR i.city LIKE %s' . $code_match . ' OR ' . $tracking_sql . ')';
 			$like = '%' . $wpdb->esc_like($f['search']) . '%';
-			array_push($args, $like, $like, $like, $like, ...$conversion_ids);
+			array_push($args, $like, $like, $like, $like, ...array_merge($conversion_ids, $tracking_args));
 		}
 		$has_hierarchy_filter = ! empty($f['sales_manager_ids']) || ! empty($f['senior_supervisor_ids']) || ! empty($f['supervisor_ids']) || ! empty($f['seller_ids']);
 		if (! $has_hierarchy_filter) {
@@ -9287,11 +9296,11 @@ class SN_Plugin
 		wp_enqueue_script('sn-public-shell', SN_PLUGIN_URL . 'assets/js/public-shell.js', [], $shell_js_version, true);
 		$handle = 'sn-public-' . $asset_key;
 		$deps = ['jquery', 'sn-public-shell', 'sn-payment-transactions', 'sn-unified-invoice-payments', 'sn-plus-invoice-editor', 'sn-receipt-review'];
-        wp_enqueue_script('sn-receipt-review', SN_PLUGIN_URL . 'assets/js/receipt-review.js', ['sn-payment-transactions'], SN_VERSION, true);
-        wp_enqueue_script('sn-payment-transactions', SN_PLUGIN_URL . 'assets/js/payment-transactions.js', ['jquery','sn-public-shell'], SN_VERSION, true);
+        wp_enqueue_script('sn-receipt-review', SN_PLUGIN_URL . 'assets/js/receipt-review.js', ['sn-payment-transactions'], SN_VERSION . '-' . substr((string)hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/receipt-review.js'),0,12), true);
+        wp_enqueue_script('sn-payment-transactions', SN_PLUGIN_URL . 'assets/js/payment-transactions.js', ['jquery','sn-public-shell'], SN_VERSION . '-' . substr((string)hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/payment-transactions.js'),0,12), true);
         wp_enqueue_script('sn-unified-invoice-payments', SN_PLUGIN_URL . 'assets/js/unified-invoice-payments.js', ['sn-payment-transactions', 'sn-payment-batch'], SN_VERSION, true);
         wp_enqueue_script('sn-plus-invoice-editor', SN_PLUGIN_URL . 'assets/js/plus-invoice-editor.js', ['sn-public-shell'], SN_VERSION, true);
-        wp_enqueue_script('sn-payment-batch', SN_PLUGIN_URL . 'assets/js/payment-batch.js', ['sn-public-shell'], SN_VERSION, true);
+        wp_enqueue_script('sn-payment-batch', SN_PLUGIN_URL . 'assets/js/payment-batch.js', ['sn-public-shell'], SN_VERSION . '-' . substr((string)hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/payment-batch.js'),0,12), true);
         wp_enqueue_style('sn-payment-batch', SN_PLUGIN_URL . 'assets/css/payment-batch.css', [], SN_VERSION);
 		// HR needs public.js for the generic tab engine and workforce interaction helpers;
 		// manager/supervisor stay standalone to avoid duplicate heavy Ajax handlers.
@@ -15227,7 +15236,7 @@ class SN_Plugin
 					<button type="button" class="sn-subtab" data-status="recontact">ارتباط مجدد با کارشناس</button>
 				</div>
 				<div class="sn-card" style="margin:10px 0">
-					<label>جستجوی فاکتور<br><input type="search" id="sn-seller-invoice-search" placeholder="کد فاکتور، نام یا موبایل مشتری"></label>
+					<label>جستجوی فاکتور<br><input type="search" id="sn-seller-invoice-search" placeholder="کد فاکتور، نام، موبایل یا شماره پیگیری"></label>
 					<p class="sn-note">جستجو فقط در فاکتورهای داخلی خودتان انجام می‌شود و به لینک عمومی مشتری وصل نیست.</p>
 				</div>
 				<div id="sn-invoices-loading" class="sn-loading">در حال بارگذاری...</div>
@@ -16146,7 +16155,7 @@ class SN_Plugin
 			<div class="sn-filter-bar sn-manager-invoice-filters">
 				<label>از تاریخ<input type="text" class="sn-jalali-date" id="sn-supervisor-invoice-date-from" value="<?php echo esc_attr($from_jalali); ?>" placeholder="1403/02/18"></label>
 				<label>تا تاریخ<input type="text" class="sn-jalali-date" id="sn-supervisor-invoice-date-to" value="<?php echo esc_attr($today_jalali); ?>" placeholder="1403/02/18"></label>
-				<label class="sn-grow">جستجو<input type="search" id="sn-supervisor-invoice-search" placeholder="کد، مشتری، شماره"></label>
+				<label class="sn-grow">جستجو<input type="search" id="sn-supervisor-invoice-search" placeholder="کد، مشتری، موبایل یا شماره پیگیری"></label>
 				<label>وضعیت<select id="sn-supervisor-invoice-status-filter"><option value="all">همه وضعیت‌ها</option><option value="pre_invoice">پیش‌فاکتور</option><option value="online_paid">پرداخت آنلاین</option><option value="receipt_uploaded">فیش آپلود شده</option><option value="needs_review">نیاز به بررسی مالی</option><option value="rejected">رد شده</option></select></label>
 				<button type="button" class="sn-btn sn-btn-primary" id="sn-supervisor-invoice-apply-filter">اعمال فیلتر</button>
 			</div>
@@ -27237,7 +27246,7 @@ class SN_Plugin
 			</div>
 			<form id="sn-bulk-invoice-filters" method="get" class="sn-card sn-admin-filterbar sn-hierarchy-form" style="margin-bottom:14px">
 				<input type="hidden" name="page" value="sn-invoices"><input type="hidden" name="sn_status" value="<?php echo esc_attr($filters['status']); ?>">
-				<label>جستجو<br><input type="search" name="sn_search" value="<?php echo esc_attr($filters['search']); ?>" placeholder="کد، مشتری، موبایل"></label>
+				<label>جستجو<br><input type="search" name="sn_search" value="<?php echo esc_attr($filters['search']); ?>" placeholder="کد، مشتری، موبایل یا شماره پیگیری"></label>
 				<?php $this->sn_admin_render_hierarchy_checkdrops($filters); ?>
 				<label>وضعیت مالی<br><select name="sn_finance"><?php foreach ($finance_labels as $key=>$label) : ?><option value="<?php echo esc_attr($key); ?>" <?php selected($filters['finance'],$key); ?>><?php echo esc_html($label); ?></option><?php endforeach; ?></select></label>
 				<label>از تاریخ<br><input type="text" class="sn-jalali-date" name="sn_date_from" value="<?php echo esc_attr(SN_Helpers::gregorian_to_jalali_input_value($filters['date_from'])); ?>" placeholder="1405/08/01"></label>
@@ -27702,8 +27711,9 @@ class SN_Plugin
 				$where = ['seller_id=%d', $seller_visibility_condition]; $args = [$seller_id];
 				if ($q !== '') {
 					$like = '%' . $wpdb->esc_like($q) . '%';
-					$where[] = '(invoice_code LIKE %s OR customer_name LIKE %s OR customer_phone LIKE %s)';
-					array_push($args, $like, $like, $like);
+					[$tracking_sql, $tracking_args] = $this->sn_invoice_tracking_search($invoice_table . '.id', $q);
+					$where[] = '(invoice_code LIKE %s OR customer_name LIKE %s OR customer_phone LIKE %s OR ' . $tracking_sql . ')';
+					array_push($args, $like, $like, $like, ...$tracking_args);
 				}
 				if ($tab === 'pre_invoice') { $where[] = $pre_invoice_condition; }
 				elseif ($tab === 'paid') { $where[] = $paid_condition; }
@@ -30429,6 +30439,10 @@ class SN_Plugin
 				if (! $this->sn_card_to_card_enabled()) {
 					return ['success'=>false,'message'=>'پرداخت کارت‌به‌کارت غیرفعال است'];
 				}
+                $tracking_raw = array_key_exists(SN_Payment_Tracking::FIELD,$extra) ? $extra[SN_Payment_Tracking::FIELD] : wp_unslash($_POST[SN_Payment_Tracking::FIELD] ?? '');
+                $tracking = SN_Payment_Tracking::normalize($tracking_raw);
+                if ($tracking === null) { SN_Helpers::cleanup_receipt_uploads(); return ['success'=>false,'message'=>SN_Payment_Tracking::ERROR]; }
+                $extra[SN_Payment_Tracking::FIELD] = $tracking !== '' ? $tracking : null;
 				if (!$in_batch) { $this->sn_ensure_payment_migrations(); }
 				global $wpdb;
 				$invoice_table = $wpdb->prefix . 'sn_invoices';
@@ -34280,6 +34294,8 @@ class SN_Plugin
 						foreach (['invoice_code', 'customer_name', 'customer_phone'] as $search_col) {
 							if (in_array($search_col, $cols, true)) { $search_parts[] = "i.{$search_col} LIKE %s"; $args[] = $like; }
 						}
+						[$tracking_sql, $tracking_args] = $this->sn_invoice_tracking_search('i.id', $q);
+						$search_parts[] = $tracking_sql; array_push($args, ...$tracking_args);
 						if ($search_parts) { $where[] = '(' . implode(' OR ', $search_parts) . ')'; }
 					}
 					$where[] = $status_condition($invoice_tab, $cols, $args);
@@ -37529,6 +37545,8 @@ class SN_Plugin
 						$search[] = "EXISTS (SELECT 1 FROM {$payment_table} sp WHERE sp.invoice_id=i.id AND (COALESCE(sp.ref_id,'') LIKE %s OR COALESCE(sp.payment_source,'') LIKE %s OR CAST(COALESCE(sp.amount,0) AS CHAR) LIKE %s))";
 						$where_args[] = $like; $where_args[] = $like; $where_args[] = $digit_like;
 					}
+					[$tracking_sql, $tracking_args] = $this->sn_invoice_tracking_search('i.id', $q_english);
+					$search[] = $tracking_sql; array_push($where_args, ...$tracking_args);
 					$where_parts[] = '(' . implode(' OR ', $search) . ')';
 				}
 				$where = implode(' AND ', $where_parts);

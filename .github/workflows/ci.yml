@@ -195,6 +195,8 @@ jobs:
             test-results/hr/product-browser/*.png
             test-results/hr/invoice-report/*.json
             test-results/hr/invoice-report/*.png
+            test-results/hr/tracking-number/*.json
+            test-results/hr/tracking-number/*.png
             test-results/finance/gateway-manual-native.json
             test-results/finance/gateway-manual-races.json
             test-results/finance/gateway-browser/gateway-manual-browser.json

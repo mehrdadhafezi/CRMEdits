@@ -88,6 +88,12 @@ existing confirmed-terminal statuses retire a request as failed. See
 
 DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.md). اطلاعات مشتری، مالی، token و snapshot داده حساس‌اند. رابطه‌ای که فقط در کد وجود دارد Foreign Key فرض نشود. حذف history، double-credit و استفاده از رکورد خارج از scope ممنوع است.
 
+Optional full bank references are per-payment proof metadata, distinct from
+gateway verification and the legacy six-digit hint. Both receipt/info registration
+and correction support the optional key; authorized history shows it. No schema,
+role, amount or provider change. See the
+[tracking-number contract](../tasks/PAYMENT_TRACKING_NUMBER.md).
+
 ## 8. Testing & Preview
 
 `php tests/payments/gateway-manual-selection.php` requires SQLite3 and uses only
@@ -116,6 +122,9 @@ result and its synthetic artifacts as evidence, not the presence of the runner.
 سناریوهای ضروری این ماژول: استعلام ساختگی؛ مبلغ/order mismatch؛ ثبت دستی همزمان با callback؛ فیش چندگانه؛ MIME جعلی؛ last4 اختیاری با صفر اول؛ تأیید/رد بدون cap.
 
 Syntax و Secret Scan در CI فعال‌اند. [ماتریس تست](../TESTING_STANDARDS.md) وضعیت زیرساخت را مشخص می‌کند. تست MIS فقط در محیط disposable با guard مجاز است؛ سایر سناریوها که fixture ندارند NOT_IMPLEMENTED هستند. پیش‌نمایش UI و تست authorization واقعی نیازمند سایت آزمایشی ایزوله است.
+
+New tracking regressions: [local native/browser guide](../../tests/payments/TRACKING_NUMBER.md)
+with standalone validation/SQL, real AJAX/upload/correction and wallet invariants.
 
 ## 9. API & Integration Contracts
 

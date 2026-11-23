@@ -651,3 +651,28 @@ never exports access tokens, raw proof or gateway authority. Existing bulk-order
 XLS retains its separate per-item row contract and nonce `sn_export_bulk_orders`.
 No AJAX, REST, public token, payment callback or schema contract changes.
 See the [full financial report contract](tasks/INVOICE_FINANCIAL_REPORTING.md).
+
+
+## Optional manual bank reference — local 2026-11-23
+
+Existing batch `sn_submit_payment_batch` row and classic manual/receipt request
+accept optional `manual_tracking_number`; receipt correction accepts the same
+key. It is a string, at most 64 ASCII alphanumeric / `-._/` characters, first
+character alphanumeric. Blank/null/omission is accepted; Persian/Arabic digits
+normalize and leading zeros are preserved. Letters normalize to uppercase.
+Malformed nested, boolean, floating-point, excessive or markup values reject
+without a financial write. Existing amount/upload/date/nonce/scope checks remain.
+
+Storage is the individual `sn_payments.proof_data` JSON top-level key. Authorized
+transaction/receipt `proof` adds that key; no raw proof/token/provider authority
+is exposed. A legacy correction omitting the key retains its previous full value;
+explicit blank clears it while the existing review snapshot records history.
+Existing `manual_tracking_last6` and gateway `ref_id` keep separate meanings.
+No new column, DDL, migration, role, callback or public-token contract.
+
+Existing invoice query `q`/admin `sn_search` adds current full/partial bank-reference
+matching on seller, supervisor/manager, admin list/export and Finance lists.
+Ownership/HR and date/status predicates remain mandatory. EXISTS avoids duplicate
+invoices; superseded review snapshots are not current references. Legacy JSON is
+validated before extraction; literal LIKE escaping prevents identifier wildcards.
+See [scope and tests](tasks/PAYMENT_TRACKING_NUMBER.md).

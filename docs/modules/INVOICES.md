@@ -90,6 +90,12 @@ invoice_code و access_token قرارداد عمومی‌اند. کد کوتاه
 
 DDL و PK/indexها: [DATABASE_SCHEMA_AUDIT.md](../audit/DATABASE_SCHEMA_AUDIT.md). اطلاعات مشتری، مالی، token و snapshot داده حساس‌اند. رابطه‌ای که فقط در کد وجود دارد Foreign Key فرض نشود. حذف history، double-credit و استفاده از رکورد خارج از scope ممنوع است.
 
+Current per-payment bank references are searchable in the four core invoice
+lists (seller, supervisor/manager, admin list/export and Finance), within existing
+scope/status/date filters. Matching multiple transfers returns one invoice;
+review-history-only numbers are excluded. No invoice identities or amounts change.
+See [tracking-number contract](../tasks/PAYMENT_TRACKING_NUMBER.md).
+
 ## 8. Testing & Preview
 
 Invoice report regression: `tests/reporting/invoice-financial.php` uses synthetic
