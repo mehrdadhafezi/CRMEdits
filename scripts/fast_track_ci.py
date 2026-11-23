@@ -14,6 +14,7 @@ import product_invoice_ci as product_ci
 import traceability_ci as trace_ci
 import invoice_reporting_ci as invoice_report_ci
 import payment_tracking_ci as tracking_ci
+import prepayment_edit_ci as prepayment_ci
 
 
 JOBS = {
@@ -145,7 +146,8 @@ def make_plan(pr, merge_sha, selection):
     traceability = not unknown and not tooling_only and trace_ci.scope(pr["base"], pr["head"], paths)
     invoice_reporting = not unknown and not tooling_only and invoice_report_ci.scope(pr["base"], pr["head"], paths)
     payment_tracking = not unknown and not tooling_only and tracking_ci.scope(pr["base"], pr["head"], paths)
-    hr_native = not unknown and not tooling_only and (payment_tracking or invoice_reporting or traceability or product_settings or gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
+    prepayment_edit = not unknown and not tooling_only and prepayment_ci.scope(pr["base"], pr["head"], paths)
+    hr_native = not unknown and not tooling_only and (prepayment_edit or payment_tracking or invoice_reporting or traceability or product_settings or gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
     return {
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
         "domains": domains, "files": len(files), "finance": finance,
@@ -157,6 +159,7 @@ def make_plan(pr, merge_sha, selection):
         "traceability": traceability,
         "invoice_reporting": invoice_reporting,
         "payment_tracking": payment_tracking,
+        "prepayment_edit": prepayment_edit,
         "reasons": reasons, "suites": suites,
     }
 
@@ -221,6 +224,11 @@ def outcome(plan, expected, live, results, run_url, matrix_verified=False, evide
     plan_matches = (isinstance(plan, dict) and plan.get("risk") in (*LEVELS, "UNKNOWN")
                     and isinstance(plan.get("suites"), dict) and plan["suites"].keys() == SUITES.keys()
                     and all(plan.get(key) == value for key, value in expected.items())
+                    and type(plan.get("prepayment_edit", False)) is bool
+                    and (not plan.get("prepayment_edit") or (
+                        plan["risk"] == "HIGH" and plan.get("hr_native") is True and plan.get("finance") is True
+                        and all(value == "REQUIRED" for value in plan["suites"].values())
+                    ))
                     and type(plan.get("payment_tracking", False)) is bool
                     and (not plan.get("payment_tracking") or (
                         plan["risk"] == "HIGH" and plan.get("hr_native") is True and plan.get("finance") is True
@@ -403,6 +411,8 @@ def main():
         paths = {c["path"] for c in selection["changed_files"]}
         if tracking_ci.scope(pr["base"], pr["head"], paths):
             tracking_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
+        elif prepayment_ci.scope(pr["base"], pr["head"], paths):
+            prepayment_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
         elif invoice_report_ci.scope(pr["base"], pr["head"], paths):
             invoice_report_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
         elif trace_ci.scope(pr["base"], pr["head"], paths):

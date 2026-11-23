@@ -545,7 +545,7 @@ class SN_Plugin
 		$script_file = $script_map[$asset_key] ?? 'public-auth.js';
 		$public_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/public.js') ? (string) filemtime(SN_PLUGIN_DIR . 'assets/js/public.js') : '0');
 		$panel_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/' . $script_file) ? (string) filemtime(SN_PLUGIN_DIR . 'assets/js/' . $script_file) : '0');
-		$shell_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/public-shell.js') ? (string) filemtime(SN_PLUGIN_DIR . 'assets/js/public-shell.js') : '0');
+		$shell_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/public-shell.js') ? substr((string) hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/public-shell.js'), 0, 12) : '0');
 		wp_enqueue_script('sn-public-shell', SN_PLUGIN_URL . 'assets/js/public-shell.js', [], $shell_js_version, true);
 		$handle = 'sn-public-' . $asset_key;
 		$deps = ['jquery', 'sn-public-shell', 'sn-payment-transactions', 'sn-unified-invoice-payments', 'sn-plus-invoice-editor', 'sn-receipt-review'];
@@ -7558,7 +7558,7 @@ class SN_Plugin
 	}
 
 	/** Rechecked under an invoice lock before every financial edit. */
-	private function sn_invoice_pre_payment_edit_block($invoice, $stage): string
+	private function sn_invoice_pre_payment_edit_block($invoice, $stage, bool $allow_discount_edit = false): string
 	{
 		global $wpdb;
 		$id = (int) $invoice->id;
@@ -7566,11 +7566,11 @@ class SN_Plugin
         if (SN_Subscription_Plus::instance()->handles_invoice($id)) { return 'اقلام و قیمت اشتراک+ پس از صدور ثابت است؛ برای تغییر، پیش‌فاکتور قبلی را لغو و دوباره صادر کنید.'; }
 		$link_table = $wpdb->prefix . 'sn_dot_invoice_links';
 		if ($this->sn_table_exists_quiet($link_table) && $wpdb->get_var($wpdb->prepare("SELECT id FROM {$link_table} WHERE invoice_id=%d LIMIT 1", $id))) { return 'فاکتور متصل به فرایند اعتبارسنجی از این مسیر قابل ویرایش نیست.'; }
-		if (in_array((string)$invoice->status, ['paid','approved','partial_paid','payment_archived','cancelled'], true)
-			|| (float)($invoice->paid_total_amount ?? 0)>0.5 || !empty($invoice->paid_at) || !empty($invoice->approved_at)
-			|| !empty($invoice->wc_order_id) || !empty($invoice->receipt_url) || !empty($invoice->receipt_file)
+		if (array_intersect([(string)$invoice->status,(string)($invoice->invoice_status??''),(string)($invoice->payment_status??'')], ['paid','approved','partial_paid','payment_archived','cancelled'])
+			|| (float)($invoice->paid_total_amount ?? 0)>0.5 || (float)$this->sn_invoice_payment_totals($invoice)['paid']>0.5 || !empty($invoice->paid_at) || !empty($invoice->approved_at)
+			|| !empty($invoice->wc_order_id) || !empty($invoice->receipt_url) || !empty($invoice->receipt_file) || !empty($invoice->receipt_urls)
 			|| (float)($invoice->manual_amount ?? 0)>0.5) { return 'پس از ثبت پرداخت، فیش یا تحویل محصول، ویرایش مالی عادی مجاز نیست.'; }
-		if (SN_Sales_Catalog::invoice_snapshot($invoice) || (float)($invoice->discount_total ?? 0)>0.5 || (float)($invoice->discount_amount ?? 0)>0.5 || !empty($invoice->wheel_reward_summary) || !empty($invoice->coupon_code) || (float)($invoice->coupon_discount_amount ?? 0)>0.5) { return 'برای فاکتور دارای تخفیف یا کوپن، ویرایش مبلغ باید با محاسبهٔ مجدد تخفیف انجام شود.'; }
+		if (!$allow_discount_edit && (SN_Sales_Catalog::invoice_snapshot($invoice) || (float)($invoice->discount_total ?? 0)>0.5 || (float)($invoice->discount_amount ?? 0)>0.5 || !empty($invoice->wheel_reward_summary) || !empty($invoice->coupon_code) || (float)($invoice->coupon_discount_amount ?? 0)>0.5)) { return 'برای فاکتور دارای تخفیف یا کوپن، ویرایش مبلغ باید با محاسبهٔ مجدد تخفیف انجام شود.'; }
 		if (!empty($invoice->manual_paid_at) || (float)($invoice->deposit_amount ?? 0)>0.5 || !empty($invoice->deposit_jalali_datetime) || !empty($invoice->financial_reviewed_at)
 			|| in_array((string)($invoice->payment_workflow_status ?? ''), ['pending_financial_approval','approved','completed'], true)) { return 'اطلاعات پرداخت یا بررسی مالی برای این پیش‌فاکتور ثبت شده است.'; }
 		if (!$stage || (int)$stage->stage_no!==1 || (string)$stage->status!=='pending' || !empty($stage->paid_at) || !empty($stage->approved_at)
@@ -7623,6 +7623,7 @@ class SN_Plugin
 	public function ajax_invoice_pre_payment_edit(): void
 	{
 		if (!is_user_logged_in() || !check_ajax_referer('sn_public','nonce',false)) { SN_Helpers::send_json(false,'دسترسی غیرمجاز'); return; }
+		require_once __DIR__.'/class-sn-invoice-edit-quote.php';
 		global $wpdb;
 		$id=is_scalar($_POST['invoice_id']??null)?absint($_POST['invoice_id']):0; $actor=get_current_user_id();
 		$invoice_table=$wpdb->prefix.'sn_invoices'; $stage_table=$wpdb->prefix.'sn_invoice_payment_stages'; $item_table=$wpdb->prefix.'sn_invoice_items';
@@ -7631,30 +7632,41 @@ class SN_Plugin
 		if ($mode === 'save' && sanitize_key(wp_unslash($_POST['payment_plan'] ?? '')) === 'partial' && !$this->sn_prepare_payment_action_storage()) {
 			wp_send_json(['success'=>false,'message'=>self::SN_PAYMENT_ASSIGNMENT_STORAGE_ERROR], 503);
 		}
-		if ($mode==='save') { $wpdb->query('START TRANSACTION'); }
-		$invoice=$id ? $wpdb->get_row($wpdb->prepare("SELECT * FROM {$invoice_table} WHERE id=%d".($mode==='save'?' FOR UPDATE':''),$id)) : null;
-		if (!$invoice) { if($mode==='save')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'فاکتور یافت نشد'); return; }
+		if (!in_array($mode,['read','preview','save'],true)) { SN_Helpers::send_json(false,'نوع درخواست ویرایش معتبر نیست'); return; }
+		if ($mode!=='read' && false === $wpdb->query('START TRANSACTION')) { SN_Helpers::send_json(false,'آغاز ویرایش امن انجام نشد'); return; }
+		$invoice=$id ? $wpdb->get_row($wpdb->prepare("SELECT * FROM {$invoice_table} WHERE id=%d".($mode!=='read'?' FOR UPDATE':''),$id)) : null;
+		if (!$invoice) { if($mode!=='read')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'فاکتور یافت نشد'); return; }
 		$is_seller=$this->sn_can_resend_invoice_sms($invoice) && (int)$invoice->seller_id===$actor && !$this->sn_invoice_is_conversion_payment($id);
 		$is_sender=$this->sn_invoice_last_payment_sender($invoice)===$actor && $this->sn_can_resend_invoice_sms($invoice);
-		if (!$is_seller && !$is_sender) { if($mode==='save')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'ویرایش فقط برای فروشندهٔ مالک یا آخرین فرستندهٔ لینک/پروندهٔ مالی مجاز است'); return; }
-		$stage=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$stage_table} WHERE invoice_id=%d ORDER BY stage_no ASC LIMIT 1".($mode==='save'?' FOR UPDATE':''),$id));
-		$blocked=$this->sn_invoice_pre_payment_edit_block($invoice,$stage);
-		if ($blocked!=='') { if($mode==='save')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,$blocked); return; }
-		$items=$wpdb->get_results($wpdb->prepare("SELECT id,product_id,qty FROM {$item_table} WHERE invoice_id=%d ORDER BY id ASC".($mode==='save'?' FOR UPDATE':''),$id),ARRAY_A)?:[];
-		if (!$items) { if($mode==='save')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'اقلام فاکتور موجود نیست'); return; }
-		if ($mode!=='save') {
-			SN_Helpers::send_json(true,'اطلاعات قابل ویرایش',['invoice_id'=>$id,'payment_plan'=>(string)$invoice->payment_plan,'current_due_amount'=>(float)$invoice->current_due_amount,'customer_phone_secondary'=>(string)($invoice->customer_phone_secondary??''),'items'=>$items,'can_edit_products'=>$is_seller]);return;
+		if (!$is_seller && !$is_sender) { if($mode!=='read')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'ویرایش فقط برای فروشندهٔ مالک یا آخرین فرستندهٔ لینک/پروندهٔ مالی مجاز است'); return; }
+		$stage=$wpdb->get_row($wpdb->prepare("SELECT * FROM {$stage_table} WHERE invoice_id=%d ORDER BY stage_no ASC LIMIT 1".($mode!=='read'?' FOR UPDATE':''),$id));
+		$blocked=$this->sn_invoice_pre_payment_edit_block($invoice,$stage,true);
+		if ($blocked!=='') { if($mode!=='read')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,$blocked); return; }
+		$items=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$item_table} WHERE invoice_id=%d ORDER BY id ASC".($mode!=='read'?' FOR UPDATE':''),$id),ARRAY_A)?:[];
+		if (!$items) { if($mode!=='read')$wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'اقلام فاکتور موجود نیست'); return; }
+		$revision=SN_Invoice_Edit_Quote::revision($invoice,$stage,$items);
+		$current_total=(float)$this->sn_invoice_payment_totals($invoice)['total'];
+		$selected=SN_Invoice_Edit_Quote::selections($invoice,$items);
+		if ($mode==='read') {
+			SN_Helpers::send_json(true,'اطلاعات قابل ویرایش',['invoice_id'=>$id,'payment_plan'=>(string)$invoice->payment_plan,'current_due_amount'=>(float)$invoice->current_due_amount,'customer_phone_secondary'=>(string)($invoice->customer_phone_secondary??''),'items'=>$items,'can_edit_products'=>$is_seller,'can_make_partial'=>$is_sender,'revision'=>$revision,'catalog_discount_ids'=>$selected,'catalog'=>SN_Invoice_Edit_Quote::catalog($actor,(int)$invoice->seller_id),'total_amount'=>$current_total,'legacy_adjustments'=>SN_Invoice_Edit_Quote::legacy_adjustments($invoice,$items)]);return;
 		}
-		$plan=sanitize_key(wp_unslash($_POST['payment_plan']??''));
+		if (!is_string($_POST['revision']??null) || !hash_equals($revision,$_POST['revision'])) { $wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'پیش‌فاکتور تغییر کرده است؛ پنجره ویرایش را دوباره باز کنید'); return; }
+
+		$plan=is_scalar($_POST['payment_plan']??null)?sanitize_key(wp_unslash($_POST['payment_plan'])):'';
 		if (!in_array($plan,['full','partial'],true)) { $wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'نوع پرداخت نامعتبر است'); return; }
 		// Changing a full invoice to stages belongs exclusively to the last staff sender.
 		if ((string)$invoice->payment_plan==='full' && $plan==='partial' && !$is_sender) { $wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'فقط آخرین فرستندهٔ پرداخت/تأیید مالی می‌تواند پرداخت کامل را مرحله‌ای کند'); return; }
 		$phone_secondary_raw=is_scalar($_POST['customer_phone_secondary']??'')?(string)$_POST['customer_phone_secondary']:'';
 		$phone_secondary=SN_Helpers::normalize_mobile(sanitize_text_field(wp_unslash($phone_secondary_raw)));
 		if ($phone_secondary!=='' && !SN_Helpers::is_valid_mobile($phone_secondary)) { $wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'شماره دوم معتبر نیست'); return; }
+		foreach(['product_ids','product_qtys'] as $field){
+			if(!is_array($_POST[$field]??null) || !$_POST[$field] || count($_POST[$field])>100 || count(array_filter($_POST[$field],static fn($value)=>is_scalar($value)&&preg_match('/^[1-9][0-9]{0,9}$/D',(string)$value)))!==count($_POST[$field])){ $wpdb->query('ROLLBACK');SN_Helpers::send_json(false,'محصول و تعداد هر ردیف باید عدد صحیح مثبت باشند');return; }
+		}
 		$product_ids=array_values(array_map('absint',is_array($_POST['product_ids']??null)?$_POST['product_ids']:[]));
 		$quantities=array_values(array_map('absint',is_array($_POST['product_qtys']??null)?$_POST['product_qtys']:[]));
-		if (!$is_seller) { $product_ids=array_map('intval',array_column($items,'product_id'));$quantities=array_map('intval',array_column($items,'qty')); }
+		$discounts=is_array($_POST['catalog_discount_ids']??null)?array_values(wp_unslash($_POST['catalog_discount_ids'])):null;
+		$force_reprice=is_scalar($_POST['reprice_requested']??null) && (string)$_POST['reprice_requested']==='1';
+		if (!$is_seller && ($force_reprice || $product_ids!==array_map('intval',array_column($items,'product_id')) || $quantities!==array_map('intval',array_column($items,'qty')) || $discounts!==$selected)) { $wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'تغییر محصول، تعداد و تخفیف فقط برای فروشندهٔ مالک مجاز است'); return; }
 		if (count($product_ids)!==count($items) || count($quantities)!==count($items)) { $wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'تعداد اقلام فاکتور تغییر کرده است'); return; }
         foreach ($product_ids as $edit_product_id) {
             if (SN_Subscription_Plus::instance()->is_product($edit_product_id)) { $wpdb->query('ROLLBACK'); SN_Helpers::send_json(false,'برای اشتراک+ پیش‌فاکتور جدید صادر کنید تا اعتبار نقدی و مسیر تبدیل به‌درستی ثبت شود.'); return; }
@@ -7673,15 +7685,31 @@ class SN_Plugin
 			if ($type==='product' && (trim((string)($invoice->province??''))==='' || trim((string)($invoice->city??''))==='' || trim((string)($invoice->customer_address??''))==='')) { $wpdb->query('ROLLBACK');SN_Helpers::send_json(false,'برای محصول عادی، استان، شهر و آدرس کامل مشتری لازم است');return; }
 			$updated[]=['id'=>(int)$item['id'],'product_id'=>$pid,'product_name'=>$product->get_name(),'product_type'=>$type?:null,'qty'=>$qty,'unit_price'=>$price,'total_price'=>$line];
 		}
-		$due=$plan==='partial'?$this->sn_parse_money_value(is_scalar($_POST['prepayment_amount']??0)?$_POST['prepayment_amount']:0):$total;
+		$quote=SN_Invoice_Edit_Quote::build($invoice,$items,$updated,$discounts,$current_total,$actor,$force_reprice);
+		if(is_wp_error($quote)){ $wpdb->query('ROLLBACK');SN_Helpers::send_json(false,$quote->get_error_message());return; }
+		$total=(float)$quote['pricing']['final_total'];
+		$due_key=SN_Sales_Catalog::amount_key($_POST['prepayment_amount']??'');
+		$due=$plan==='partial' && $due_key!==''?(int)$due_key/100:($plan==='full'?$total:0);
 		if($total<=0.5 || $due<=0.5 || ($plan==='partial' && $due >= $total-0.5)){ $wpdb->query('ROLLBACK');SN_Helpers::send_json(false,'مبلغ مرحله باید بیشتر از صفر و کمتر از مبلغ کل باشد');return; }
-		$invoice_update=$this->sn_filter_existing_columns($invoice_table,['product_id'=>$product_ids[0],'product_price'=>$total,'original_total'=>$total,'final_total'=>$total,'payment_plan'=>$plan,'payment_total_amount'=>$total,'current_due_amount'=>$due,'remaining_amount'=>$total,'customer_phone_secondary'=>$phone_secondary?:null,'updated_at'=>current_time('mysql')]);
+		$quote['payment_plan']=$plan;$quote['due']=$due;$quote['customer_phone_secondary']=$phone_secondary;
+		if($mode==='preview'){
+			$expires=time()+300;$token=SN_Invoice_Edit_Quote::token($id,$actor,$revision,$quote,$expires);$wpdb->query('ROLLBACK');
+			SN_Helpers::send_json(true,'محاسبهٔ معتبر پیش‌فاکتور',['quote'=>$quote,'revision'=>$revision,'expires'=>$expires,'preview_token'=>$token]);return;
+		}
+		$expires=is_scalar($_POST['expires']??null)?(int)$_POST['expires']:0;
+		if($expires<time() || $expires>time()+300 || !is_string($_POST['preview_token']??null) || !hash_equals(SN_Invoice_Edit_Quote::token($id,$actor,$revision,$quote,$expires),$_POST['preview_token'])){ $wpdb->query('ROLLBACK');SN_Helpers::send_json(false,'قیمت یا مجوز تخفیف تغییر کرده است؛ پیش‌نمایش را دوباره محاسبه کنید');return; }
+		$invoice_data=['payment_plan'=>$plan,'payment_total_amount'=>$total,'current_due_amount'=>$due,'remaining_amount'=>$total,'customer_phone_secondary'=>$phone_secondary?:null,'updated_at'=>current_time('mysql')];
+		if($quote['repriced']){
+			$pricing=$quote['pricing'];$invoice_data+=['product_id'=>$product_ids[0],'product_price'=>$total,'original_total'=>$pricing['original_total'],'final_total'=>$total,'discount_amount'=>$pricing['discount_total'],'discount_total'=>$pricing['discount_total'],'catalog_discounts_snapshot'=>wp_json_encode($pricing['snapshot']),'catalog_manager_user_id'=>$pricing['manager_user_id']];
+		}
+		$invoice_update=$this->sn_filter_existing_columns($invoice_table,$invoice_data);
+		if(array_diff_key($invoice_data,$invoice_update)){ $wpdb->query('ROLLBACK');SN_Helpers::send_json(false,'ستون‌های لازم برای ذخیرهٔ امن قیمت و تخفیف آماده نیست');return; }
 		$ok=$wpdb->update($invoice_table,$invoice_update,['id'=>$id])!==false;
-		foreach($updated as $item){$item_id=$item['id'];unset($item['id']);$ok=$ok && $wpdb->update($item_table,$item,['id'=>$item_id])!==false;}
+		if($quote['repriced']){foreach($updated as $item){$item_id=$item['id'];unset($item['id']);$ok=$ok && $wpdb->update($item_table,$item,['id'=>$item_id])!==false;}}
 		$ok=$ok && $wpdb->update($stage_table,['stage_type'=>$plan,'requested_amount'=>$due,'updated_at'=>current_time('mysql')],['id'=>(int)$stage->id])!==false;
 		if(!$ok){$wpdb->query('ROLLBACK');SN_Helpers::send_json(false,'ذخیرهٔ ویرایش انجام نشد');return;}
-		$wpdb->query('COMMIT');
-		$this->sn_log_activity($id,(int)($invoice->lead_id??0),'invoice_pre_payment_edited','ویرایش پیش‌فاکتور پیش از نخستین پرداخت',['actor_id'=>$actor,'payment_plan'=>$plan,'total'=>$total,'current_due'=>$due,'product_ids'=>$product_ids]);
+		if(false===$wpdb->query('COMMIT')){ $wpdb->query('ROLLBACK');SN_Helpers::send_json(false,'ثبت نهایی ویرایش انجام نشد');return; }
+		$this->sn_log_activity($id,(int)($invoice->lead_id??0),'invoice_pre_payment_edited','ویرایش پیش‌فاکتور پیش از نخستین پرداخت',['actor_id'=>$actor,'payment_plan'=>$plan,'total'=>$total,'current_due'=>$due,'product_ids'=>$product_ids,'repriced'=>$quote['repriced'],'discount_total'=>$quote['pricing']['discount_total']]);
 		SN_Helpers::send_json(true,'پیش‌فاکتور به‌روزرسانی شد',['invoice_id'=>$id,'total'=>$total,'due'=>$due]);
 	}
 
@@ -9292,7 +9320,7 @@ class SN_Plugin
 		$script_file = $script_map[$asset_key] ?? 'public-manager.js';
 		$public_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/public.js') ? (string) filemtime(SN_PLUGIN_DIR . 'assets/js/public.js') : '0');
 		$panel_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/' . $script_file) ? (string) filemtime(SN_PLUGIN_DIR . 'assets/js/' . $script_file) : '0');
-		$shell_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/public-shell.js') ? (string) filemtime(SN_PLUGIN_DIR . 'assets/js/public-shell.js') : '0');
+		$shell_js_version = SN_VERSION . '-' . (file_exists(SN_PLUGIN_DIR . 'assets/js/public-shell.js') ? substr((string) hash_file('sha256', SN_PLUGIN_DIR . 'assets/js/public-shell.js'), 0, 12) : '0');
 		wp_enqueue_script('sn-public-shell', SN_PLUGIN_URL . 'assets/js/public-shell.js', [], $shell_js_version, true);
 		$handle = 'sn-public-' . $asset_key;
 		$deps = ['jquery', 'sn-public-shell', 'sn-payment-transactions', 'sn-unified-invoice-payments', 'sn-plus-invoice-editor', 'sn-receipt-review'];

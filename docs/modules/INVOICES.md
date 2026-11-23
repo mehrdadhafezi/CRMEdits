@@ -96,7 +96,20 @@ scope/status/date filters. Matching multiple transfers returns one invoice;
 review-history-only numbers are excluded. No invoice identities or amounts change.
 See [tracking-number contract](../tasks/PAYMENT_TRACKING_NUMBER.md).
 
+Ordinary unpaid quote editing now opens catalog-discounted invoices, calculates
+product/quantity/authorized discounts on the server, and requires a signed
+preview before save. Payment-only changes preserve the issued price/benefits.
+Legacy coupon/wheel benefits cannot be silently discarded by repricing. Paid or
+receipted invoices stay locked; support and Subscription+ retain their separate
+restrictions. No schema, role or public token changes. See the
+[local edit contract](../tasks/PREPAYMENT_INVOICE_EDIT.md).
+
 ## 8. Testing & Preview
+
+Prepayment edit regressions and disposable native/browser instructions are in
+[the invoice editor test guide](../../tests/invoices/README.md). They include
+pricing permissions, preview signatures, actual AJAX, stale requests, atomic
+rollback, desktop/mobile controls and payment/wallet integrity.
 
 Invoice report regression: `tests/reporting/invoice-financial.php` uses synthetic
 SQLite memory. Guarded native MySQL and real browser/CSV/XLS tests are documented

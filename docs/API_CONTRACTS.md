@@ -676,3 +676,40 @@ Ownership/HR and date/status predicates remain mandatory. EXISTS avoids duplicat
 invoices; superseded review snapshots are not current references. Legacy JSON is
 validated before extraction; literal LIKE escaping prevents identifier wildcards.
 See [scope and tests](tasks/PAYMENT_TRACKING_NUMBER.md).
+
+## Ordinary prepayment edit — local 2026-11-22
+
+Existing authenticated POST `sn_invoice_pre_payment_edit` retains login,
+`sn_public` nonce and invoice owner/last-sender scope. Subscription+ delegates to
+its existing specialized handler. Ordinary unpaid invoices use `edit_mode`:
+
+- `read` (default): returns existing fields plus `revision`, `catalog`, selected
+  `catalog_discount_ids`, `total_amount`, `legacy_adjustments` and
+  `can_make_partial`. Product/discount hints are scoped to actor and owner.
+  No invoice access token is returned.
+- `preview`: requires read `revision`, equal-length positive integer arrays
+  `product_ids`, `product_qtys`, `catalog_discount_ids`, `payment_plan` (`full` or
+  `partial`), `prepayment_amount`, optional `customer_phone_secondary`.
+  `reprice_requested=1` explicitly refreshes unchanged products at current prices;
+  only the seller owner may request it. Client totals/prices are ignored.
+  The server recalculates with the existing catalog policy under invoice/stage/item
+  locks, then rolls back and returns `quote`, `revision`, `expires` and
+  `preview_token` (HMAC, actor/invoice/revision/quote bound, five-minute lifetime).
+- `save`: same exact input plus `expires` and `preview_token`; recalculates and
+  verifies under locks before atomic invoice/item/initial-stage writes. Any input,
+  price, grant or row revision change requires a new preview. Replay after a
+  successful save is rejected by the changed row revision. Errors retain existing
+  `success`/`message` convention; no partial update on a failed write.
+
+Catalog IDs retain their existing fixed/custom hundredths-of-toman encoding.
+First-stage money uses localized decimal input, must be positive and below the
+net invoice amount for partial plans. No arbitrary manual total is accepted.
+Existing item count stays fixed. Payment-only edits preserve issued prices and
+benefits; dedicated legacy coupon/wheel/free-gift repricing is refused. The last
+sender cannot alter owner-only product/quantity/discount/refresh fields.
+
+Old direct-save clients require this handshake; production shell URLs now include
+a content hash so a ZIP's fixed timestamps cannot retain the old editor script.
+No schema, capability, public token, gateway callback or settlement contract is
+added. Financial finality and support-console discount guards remain enforced.
+See [task and validation](tasks/PREPAYMENT_INVOICE_EDIT.md).

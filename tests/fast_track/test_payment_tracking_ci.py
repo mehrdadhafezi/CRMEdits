@@ -12,6 +12,7 @@ sys.path.insert(0,str(ROOT/'scripts'))
 import payment_tracking_ci as tracking
 import test_invoice_reporting_ci as historical_reports
 import test_traceability_ci as historical_trace
+import test_prepayment_edit_ci as historical_editor
 from fast_track_ci import make_plan,outcome
 from package import committed_members
 from risk_report import SUITES
@@ -57,7 +58,7 @@ class PaymentTrackingProofTests(unittest.TestCase):
     @staticmethod
     def records():
         return {
-            'identity.json':{'merge':'a'*40,'runtime':tracking.CHANGES,'fixtures':tracking.FIXTURES,'synthetic':True,'network_internal':True,'published_ports':False,'readonly_source':True},
+            'identity.json':{'merge':'a'*40,'runtime':tracking.TRACKING_RUNTIME,'fixtures':tracking.FIXTURES,'synthetic':True,'network_internal':True,'published_ports':False,'readonly_source':True},
             'tracking-native-summary.json':{'passed':True,'synthetic':True,'checks':29,'wordpress':'7.1.4','woocommerce':'10.4.3','php':'8.3.36','mysql':'8.0.46'},
             'tracking-browser-summary.json':{'passed':True,'synthetic':True,'checks':14,'errors':[],'viewports':['1440x1000','390x844']},
             'memory-summary.json':{'passed':True,'synthetic':True,'assertions':39},
@@ -102,9 +103,11 @@ class PaymentTrackingProofTests(unittest.TestCase):
             historical_reports.InvoiceReportingProofTests().write_report(root/'hr/invoice-report')
             p=root/'hr/invoice-report/identity.json';data=json.loads(p.read_text());data['runtime']=tracking.REPORT_RUNTIME;p.write_text(json.dumps(data))
             self.write_tracking(root/'hr/tracking-number')
-            with patch('payment_tracking_ci.git',return_value=b'a'*40),patch('invoice_reporting_ci.git',return_value=b'a'*40),patch('traceability_ci.git',return_value=b'a'*40),patch('product_invoice_ci.git',return_value=b'a'*40),patch('payment_tracking_ci.payload_matches_revision',return_value=True):
+            historical_editor.PrepaymentProofTests().write_editor(root/'hr/prepayment-edit')
+            p=root/'hr/prepayment-edit/identity.json';data=json.loads(p.read_text());data['runtime']=tracking.EDITOR_RUNTIME;p.write_text(json.dumps(data))
+            with patch('payment_tracking_ci.git',return_value=b'a'*40),patch('prepayment_edit_ci.git',return_value=b'a'*40),patch('invoice_reporting_ci.git',return_value=b'a'*40),patch('traceability_ci.git',return_value=b'a'*40),patch('product_invoice_ci.git',return_value=b'a'*40),patch('payment_tracking_ci.payload_matches_revision',return_value=True):
                 tracking.verify_hr_output(root/'hr','a'*40)
-                for name in ['hr239-ledger-summary.json','mis-summary.json','trace242-lifecycle.json','staged243-races.json','invoice-report/browser-summary.json','tracking-number/tracking-integrity-summary.json']:
+                for name in ['hr239-ledger-summary.json','mis-summary.json','trace242-lifecycle.json','staged243-races.json','invoice-report/browser-summary.json','tracking-number/tracking-integrity-summary.json','prepayment-edit/post-browser-summary.json']:
                     p=root/'hr'/name;data=p.read_bytes();p.unlink()
                     with self.subTest(missing=name),self.assertRaises(FileNotFoundError):tracking.verify_hr_output(root/'hr','a'*40)
                     p.write_bytes(data)
