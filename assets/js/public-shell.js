@@ -355,44 +355,89 @@
 		sync();
 		return {parts:parts,sync:sync};
 	};
+	function invoiceEditMoney(value){return new Intl.NumberFormat('fa-IR',{maximumFractionDigits:2}).format(Number(value)||0)+' تومان';}
+	function invoiceEditAmountKey(value){
+		value=String(value||'').replace(/[۰-۹]/g,function(d){return '۰۱۲۳۴۵۶۷۸۹'.indexOf(d);}).replace(/[٠-٩]/g,function(d){return '٠١٢٣٤٥٦٧٨٩'.indexOf(d);}).replace(/[,٬\s]/g,'').replace(/٫/g,'.');
+		if(!/^\d{1,12}(?:\.\d{1,2})?$/.test(value))return '';
+		var parts=value.split('.'),cents=Number(parts[0])*100+Number(((parts[1]||'')+'00').slice(0,2));return cents>0?String(cents):'';
+	}
+	function invoiceEditPayload(modal,mode){
+		var state=modal.snInvoiceEdit,products=[],qtys=[],discounts=[];
+		modal.querySelectorAll('.sn-edit-item').forEach(function(row){
+			products.push(Number(row.querySelector('.sn-edit-product').value)||0);qtys.push(Number(row.querySelector('.sn-edit-qty').value)||0);
+			var value=row.querySelector('.sn-edit-discount').value;
+			discounts.push(value==='__custom__'?'custom:'+(invoiceEditAmountKey(row.querySelector('.sn-edit-custom').value)||'invalid'):value);
+		});
+		return {invoice_id:state.data.invoice_id,edit_mode:mode,revision:state.data.revision,reprice_requested:modal.querySelector('.sn-edit-reprice').checked?'1':'0',product_ids:products,product_qtys:qtys,catalog_discount_ids:discounts,payment_plan:modal.querySelector('.sn-edit-plan').value,prepayment_amount:modal.querySelector('.sn-edit-due').value,customer_phone_secondary:modal.querySelector('.sn-edit-phone-secondary').value};
+	}
+	function invoiceEditDiscounts(modal,row,selected){
+		var state=modal.snInvoiceEdit,product=state.catalog[String(row.querySelector('.sn-edit-product').value)],select=row.querySelector('.sn-edit-discount'),custom=row.querySelector('.sn-edit-custom');
+		select.replaceChildren(new Option('بدون تخفیف',''));
+		((product&&product.discounts)||[]).forEach(function(d){select.add(new Option(d.label,String(d.id)));});
+		if(product&&product.allow_custom_discount===true)select.add(new Option('تخفیف دلخواه مجاز','__custom__'));
+		if(String(selected).indexOf('custom:')===0&&product&&product.allow_custom_discount===true){custom.value=String(Number(String(selected).slice(7))/100);selected='__custom__';}
+		if(selected&&!Array.from(select.options).some(function(o){return o.value===selected;}))select.add(new Option('تخفیف ثبت‌شده؛ حفظ قیمت فعلی',selected));
+		select.value=selected||'';select.disabled=!state.data.can_edit_products||state.data.legacy_adjustments;
+		custom.hidden=select.value!=='__custom__';custom.disabled=select.disabled||custom.hidden;
+	}
+	function previewInvoiceEdit(modal){
+		var state=modal.snInvoiceEdit;if(!document.body.contains(modal)||state.saving)return;
+		clearTimeout(state.timer);state.inputKey=JSON.stringify(invoiceEditPayload(modal,'preview'));var seq=++state.sequence;state.preview=null;
+		var save=modal.querySelector('.sn-edit-save'),message=modal.querySelector('.sn-edit-message');save.disabled=true;message.textContent='در حال محاسبهٔ مبلغ و تخفیف...';
+		invoiceEditRequest(invoiceEditPayload(modal,'preview')).then(function(result){
+			if(seq!==state.sequence||!document.body.contains(modal))return;
+			state.preview=result;var pricing=result.quote.pricing;
+			modal.querySelector('.sn-edit-totals').textContent='مبلغ قبل از تخفیف: '+invoiceEditMoney(pricing.original_total)+' — تخفیف: '+invoiceEditMoney(pricing.discount_total)+' — مبلغ نهایی: '+invoiceEditMoney(pricing.final_total)+' — مبلغ مرحلهٔ اول: '+invoiceEditMoney(result.quote.due);
+			message.textContent='مبالغ در سرور محاسبه شد. برای ثبت، ذخیره تغییرات را بزنید.';save.disabled=false;
+		}).catch(function(error){if(seq===state.sequence&&document.body.contains(modal)){message.textContent=error.message||'محاسبه انجام نشد';}});
+	}
 	function showInvoiceEdit(button){
-		var id=Number(button.getAttribute('data-invoice-id')||0);
-		if(!id)return;
-		button.disabled=true;
+		var id=Number(button.getAttribute('data-invoice-id')||0);if(!id)return;button.disabled=true;
 		invoiceEditRequest({invoice_id:id,edit_mode:'read'}).then(function(data){
-            if(data.editor_kind==='subscription_plus' && window.snPlusInvoiceEditor){window.snPlusInvoiceEditor.open(button,data);return;}
+			if(data.editor_kind==='subscription_plus'&&window.snPlusInvoiceEditor){window.snPlusInvoiceEditor.open(button,data);return;}
 			var old=document.getElementById('sn-prepayment-edit-modal');if(old)old.remove();
 			var modal=document.createElement('div');modal.id='sn-prepayment-edit-modal';modal.className='sn-modal sn-lite-modal';modal.dir='rtl';
-			modal.innerHTML='<div class="sn-modal-backdrop sn-edit-close"></div><div class="sn-modal-card" role="dialog" aria-modal="true" aria-label="ویرایش پیش‌فاکتور" style="max-width:620px;max-height:85vh;overflow:auto"><div class="sn-modal-head"><h3>ویرایش پیش‌فاکتور پیش از پرداخت</h3><button type="button" class="sn-modal-x sn-edit-close" aria-label="بستن">×</button></div><div class="sn-modal-body"><p class="sn-note">مبلغ کل از قیمت محصولات محاسبه می‌شود. پس از اولین پرداخت یا شروع بررسی مالی، ویرایش قفل است.</p><div class="sn-edit-items"></div><label>نوع پرداخت<select class="sn-edit-plan"><option value="full">پرداخت کامل</option><option value="partial">پیش‌پرداخت مرحله‌ای</option></select></label><label class="sn-edit-due-field">مبلغ مرحله اول (تومان)<input class="sn-edit-due" type="text" inputmode="numeric"></label><label>شماره دوم مشتری (اختیاری)<input class="sn-edit-phone-secondary" type="tel" inputmode="tel" placeholder="09xxxxxxxxx"></label><div class="sn-edit-message" role="status"></div><div class="sn-modal-actions"><button type="button" class="sn-btn sn-btn-secondary sn-edit-close">انصراف</button><button type="button" class="sn-btn sn-btn-primary sn-edit-save">ذخیره تغییرات</button></div></div></div>';
-			document.body.appendChild(modal);modal.dataset.invoiceId=String(id);
-			var source=document.querySelector('#sn-products-multi .sn-product-select,#sn-converter-products-multi .sn-converter-product-select');
-			var rows=modal.querySelector('.sn-edit-items');
+			modal.innerHTML='<style>#sn-prepayment-edit-modal .sn-modal-head,#sn-prepayment-edit-modal .sn-modal-actions{flex:0 0 auto}#sn-prepayment-edit-modal .sn-modal-body{overflow:auto;min-height:0}#sn-prepayment-edit-modal label{display:block;margin:8px 0}#sn-prepayment-edit-modal input:not([type=checkbox]),#sn-prepayment-edit-modal select{width:100%;min-height:42px;box-sizing:border-box;font:inherit;padding:8px;border:1px solid #cbd5e1;border-radius:8px}#sn-prepayment-edit-modal .sn-edit-item{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}#sn-prepayment-edit-modal .sn-modal-actions{background:#fff;padding-top:12px;border-top:1px solid #eee}#sn-prepayment-edit-modal h3{font-size:16px}@media(min-width:700px){#sn-prepayment-edit-modal .sn-edit-item{grid-template-columns:2fr 1fr 2fr}}</style><div class="sn-modal-backdrop sn-edit-close"></div><div class="sn-modal-card" role="dialog" aria-modal="true" aria-label="ویرایش پیش‌فاکتور" style="width:calc(100vw - 32px);max-width:680px;max-height:85vh;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden;font-family:Tahoma,sans-serif;font-size:14px;line-height:1.8"><div class="sn-modal-head"><h3>ویرایش پیش‌فاکتور پیش از پرداخت</h3><button type="button" class="sn-modal-x sn-edit-close" aria-label="بستن">×</button></div><div class="sn-modal-body"><p class="sn-note">قیمت از محصول، تعداد و تخفیف مجاز محاسبه می‌شود. تغییرِ صرفِ مبلغ مرحله، قیمت و تخفیف قبلی را حفظ می‌کند. پس از ثبت پرداخت یا فیش، ویرایش قفل است.</p><p class="sn-edit-legacy sn-note" hidden>کوپن یا جایزهٔ قبلی حفظ می‌شود؛ در این فاکتور شرایط پرداخت قابل تغییر است و اقلام و مزایای قبلی ثابت می‌مانند.</p><div class="sn-edit-items"></div><label><input type="checkbox" class="sn-edit-reprice"> محاسبه با قیمت و تخفیف مجاز فعلی محصولات</label><p class="sn-edit-totals sn-note" aria-live="polite"></p><label>نوع پرداخت<select class="sn-edit-plan"><option value="full">پرداخت کامل</option><option value="partial">پیش‌پرداخت مرحله‌ای</option></select></label><label class="sn-edit-due-field">مبلغ مرحله اول (تومان)<input class="sn-edit-due" type="text" inputmode="decimal"></label><label>شماره دوم مشتری (اختیاری)<input class="sn-edit-phone-secondary" type="tel" inputmode="tel" placeholder="09xxxxxxxxx"></label><div class="sn-edit-message" role="status"></div></div><div class="sn-modal-actions"><button type="button" class="sn-btn sn-btn-secondary sn-edit-close">انصراف</button><button type="button" class="sn-btn sn-btn-secondary sn-edit-preview">محاسبه مجدد</button><button type="button" class="sn-btn sn-btn-primary sn-edit-save" disabled>ذخیره تغییرات</button></div></div>';
+			var catalog={};(data.catalog||[]).forEach(function(p){catalog[String(p.id)]=p;});
+			modal.snInvoiceEdit={data:data,catalog:catalog,sequence:0,preview:null,saving:false,trigger:button};document.body.appendChild(modal);
 			(data.items||[]).forEach(function(item,index){
-				var wrap=document.createElement('div');wrap.className='sn-edit-item';
-				var title=document.createElement('strong');title.textContent='محصول '+(index+1);wrap.appendChild(title);
-				var select=document.createElement('select');select.className='sn-edit-product';
-				if(data.can_edit_products && source){select.innerHTML=source.innerHTML;select.value=String(item.product_id);}
-				else {var opt=document.createElement('option');opt.value=String(item.product_id);opt.textContent='محصول #'+item.product_id;select.appendChild(opt);}
-				if(!select.value){var missing=document.createElement('option');missing.value=String(item.product_id);missing.textContent='محصول فعلی #'+item.product_id;select.appendChild(missing);select.value=missing.value;}
-				select.disabled=!data.can_edit_products;wrap.appendChild(select);
-				var qty=document.createElement('input');qty.className='sn-edit-qty';qty.type='number';qty.min='1';qty.value=String(item.qty||1);qty.disabled=!data.can_edit_products;wrap.appendChild(qty);rows.appendChild(wrap);
+				var row=document.createElement('div');row.className='sn-edit-item';row.style.cssText='padding:12px 0;border-bottom:1px solid #ddd';
+				var productLabel=document.createElement('label');productLabel.textContent='محصول '+(index+1);var product=document.createElement('select');product.className='sn-edit-product';
+				if(data.can_edit_products&&!data.legacy_adjustments)(data.catalog||[]).forEach(function(p){product.add(new Option(p.name,String(p.id)));});
+				if(!Array.from(product.options).some(function(o){return o.value===String(item.product_id);}))product.add(new Option(item.product_name||'محصول #'+item.product_id,String(item.product_id)));
+				product.value=String(item.product_id);product.disabled=!data.can_edit_products||data.legacy_adjustments;productLabel.appendChild(product);row.appendChild(productLabel);
+				var qtyLabel=document.createElement('label');qtyLabel.textContent='تعداد';var qty=document.createElement('input');qty.className='sn-edit-qty';qty.type='number';qty.min='1';qty.max='1000000';qty.step='1';qty.value=String(item.qty||1);qty.disabled=product.disabled;qtyLabel.appendChild(qty);row.appendChild(qtyLabel);
+				var discountLabel=document.createElement('label');discountLabel.textContent='تخفیف هر واحد محصول';var discount=document.createElement('select');discount.className='sn-edit-discount';discountLabel.appendChild(discount);
+				var custom=document.createElement('input');custom.className='sn-edit-custom';custom.type='text';custom.inputMode='decimal';custom.placeholder='تخفیف هر واحد به تومان';custom.setAttribute('aria-label','تخفیف دلخواه هر واحد به تومان');discountLabel.appendChild(custom);row.appendChild(discountLabel);
+				modal.querySelector('.sn-edit-items').appendChild(row);invoiceEditDiscounts(modal,row,String((data.catalog_discount_ids||[])[index]||''));
+				product.addEventListener('change',function(){custom.value='';invoiceEditDiscounts(modal,row,'');});
+				discount.addEventListener('change',function(){custom.hidden=discount.value!=='__custom__';custom.disabled=discount.disabled||custom.hidden;});
 			});
 			modal.querySelector('.sn-edit-plan').value=data.payment_plan==='partial'?'partial':'full';
-			modal.querySelector('.sn-edit-due').value=String(data.current_due_amount||'');
-			modal.querySelector('.sn-edit-phone-secondary').value=data.customer_phone_secondary||'';
-			modal.querySelector('.sn-edit-due-field').hidden=data.payment_plan!=='partial';
-			modal.querySelector('.sn-edit-plan').addEventListener('change',function(){modal.querySelector('.sn-edit-due-field').hidden=this.value!=='partial';});
+			if(data.payment_plan==='full'&&!data.can_make_partial)modal.querySelector('.sn-edit-plan option[value="partial"]').disabled=true;
+			modal.querySelector('.sn-edit-due').value=String(data.current_due_amount||'');modal.querySelector('.sn-edit-phone-secondary').value=data.customer_phone_secondary||'';
+			modal.querySelector('.sn-edit-due-field').hidden=data.payment_plan!=='partial';modal.querySelector('.sn-edit-legacy').hidden=!data.legacy_adjustments;modal.querySelector('.sn-edit-reprice').disabled=!data.can_edit_products||data.legacy_adjustments;
+			modal.querySelector('.sn-edit-totals').textContent='مبلغ نهایی فعلی: '+invoiceEditMoney(data.total_amount);
+			function invalidate(){var state=modal.snInvoiceEdit;if(state.saving)return;var key=JSON.stringify(invoiceEditPayload(modal,'preview'));if(key===state.inputKey)return;state.inputKey=key;state.preview=null;++state.sequence;modal.querySelector('.sn-edit-save').disabled=true;modal.querySelector('.sn-edit-due-field').hidden=modal.querySelector('.sn-edit-plan').value!=='partial';clearTimeout(state.timer);state.timer=setTimeout(function(){previewInvoiceEdit(modal);},300);}
+			modal.addEventListener('input',invalidate);modal.addEventListener('change',invalidate);
+			modal.querySelector('.sn-edit-preview').addEventListener('click',function(){previewInvoiceEdit(modal);});
+			modal.addEventListener('keydown',function(event){
+                if(event.key==='Escape'&&!modal.snInvoiceEdit.saving){modal.remove();button.focus();}
+                if(event.key==='Tab'){var controls=Array.from(modal.querySelectorAll('button,input,select')).filter(function(control){return !control.disabled&&control.offsetParent!==null;});var first=controls[0],last=controls[controls.length-1];if(first&&event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}else if(last&&!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}}
+            });
+			modal.querySelector('.sn-edit-plan').focus();previewInvoiceEdit(modal);
 		}).catch(function(error){window.alert(error.message||'امکان ویرایش وجود ندارد');}).finally(function(){button.disabled=false;});
 	}
 	function saveInvoiceEdit(button){
 		var modal=document.getElementById('sn-prepayment-edit-modal');if(!modal)return;
-		var products=[],qtys=[];
-		modal.querySelectorAll('.sn-edit-item').forEach(function(row){products.push(Number(row.querySelector('select').value)||0);qtys.push(Number(row.querySelector('input').value)||0);});
-		var msg=modal.querySelector('.sn-edit-message');button.disabled=true;msg.textContent='در حال ذخیره...';
-		invoiceEditRequest({invoice_id:Number(modal.dataset.invoiceId),edit_mode:'save',product_ids:products,product_qtys:qtys,payment_plan:modal.querySelector('.sn-edit-plan').value,prepayment_amount:modal.querySelector('.sn-edit-due').value,customer_phone_secondary:modal.querySelector('.sn-edit-phone-secondary').value}).then(function(result){
-			msg.textContent=result.message||'ذخیره شد';
-			window.setTimeout(function(){modal.remove();if(typeof window.snLoadSellerInvoices==='function')window.snLoadSellerInvoices();if(typeof window.snLoadSupervisorInvoicesFinal==='function')window.snLoadSupervisorInvoicesFinal(null,true);var active=document.querySelector('.sn-converter-invoice-status-tabs .sn-subtab.active');if(active)active.click();},450);
-		}).catch(function(error){msg.textContent=error.message||'خطا در ذخیره';}).finally(function(){button.disabled=false;});
+		var state=modal.snInvoiceEdit,message=modal.querySelector('.sn-edit-message');
+		if(!state.preview||state.saving){message.textContent='ابتدا محاسبهٔ معتبر تغییرات را دریافت کنید.';return;}
+		var payload=invoiceEditPayload(modal,'save');payload.expires=state.preview.expires;payload.preview_token=state.preview.preview_token;
+		state.saving=true;var controls=Array.from(modal.querySelectorAll('input,select,button')).map(function(control){return {control:control,disabled:control.disabled};});controls.forEach(function(item){item.control.disabled=true;});button.disabled=true;message.textContent='در حال ذخیره...';
+		invoiceEditRequest(payload).then(function(result){
+			state.saved=true;state.preview=null;message.textContent=result.message||'ذخیره شد';
+			window.setTimeout(function(){modal.remove();if(state.trigger)state.trigger.focus();if(typeof window.snLoadSellerInvoices==='function')window.snLoadSellerInvoices();if(typeof window.snLoadSupervisorInvoicesFinal==='function')window.snLoadSupervisorInvoicesFinal(null,true);var active=document.querySelector('.sn-converter-invoice-status-tabs .sn-subtab.active');if(active)active.click();},450);
+		}).catch(function(error){message.textContent=error.message||'خطا در ذخیره';state.preview=null;}).finally(function(){if(!state.saved){state.saving=false;controls.forEach(function(item){item.control.disabled=item.disabled;});}button.disabled=true;});
 	}
 
   document.addEventListener('click', function(event){
@@ -404,7 +449,7 @@
 	var historyClose=safeClosest(event.target,'.sn-scoped-history-close');if(historyClose){event.preventDefault();var historyModal=document.getElementById('sn-scoped-finance-history');if(historyModal)historyModal.remove();return;}
 	var editButton=safeClosest(event.target,'.sn-edit-invoice');if(editButton){event.preventDefault();event.stopImmediatePropagation();showInvoiceEdit(editButton);return;}
 	var saveButton=safeClosest(event.target,'.sn-edit-save');if(saveButton){event.preventDefault();saveInvoiceEdit(saveButton);return;}
-	var closeButton=safeClosest(event.target,'.sn-edit-close');if(closeButton){event.preventDefault();var editModal=document.getElementById('sn-prepayment-edit-modal');if(editModal)editModal.remove();return;}
+	var closeButton=safeClosest(event.target,'.sn-edit-close');if(closeButton){event.preventDefault();var editModal=document.getElementById('sn-prepayment-edit-modal');if(editModal){if(editModal.snInvoiceEdit&&editModal.snInvoiceEdit.saving)return;var editTrigger=editModal.snInvoiceEdit&&editModal.snInvoiceEdit.trigger;editModal.remove();if(editTrigger)editTrigger.focus();}return;}
 	var openButton=safeClosest(event.target,'.sn-open-invoice-link');
 	if(openButton){event.preventDefault();event.stopImmediatePropagation();openInvoiceFromCase(openButton);return;}
 	var copyButton=safeClosest(event.target,'.sn-copy-invoice-link');

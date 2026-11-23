@@ -19,7 +19,7 @@
    if(p.manual_card_to)details.push('کارت مقصد: '+p.manual_card_to);
    if(p.manual_account_owner)details.push('صاحب حساب: '+p.manual_account_owner);
    if(p.manual_account_last6)details.push('حساب مبدأ: '+p.manual_account_last6);
-   if(p.manual_tracking_last6)details.push('پیگیری: '+p.manual_tracking_last6);
+   if(p.manual_tracking_number)details.push('شماره پیگیری: '+p.manual_tracking_number);else if(p.manual_tracking_last6)details.push('پیگیری: '+p.manual_tracking_last6);
    if(p.manual_paid_at_jalali)details.push('واریز: '+p.manual_paid_at_jalali);
    if(!details.length)details.push(row.receipt_urls&&row.receipt_urls.length?'ثبت با فیش':'اطلاعات قدیمی / درگاه');
    h+='<article class="sn-transaction-row"><div><strong>تراکنش <bdi>'+esc(row.transaction_code||('PAY-'+row.id))+'</bdi> · '+esc(row.amount_fmt||money(row.amount))+'</strong><span>'+esc(row.status_label||row.status)+'</span></div><p>'+esc(details.join(' · '))+'</p>'+w.snReceiptFiles.links(row)+'<small>مرحله '+esc(row.stage_no||row.payment_stage_no||1)+' از '+esc(row.stage_count||0)+' مرحله ثبت‌شده · <bdi>'+esc(row.stage_invoice_code||row.stage_reference||'')+'</bdi> · '+esc(row.source_label||row.payment_source_label||'')+' · '+esc(row.created_at_jalali||'')+'</small></article>';

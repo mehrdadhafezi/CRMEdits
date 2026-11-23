@@ -1,6 +1,8 @@
 <?php
 if (!defined('ABSPATH')) { exit; }
 
+require_once __DIR__ . '/class-sn-payment-tracking.php';
+
 /** Batch validation and transaction boundary; individual saves use the existing payment service. */
 final class SN_Payment_Batch
 {
@@ -47,6 +49,9 @@ final class SN_Payment_Batch
         $mode = sanitize_key((string)($row['entry_mode'] ?? ''));
         if (!in_array($mode, ['receipt','info'], true)) { return ['error'=>'روش ثبت واریزی را انتخاب کنید.']; }
         $fields = array_fill_keys(['manual_transfer_type','manual_account_last6','manual_tracking_last6','manual_account_owner','manual_card_from','manual_card_to','manual_card_to_number','manual_paid_at','manual_paid_at_jalali'], null);
+        $tracking = SN_Payment_Tracking::normalize($row[SN_Payment_Tracking::FIELD] ?? '');
+        if ($tracking === null) { return ['error'=>SN_Payment_Tracking::ERROR]; }
+        $fields[SN_Payment_Tracking::FIELD] = $tracking !== '' ? $tracking : null;
         $fields['transaction_amount'] = $amount;
         if ($mode === 'receipt') {
             foreach (['card_from'=>'manual_card_from','card_to'=>'manual_card_to'] as $input=>$column) {

@@ -218,6 +218,7 @@ final class SN_Receipt_Review {
                 if(!empty($fields['error']))$this->fail($fields['error']);
                 $amount=(float)$fields['fields']['transaction_amount'];unset($fields['fields']['transaction_amount']);
                 $this->check_resubmission_amount($payment, $stage, $amount);
+                if (!array_key_exists('manual_tracking_number',$in)) { unset($fields['fields']['manual_tracking_number']); }
                 $proof=array_merge($proof,$fields['fields']);$proof['entry_mode']=sanitize_key((string)($in['entry_mode'] ?? 'info'));
                 if(SN_Helpers::has_receipt_upload($files['receipt'] ?? [])) {
                     $up=SN_Helpers::upload_receipt($files['receipt']);if(empty($up['success']))$this->fail((string)($up['message'] ?? 'آپلود انجام نشد.'));

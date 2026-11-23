@@ -161,6 +161,16 @@ phase traceability-upgrade-restore run_test python3 -B tests/payments/traceabili
 printf 'TRACEABILITY_REGRESSION_COMPLETE\n'
 
 # Add this exact reporting payload's independent WordPress/MySQL/browser suite.
-if python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA"; then
+if python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA" || python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA"; then
   phase invoice-financial-reports bash scripts/test-invoice-reporting.sh
+fi
+
+# Add bank-reference HTTP, database, upload, browser and classic-route proof.
+if python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA"; then
+  phase payment-tracking bash scripts/test-payment-tracking.sh
+fi
+
+# Preserve the prior editor correction in the same installation candidate.
+if python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA" || python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA"; then
+  phase prepayment-editor bash scripts/test-prepayment-edit.sh
 fi

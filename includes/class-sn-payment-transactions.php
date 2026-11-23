@@ -80,7 +80,7 @@ class SN_Payment_Transactions
 
     public static function proof_fields(): array
     {
-        return ['entry_mode','manual_transfer_type','manual_account_last6','manual_tracking_last6','manual_account_owner','manual_card_from','manual_card_to','manual_card_to_number','manual_paid_at','manual_paid_at_jalali','receipt_url','receipt_file','receipt_urls'];
+        return ['manual_tracking_number','entry_mode','manual_transfer_type','manual_account_last6','manual_tracking_last6','manual_account_owner','manual_card_from','manual_card_to','manual_card_to_number','manual_paid_at','manual_paid_at_jalali','receipt_url','receipt_file','receipt_urls'];
     }
 
     public static function pending_rows(int $invoice_id, int $stage_no): array
