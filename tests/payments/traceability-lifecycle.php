@@ -1,6 +1,6 @@
 <?php
 /** Read/check lifecycle phases; only baseline fixture creation writes synthetic rows. */
-$phase=(string)getenv('SN_TRACE_LIFECYCLE_PHASE');$versions=['baseline235'=>'2.0.235','baseline242'=>'2.0.242','bridge'=>'2.0.242','upgrade'=>'2.0.243','snapshot'=>'2.0.243','downgrade'=>'2.0.242','resume'=>'2.0.243','restore235'=>'2.0.235','restore242'=>'2.0.242','reupgrade'=>'2.0.243'];
+$phase=(string)getenv('SN_TRACE_LIFECYCLE_PHASE');$versions=['baseline235'=>'2.0.235','baseline242'=>'2.0.242','bridge'=>'2.0.242','upgrade'=>'2.0.244','snapshot'=>'2.0.244','downgrade'=>'2.0.242','resume'=>'2.0.244','restore235'=>'2.0.235','restore242'=>'2.0.242','reupgrade'=>'2.0.244'];
 if(!isset($versions[$phase]))throw new RuntimeException('Explicit lifecycle phase required');
 require dirname(__DIR__).'/hr/native-support.php';hr239_bootstrap(true,$versions[$phase]);global $wpdb;$root=$GLOBALS['hr239_root'];$file=$root.'/trace242-lifecycle-state.json';
 $state=is_file($file)?json_decode(file_get_contents($file),true,512,JSON_THROW_ON_ERROR):[];

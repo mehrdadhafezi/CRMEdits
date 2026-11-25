@@ -17,7 +17,7 @@ function trace242_request(int $actor,string $action,array $data=[],?string $nonc
  catch(Trace242ResponseEnd $end){}finally{$raw=ob_get_clean();remove_filter('wp_die_ajax_handler',$handler);remove_filter('wp_die_handler',$handler);}
  $out=json_decode($captured??$raw,true,512,JSON_THROW_ON_ERROR);$out['_status']=$status;return$out;
 }
-$hash=static function()use($wpdb):string{$rows=[];foreach(['sn_invoices','sn_invoice_payment_stages','sn_payments','sn_dot_cases','sn_dot_payments','sn_wallets','sn_wallet_transactions','sn_payment_review_events']as$t){$rows[$t]=$wpdb->get_results("SELECT * FROM {$wpdb->prefix}{$t} ORDER BY id",ARRAY_A);if($wpdb->last_error)throw new RuntimeException('Synthetic state snapshot unavailable');}return hash('sha256',wp_json_encode($rows));};
+$hash=static fn():string=>hr239_financial_fingerprint();
 $base=$hash();
 foreach([0,$other,$hr,$subscriber]as$actor){$r=trace242_request($actor,'sn_receipt_review',['invoice_id'=>$id,'operation'=>'read']);hr239_ok(empty($r['success'])&&$hash()===$base,'guest or unrelated role cannot read new Dot receipt ledger '.$actor);}
 foreach(['','bad-nonce']as$nonce){$r=trace242_request($admin,'sn_receipt_review',['invoice_id'=>$id,'operation'=>'read'],$nonce);hr239_ok(empty($r['success'])&&$r['_status']===403&&$hash()===$base,'missing or forged receipt nonce fails before financial writes');}

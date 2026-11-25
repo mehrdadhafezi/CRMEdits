@@ -46,14 +46,16 @@ def scope(base, head, paths):
                     for name, digest in {**FIXTURES, **editor.FIXTURES}.items()))
 
 
-def verify_tracking_output(output, merge):
+def verify_tracking_output(output, merge, *, runtime=None, payload_verifier=None):
+    runtime = TRACKING_RUNTIME if runtime is None else runtime
+    payload_verifier = payload_verifier or payload_matches_revision
     root = Path(output)
     identity = json.loads((root/'identity.json').read_text())
     native = json.loads((root/'tracking-native-summary.json').read_text())
     browser = json.loads((root/'tracking-browser-summary.json').read_text())
     memory = json.loads((root/'memory-summary.json').read_text())
     integrity = json.loads((root/'tracking-integrity-summary.json').read_text())
-    if (identity.get('merge') != merge or identity.get('runtime') != TRACKING_RUNTIME
+    if (identity.get('merge') != merge or identity.get('runtime') != runtime
             or identity.get('fixtures') != FIXTURES
             or identity.get('synthetic') is not True or identity.get('network_internal') is not True
             or identity.get('published_ports') is not False or identity.get('readonly_source') is not True):
@@ -76,7 +78,7 @@ def verify_tracking_output(output, merge):
     for name in ['tracking-desktop.png','tracking-mobile.png']:
         if not (root/name).is_file() or (root/name).stat().st_size < 1000:
             raise ValueError('Tracking screenshot evidence missing')
-    if git('rev-parse','HEAD').decode().strip() != merge or not payload_matches_revision(merge):
+    if git('rev-parse','HEAD').decode().strip() != merge or not payload_verifier(merge):
         raise ValueError('Tracking proof does not belong to the tested merge')
 
 

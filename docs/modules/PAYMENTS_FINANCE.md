@@ -4,6 +4,16 @@ Status: OBSERVED static source, baseline 2.0.235 / 2026-11-12. Human specialist:
 
 ## 1. Purpose & Scope
 
+Local 2.0.244 Finance hotfix preserves gross first-stage capacity after a partial
+receipt approval. A full first stage reduced exactly to its remaining balance can
+be reconciled only within an authorized, locked receipt approve/reject operation,
+with matching paid/due/total evidence, one canonical stage, no overpayment and an
+audit event. Ambiguous partial stages remain blocked; there is no background
+financial repair. Catalog normalization skips stages with any receipt history or
+stored paid money. Finance list/KPI queries use grouped receipt projections while
+retaining existing bucket priority, permissions, filters, sums and sorting.
+No schema, capability, public token or commission-rate changes are included.
+
 2.0.243 fixes the natural pending-to-verified online receipt boundary for new
 staged Dot purchases, and exposes paid stage aliases separately from purchase
 settlement. New Zibal order references are stored in existing proof metadata;

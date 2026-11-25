@@ -1,6 +1,6 @@
 <?php
 /** Native tests only: a guarded disposable CI DB or private synthetic HR namespace. */
-function hr239_bootstrap(bool $full = true, string $expected_version = '2.0.243'): void {
+function hr239_bootstrap(bool $full = true, string $expected_version = '2.0.244'): void {
     if (PHP_SAPI !== 'cli') { throw new RuntimeException('Synthetic CLI required'); }
     if ($full && !defined('DOING_AJAX')) { define('DOING_AJAX', true); }
     if (getenv('SN_APPROVAL_ALLOW_SYNTHETIC') === 'YES') {
@@ -24,7 +24,7 @@ function hr239_bootstrap(bool $full = true, string $expected_version = '2.0.243'
             || $wpdb->get_var('SELECT DATABASE()')!==DB_NAME) { throw new RuntimeException('Private runtime identity rejected'); }
         $GLOBALS['hr239_root']=$root;$GLOBALS['hr239_output']=$root.'/evidence';
     }
-    if (!in_array($expected_version,['2.0.235','2.0.241','2.0.242','2.0.243'],true) || !defined('SN_VERSION') || SN_VERSION!==$expected_version) { throw new RuntimeException('Intended candidate version required'); }
+    if (!in_array($expected_version,['2.0.235','2.0.241','2.0.242','2.0.243','2.0.244'],true) || !defined('SN_VERSION') || SN_VERSION!==$expected_version) { throw new RuntimeException('Intended candidate version required'); }
     $GLOBALS['hr239_automatic_policy_hook']=has_action('wp_ajax_sn_hr_invoice_reissue')!==false;
     sn_bootstrap_load_core();sn_bootstrap_plugin_instance($full);
     global $wpdb;$wpdb->hide_errors();
@@ -41,6 +41,25 @@ function hr239_private(string $name,array $value): void {
 }
 function hr239_data(): array { return json_decode(file_get_contents($GLOBALS['hr239_root'].'/hr239-fixture.json'),true,512,JSON_THROW_ON_ERROR); }
 function hr239_source_fingerprint(): array { return ['core_sha256'=>hash_file('sha256',SN_PLUGIN_DIR.'includes/class-sn-plugin.php'),'policy_sha256'=>hash_file('sha256',SN_PLUGIN_DIR.'includes/class-sn-hr-invoice-reissue.php')]; }
+/** Hash every financial row/column without retaining the entire test database. */
+function hr239_financial_fingerprint(): string {
+    global $wpdb;$hash=hash_init('sha256');
+    foreach(['sn_invoices','sn_invoice_payment_stages','sn_payments','sn_dot_cases','sn_dot_payments','sn_wallets','sn_wallet_transactions','sn_payment_review_events'] as $table){
+        hash_update($hash,$table."\0");$after=0;
+        do{$rows=$wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}{$table} WHERE id>%d ORDER BY id LIMIT 200",$after),ARRAY_A);
+            if($wpdb->last_error||!is_array($rows))throw new RuntimeException('Financial fingerprint query failed');
+            foreach($rows as $row){hash_update($hash,wp_json_encode($row)."\n");$after=(int)$row['id'];}
+        }while(count($rows)===200);
+    }return hash_final($hash);
+}
+function finance244_evidence(string $name,array $extra=[]): void {
+    global $wpdb;$data=array_merge(['passed'=>true,'synthetic'=>true,'version'=>SN_VERSION,'assertions'=>$GLOBALS['hr239_checks'],
+        'core_sha256'=>hash_file('sha256',SN_PLUGIN_DIR.'includes/class-sn-plugin.php'),
+        'review_sha256'=>hash_file('sha256',SN_PLUGIN_DIR.'includes/class-sn-receipt-review.php'),
+        'catalog_sha256'=>hash_file('sha256',SN_PLUGIN_DIR.'includes/class-sn-sales-catalog.php'),
+        'wordpress'=>$GLOBALS['wp_version'],'php'=>PHP_VERSION,'mysql'=>$wpdb->db_version(),'production_touched'=>false],$extra);
+    file_put_contents($GLOBALS['hr239_output'].'/finance244-'.$name.'.json',wp_json_encode($data,JSON_PRETTY_PRINT));
+}
 class HR239_Response_End extends RuntimeException {}
 function hr239_request(int $actor,array $payload): array {
     wp_set_current_user(0);wp_set_current_user($actor);

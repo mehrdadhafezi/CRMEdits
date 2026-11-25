@@ -37505,18 +37505,21 @@ class SN_Plugin
 				$returned = "(i.financial_return_state IN ('returned_to_seller','resent_after_return','cancelled_by_finance','cancelled_by_finance_refund'))";
 				$online_paid = "(i.pay_method IN ('online','gateway','zibal','zarinpal') AND COALESCE(i.status,'') IN ('paid','approved','partial_paid') AND NOT {$pending} AND NOT {$rejected} AND NOT {$cancelled})";
 
+				$finance_ledger_join = '';
 				if ($join_payments && in_array('proof_data', $this->sn_table_columns($payment_table), true)) {
-					$stage_payments = "rp.invoice_id=i.id AND rp.payment_stage_no=i.current_payment_stage";
-					$independent_deposit = "COALESCE(rp.authority,'')='' AND TRIM(COALESCE(rp.proof_data,''))<>''";
-					$has_unreviewed_payment = "EXISTS (SELECT 1 FROM {$payment_table} rp WHERE {$stage_payments}
-						AND ((rp.status='pending' AND COALESCE(rp.authority,'')='') OR (rp.status='verified' AND COALESCE(rp.authority,'')<>'')))";
+					$finance_ledger_join = " LEFT JOIN (SELECT invoice_id,payment_stage_no,
+                        MAX(CASE WHEN (status='pending' AND COALESCE(authority,'')='') OR (status='verified' AND COALESCE(authority,'')<>'') THEN 1 ELSE 0 END) has_unreviewed,
+                        MAX(CASE WHEN COALESCE(authority,'')='' AND TRIM(COALESCE(proof_data,''))<>'' AND status='rejected' THEN 1 ELSE 0 END) has_rejected,
+                        MAX(CASE WHEN COALESCE(authority,'')='' AND TRIM(COALESCE(proof_data,''))<>'' AND status='approved' AND amount>0 THEN 1 ELSE 0 END) has_approved
+                        FROM {$payment_table} GROUP BY invoice_id,payment_stage_no) fr ON fr.invoice_id=i.id AND fr.payment_stage_no=i.current_payment_stage";
+					$has_unreviewed_payment = "COALESCE(fr.has_unreviewed,0)=1";
 					// With a balance still due and no payment to review, the ledger supplies the outcome.
 					// A fully funded stage pending finalization stays visible in the review queue.
 					$reviewed_deposit = "({$pending} AND NOT {$closed} AND i.current_due_amount>0 AND NOT {$has_unreviewed_payment})";
 					$rejected = "({$rejected} OR ({$reviewed_deposit}
-						AND EXISTS (SELECT 1 FROM {$payment_table} rp WHERE {$stage_payments} AND {$independent_deposit} AND rp.status='rejected')))";
+						AND COALESCE(fr.has_rejected,0)=1))";
 					$approved = "({$approved} OR ({$reviewed_deposit}
-						AND EXISTS (SELECT 1 FROM {$payment_table} rp WHERE {$stage_payments} AND {$independent_deposit} AND rp.status='approved' AND rp.amount>0)))";
+						AND COALESCE(fr.has_approved,0)=1))";
 				}
 
 				// One authoritative bucket per invoice: outcome first, then pending evidence.
@@ -37579,20 +37582,19 @@ class SN_Plugin
 				}
 				$where = implode(' AND ', $where_parts);
 
-				$join = "LEFT JOIN {$wpdb->users} u ON u.ID=i.seller_id";
+				$join = $finance_ledger_join . " LEFT JOIN {$wpdb->users} u ON u.ID=i.seller_id";
 				$seller_expr = "COALESCE(u.display_name, CONCAT('#', i.seller_id))";
 				if ($join_hr) {
 					$join .= " LEFT JOIN {$hr_table} hp ON hp.user_id=i.seller_id AND hp.is_active=1";
 					$seller_expr = "COALESCE(NULLIF(hp.hr_display_name,''), u.display_name, CONCAT('#', i.seller_id))";
 				}
+				$count_sql = "SELECT COUNT(DISTINCT i.id) invoice_count, COALESCE(SUM(COALESCE(i.final_total,i.product_price,0)),0) invoice_amount FROM {$invoice_table} i {$join} WHERE {$where}";
+				$filtered_totals = $wpdb->get_row($where_args ? $wpdb->prepare($count_sql, ...$where_args) : $count_sql, ARRAY_A);
+				$total = (int) ($filtered_totals['invoice_count'] ?? 0);
+				$sum = (float) ($filtered_totals['invoice_amount'] ?? 0);
 				if ($join_payments) {
-					$join .= " LEFT JOIN {$payment_table} p ON p.id=(SELECT p2.id FROM {$payment_table} p2 WHERE p2.invoice_id=i.id ORDER BY p2.id DESC LIMIT 1)";
+					$join .= " LEFT JOIN (SELECT invoice_id,MAX(id) latest_id FROM {$payment_table} GROUP BY invoice_id) lp ON lp.invoice_id=i.id LEFT JOIN {$payment_table} p ON p.id=lp.latest_id";
 				}
-
-				$count_sql = "SELECT COUNT(DISTINCT i.id) FROM {$invoice_table} i {$join} WHERE {$where}";
-				$sum_sql = "SELECT COALESCE(SUM(COALESCE(i.final_total,i.product_price,0)),0) FROM {$invoice_table} i {$join} WHERE {$where}";
-				$total = (int) ($where_args ? $wpdb->get_var($wpdb->prepare($count_sql, ...$where_args)) : $wpdb->get_var($count_sql));
-				$sum = (float) ($where_args ? $wpdb->get_var($wpdb->prepare($sum_sql, ...$where_args)) : $wpdb->get_var($sum_sql));
 				$total_pages = max(1, (int) ceil($total / $limit));
 				if ($page > $total_pages) { $page = $total_pages; }
 				$offset = ($page - 1) * $limit;
@@ -37759,10 +37761,13 @@ class SN_Plugin
 				unset($r);
 
 				$tab_counts = array_fill_keys(['needs_review','manual_deposit','receipt_uploaded','online_paid','approved','rejected'], 0);
-				$count_rows = $wpdb->get_results("SELECT ({$finance_bucket}) AS finance_bucket, COUNT(*) AS invoice_count FROM {$invoice_table} i GROUP BY finance_bucket", ARRAY_A) ?: [];
+				$bucket_amounts = []; $returned_count = 0;
+				$count_rows = $wpdb->get_results("SELECT ({$finance_bucket}) AS finance_bucket, COUNT(*) AS invoice_count, COALESCE(SUM(COALESCE(i.final_total,i.product_price,0)),0) invoice_amount, SUM(CASE WHEN {$returned} THEN 1 ELSE 0 END) returned_count FROM {$invoice_table} i {$finance_ledger_join} GROUP BY finance_bucket", ARRAY_A) ?: [];
 				foreach ($count_rows as $count_row) {
 					$key = (string) ($count_row['finance_bucket'] ?? '');
 					if (array_key_exists($key, $tab_counts)) { $tab_counts[$key] = (int) $count_row['invoice_count']; }
+					$bucket_amounts[$key] = (float) $count_row['invoice_amount'];
+					$returned_count += (int) $count_row['returned_count'];
 				}
 				$tab_counts['all'] = array_sum($tab_counts);
 				$queue_total = $tab_counts['needs_review'] + $tab_counts['manual_deposit'] + $tab_counts['receipt_uploaded'];
@@ -37771,9 +37776,9 @@ class SN_Plugin
 				$kpi = $tab_counts + [
 					'count' => $total, 'filtered_count' => $total, 'queue_total' => $queue_total,
 					'amount' => $sum, 'amount_fmt' => SN_Helpers::format_price($sum),
-					'returned_to_seller' => (int) $wpdb->get_var("SELECT COUNT(*) FROM {$invoice_table} i WHERE {$returned}"),
-					'needs_amount_fmt' => SN_Helpers::format_price((float) $wpdb->get_var("SELECT COALESCE(SUM(COALESCE(i.final_total,i.product_price,0)),0) FROM {$invoice_table} i WHERE {$needs}")),
-					'approved_amount_fmt' => SN_Helpers::format_price((float) $wpdb->get_var("SELECT COALESCE(SUM(COALESCE(i.final_total,i.product_price,0)),0) FROM {$invoice_table} i WHERE {$approved}")),
+					'returned_to_seller' => $returned_count,
+					'needs_amount_fmt' => SN_Helpers::format_price(array_sum(array_intersect_key($bucket_amounts,array_flip(['needs_review','manual_deposit','receipt_uploaded'])))),
+					'approved_amount_fmt' => SN_Helpers::format_price($bucket_amounts['approved'] ?? 0),
 				];
 				SN_Helpers::send_json(true, '', ['items' => $rows, 'page' => $page, 'limit' => $limit, 'total' => $total, 'total_pages' => $total_pages, 'sort' => $sort, 'q' => $q, 'kpi' => $kpi, 'can_approve_payment' => $can_approve, 'can_reject_payment' => $can_reject]);
 			}

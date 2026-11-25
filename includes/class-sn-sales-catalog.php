@@ -90,6 +90,8 @@ final class SN_Sales_Catalog {
                 // a stage/payment amount mismatch.
                 $stage_table = $wpdb->prefix . 'sn_invoice_payment_stages';
                 if ( $this->table_exists( $stage_table ) ) {
+                    $receipt_guard = $this->table_exists($wpdb->prefix.'sn_payments')
+                        ? " AND NOT EXISTS (SELECT 1 FROM {$wpdb->prefix}sn_payments receipt WHERE receipt.invoice_id=i.id)" : '';
                     $stage_repair = $wpdb->query( "UPDATE {$stage_table} s
                         INNER JOIN {$invoice_table} i ON i.id=s.invoice_id
                             AND s.stage_no=GREATEST(1, COALESCE(i.current_payment_stage, 1))
@@ -111,6 +113,8 @@ final class SN_Sales_Catalog {
                           AND GREATEST(COALESCE(i.discount_total, 0), COALESCE(i.discount_amount, 0)) > 0
                           AND i.final_total IS NOT NULL
                           AND i.final_total > 0
+                          AND COALESCE(i.paid_total_amount,0)=0
+                          {$receipt_guard}
                           AND s.status NOT IN ('paid','approved')
                           AND ABS(s.requested_amount - LEAST(
                                 GREATEST(0, COALESCE(i.current_due_amount, i.final_total)),
