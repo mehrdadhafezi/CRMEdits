@@ -28,14 +28,14 @@ def scope(base,head,paths):
 def verify_finance_output(output,wordpress):
  product.verify_finance_output(output,wordpress,version=VERSION)
 
-def verify_hr_output(output,merge,*,runtime=None,payload_verifier=None):
+def verify_hr_output(output,merge,*,runtime=None,payload_verifier=None,version=VERSION):
  runtime=RUNTIME if runtime is None else runtime
- product.verify_hr_output(output,merge,version=VERSION,runtime=runtime,payload_verifier=payload_verifier or payload_matches_revision)
+ product.verify_hr_output(output,merge,version=version,runtime=runtime,payload_verifier=payload_verifier or payload_matches_revision)
  root=Path(output)
  for name,minimum in {'trace242-unit.json':21,'trace242-native.json':51,'trace242-security.json':30,
                       'trace242-public-security.json':24,'trace242-races.json':10,'trace242-browser.json':16}.items():
   row=completed(root,name,minimum)
-  if row.get('version')!=VERSION:raise ValueError('Wrong traceability candidate version: '+name)
+  if row.get('version')!=version:raise ValueError('Wrong traceability candidate version: '+name)
   if name=='trace242-unit.json' and row.get('payment_model_sha256')!=runtime['includes/class-sn-payment-transactions.php']:raise ValueError('Wrong payment model unit evidence')
   if name!='trace242-unit.json' and (row.get('core_sha256')!=runtime['includes/class-sn-plugin.php'] or row.get('commission_sha256')!=COMMISSION_SHA):raise ValueError('Trace evidence belongs to another runtime: '+name)
  native=json.loads((root/'trace242-native.json').read_text())
@@ -49,7 +49,7 @@ def verify_hr_output(output,merge,*,runtime=None,payload_verifier=None):
  browser=json.loads((root/'trace242-browser.json').read_text())
  if browser.get('desktop_mobile') is not True or browser.get('external_network_blocked') is not True:raise ValueError('Affected UI/escaping and retry browser proof required')
  lifecycle=completed(root,'trace242-lifecycle.json',20)
- if lifecycle.get('version')!=VERSION or lifecycle.get('baseline_shas')!={'main':BASE,'experimental':EXPERIMENTAL}:raise ValueError('Both verified tracks must be rehearsed')
+ if lifecycle.get('version')!=version or lifecycle.get('baseline_shas')!={'main':BASE,'experimental':EXPERIMENTAL}:raise ValueError('Both verified tracks must be rehearsed')
  if lifecycle.get('candidate_commit')!=merge or lifecycle.get('core_sha256')!=runtime['includes/class-sn-plugin.php'] or lifecycle.get('commission_sha256')!=COMMISSION_SHA:raise ValueError('Lifecycle evidence belongs to another candidate')
  expected=[{'track':track,'baseline':sha,'passed':True,'fresh_namespace':True,'full_restore':True}for track,sha in [('main',BASE),('experimental',EXPERIMENTAL)]]
  if lifecycle.get('profiles')!=expected:raise ValueError('Incomplete lifecycle track results')
@@ -58,7 +58,7 @@ def verify_hr_output(output,merge,*,runtime=None,payload_verifier=None):
  if lifecycle.get('code_only_business_rollback_supported') is not False:raise ValueError('Old code cannot safely continue marked cases')
  for name,minimum in {'staged243-native.json':49,'staged243-races.json':6,'staged243-browser.json':20}.items():
   row=completed(root,name,minimum)
-  if row.get('version')!=VERSION or row.get('real_provider_calls')!=0:raise ValueError('Wrong staged gateway proof: '+name)
+  if row.get('version')!=version or row.get('real_provider_calls')!=0:raise ValueError('Wrong staged gateway proof: '+name)
   if name=='staged243-native.json':
    if row.get('wordpress')!='7.1.4' or row.get('actual_public_callback')is not True or row.get('actual_seller_controller')is not True:raise ValueError('Real callback and seller controller required')
    if row.get('core_sha256')!=runtime['includes/class-sn-plugin.php'] or row.get('invoice_gateway_sha256')!=runtime['includes/class-sn-invoice.php']:raise ValueError('Wrong staged callback runtime')
@@ -73,10 +73,10 @@ def archive(members):
    info=zipfile.ZipInfo(name,(1980,1,1,0,0,0));info.create_system=3;info.external_attr=0o100644<<16;z.writestr(info,body)
  return out.getvalue()
 
-def lifecycle_inputs(output):
+def lifecycle_inputs(output,version=VERSION):
  output=Path(output);output.mkdir(parents=True,exist_ok=True);head=git('rev-parse','HEAD').decode().strip()
  profiles={}
- for name,sha,version in [('main',BASE,'2.0.242'),('experimental',EXPERIMENTAL,'2.0.235'),('candidate',head,VERSION)]:
+ for name,sha,version in [('main',BASE,'2.0.242'),('experimental',EXPERIMENTAL,'2.0.235'),('candidate',head,version)]:
   members=committed_members(Path.cwd(),sha);body=archive(members);filename='trace242-'+name+'.zip';(output/filename).write_bytes(body)
   profiles[name]={'commit':sha,'version':version,'file':filename,'sha256':hashlib.sha256(body).hexdigest(),'members':{n.split('/',1)[1]:hashlib.sha256(b).hexdigest() for n,b in members.items()}}
  (output/'inputs.json').write_text(json.dumps({'profiles':profiles},indent=2)+'\n');print('LIFECYCLE_INPUTS_VERIFIED')

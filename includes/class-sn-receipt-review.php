@@ -108,6 +108,26 @@ final class SN_Receipt_Review {
             && (float)$stage->requested_amount > 0 && !$amounts['has_pending'] && !$amounts['has_verified_gateway']
             && abs($amounts['approved'] - (float)$stage->requested_amount) < 0.005;
     }
+    /** Recover only a provable full-stage capacity reduced to its unpaid balance. */
+    private function reconcile_full_stage_capacity(object $invoice, object $stage, object $payment, int $revision): void {
+        global $wpdb;
+        if ((int)$stage->stage_no !== 1 || (string)$invoice->payment_plan !== 'full'
+            || !in_array((string)$stage->status,['pending_financial_approval','receipt_uploaded'],true)) { return; }
+        $amounts=self::stage_amounts((int)$invoice->id,1);
+        $approved=(float)$amounts['approved'];$capacity=(float)$stage->requested_amount;
+        $total=(float)($this->policy['totals'])($invoice)['total'];
+        $count=$wpdb->get_var($wpdb->prepare("SELECT COUNT(*) FROM {$wpdb->prefix}sn_invoice_payment_stages WHERE invoice_id=%d",$invoice->id));
+        if ($wpdb->last_error) { $this->fail('بررسی سقف مرحله انجام نشد.'); }
+        if ((int)$count!==1 || $approved<=0.004 || $capacity<=0.004 || $amounts['has_verified_gateway']
+            || abs((float)$invoice->paid_total_amount-$approved)>0.004
+            || abs((float)$invoice->current_due_amount-$capacity)>0.004
+            || abs($total-$approved-$capacity)>0.004
+            || $approved+(float)$amounts['pending']>$total+0.004) { return; }
+        $this->must($wpdb->update($wpdb->prefix.'sn_invoice_payment_stages',['requested_amount'=>$total,'updated_at'=>current_time('mysql')],['id'=>(int)$stage->id]));
+        $this->event($invoice,$payment,'stage_capacity_reconciled','بازگردانی سقف پرداخت کامل از مانده به مبلغ کل مرحله',
+            ['stage_requested_amount'=>$capacity],['stage_requested_amount'=>$total],$revision);
+        $stage->requested_amount=$total;
+    }
     private function finalize_saved_decision(int $id, int $stage_no): array {
         global $wpdb;
         try {
@@ -209,6 +229,7 @@ final class SN_Receipt_Review {
                     $gateway_error=SN_Payment_Gateway_Guard::manual_approval_error($id,$stage_no,(string)$invoice->invoice_code);
                     if($gateway_error!=='')$this->fail($gateway_error);
                 } elseif($reason==='')$this->fail('دلیل رد همین واریز الزامی است.');
+                $this->reconcile_full_stage_capacity($invoice,$stage,$payment,$revision);
                 $meta['reviewer_id']=$uid;$meta['reviewed_at']=current_time('mysql');$meta['reason']=$reason;
                 $changes['status']=$op==='approve'?'approved':'rejected';
             } elseif($op==='correct') {

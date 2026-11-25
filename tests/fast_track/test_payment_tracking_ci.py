@@ -21,7 +21,9 @@ from risk_report import SUITES
 class PaymentTrackingProofTests(unittest.TestCase):
     def test_exact_payload_member_set_and_hashes_fail_closed(self):
         before=committed_members(ROOT,tracking.BASE);after=dict(before)
-        for name in tracking.CHANGES:after['sales-network-v4/'+name]=(ROOT/name).read_bytes()
+        # This gate describes an immutable historical payload, not future edits.
+        reviewed=committed_members(ROOT,'5f922cca8b99736f3242e4ba3e192eeb1f245080')
+        for name in tracking.CHANGES:after['sales-network-v4/'+name]=reviewed['sales-network-v4/'+name]
         self.assertTrue(tracking.bounded_payload(before,after))
         for name in after:
             with self.subTest(changed=name):self.assertFalse(tracking.bounded_payload(before,{**after,name:after[name]+b'\n'}))

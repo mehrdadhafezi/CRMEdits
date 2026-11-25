@@ -17,7 +17,7 @@ module.exports=async function({base,fixture,output,channel}){
   const admin=await context(fixture.admin);const ap=await page(admin.c);await ap.goto(base+'/wp-admin/admin.php?page=sn-settings',{waitUntil:'domcontentloaded'});
   // Compare equivalent, initialized admin requests: legacy admin_init installs
   // missing baseline roles/caps even without a settings save.
-  let before=await state(admin.c);ok(before.version==='2.0.243'&&before.max_input_vars===1000,'actual PHP CGI enforces max_input_vars=1000');
+  let before=await state(admin.c);ok(before.version==='2.0.244'&&before.max_input_vars===1000,'actual PHP CGI enforces max_input_vars=1000');
   const fields=[];for(let i=0;i<1100;i++)fields.push(['sn_padding_'+i,'synthetic']);fields.push(['action','sn_save_settings'],['nonce',admin.n.sn_admin]);
   let truncated;
   try{truncated=await ap.evaluate(async body=>(await fetch('/wp-admin/admin-ajax.php',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/x-www-form-urlencoded'},signal:AbortSignal.timeout(15000),body})).status,new URLSearchParams(fields).toString());}
@@ -87,6 +87,6 @@ module.exports=async function({base,fixture,output,channel}){
   fs.writeFileSync(path.join(output,'product241-browser-errors.json'),JSON.stringify({errors},null,2));
   if(errors.length)console.log('BROWSER_ERROR_META '+JSON.stringify(errors));
   ok(errors.length===0,'no uncaught browser JavaScript errors');
-  const result={passed:true,version:'2.0.243',assertions:checks,actual_wordpress_cookie:true,actual_admin_http:true,actual_woocommerce_product_save:true,legacy_400_reproduced:true,json_large_form_passed:true,desktop_mobile:true,synthetic:true,production_touched:false,real_sms_sent:false};fs.writeFileSync(path.join(output,'product241-browser.json'),JSON.stringify(result,null,2));console.log('TOTAL '+checks);
+  const result={passed:true,version:'2.0.244',assertions:checks,actual_wordpress_cookie:true,actual_admin_http:true,actual_woocommerce_product_save:true,legacy_400_reproduced:true,json_large_form_passed:true,desktop_mobile:true,synthetic:true,production_touched:false,real_sms_sent:false};fs.writeFileSync(path.join(output,'product241-browser.json'),JSON.stringify(result,null,2));console.log('TOTAL '+checks);
  }finally{await browser.close();}
 };

@@ -1,0 +1,601 @@
+{
+  "base": "5f922cca8b99736f3242e4ba3e192eeb1f245080",
+  "version": "2.0.244",
+  "runtime": [
+    {
+      "path": "sales-network.php",
+      "sha256": "8728c957287536cc80db0209fca9bab54f64ec952e2311216dcbc642405c1ad0"
+    },
+    {
+      "path": "assets/css/admin.css",
+      "sha256": "74d74516d3047c4b0155611b12b97a266addea89bce524042a3e9eacd923f626"
+    },
+    {
+      "path": "assets/css/campaign-analytics.css",
+      "sha256": "edf1d79730d3dfc591d8d2bd92d12e10988cfbb092b9ee3015b86e501c4dc686"
+    },
+    {
+      "path": "assets/css/customer-portal.css",
+      "sha256": "963f00783b1a64f787f3ff6e4295b65d37f7d0d0a01384c869f8225474646350"
+    },
+    {
+      "path": "assets/css/dot-flow.css",
+      "sha256": "5cd3d31b1ef22fec0e64fe7731dd8ca99badf34d73140787703436238afc916c"
+    },
+    {
+      "path": "assets/css/dot-marketing.css",
+      "sha256": "7173822c804e3178696203ded55aec01da4ee5acf0fdce085f042bddb5dd03db"
+    },
+    {
+      "path": "assets/css/dot-test-sms.css",
+      "sha256": "999d15a7b7d30f167dbb15986f7c41df72b569da26d83d64d70a3505a25df66f"
+    },
+    {
+      "path": "assets/css/hr-front.css",
+      "sha256": "127f89e74266033e37b04b3f3278315c87c229d03254ca7c3325f62e512103f9"
+    },
+    {
+      "path": "assets/css/hr-invoice-reissue.css",
+      "sha256": "478e472cee6117bd3335b240ead011067e61dd475040584a8798253e3a7738da"
+    },
+    {
+      "path": "assets/css/hr-transfer.css",
+      "sha256": "085610a7f054b0ca8d255ff5780bc6db20d2eeb46db3abf48d92cba806af941a"
+    },
+    {
+      "path": "assets/css/hr-workforce-filters.css",
+      "sha256": "59dd69d4467b803237bcf2d34bd2459d449557b0a3bd0f323fd4b11dab1b3d02"
+    },
+    {
+      "path": "assets/css/invoice-review.css",
+      "sha256": "ddb75db1b5af7c55dd1a6ed911329564113c8d512b796129c1403c5c055b2d3a"
+    },
+    {
+      "path": "assets/css/mis-portal.css",
+      "sha256": "78afc60f0fbb4835fcc320e663d5c9a59cecd975a4e3eadabd0123ff9a9b2c88"
+    },
+    {
+      "path": "assets/css/operations-flow.css",
+      "sha256": "3e1ea8f44e8e0ba5c5ee011c0aa152a6fb07164ea591e43f62a1c868acba755e"
+    },
+    {
+      "path": "assets/css/panel-access.css",
+      "sha256": "9c317caa6f9e338f687d5e16664d0c00c04fd0d3fd4435fc81d61331b21ff3b2"
+    },
+    {
+      "path": "assets/css/patra-console.css",
+      "sha256": "8a95a7d7476e6c2d47786b84f562483bb040ae2508c5b0dd03ad61addf6e61cf"
+    },
+    {
+      "path": "assets/css/payment-batch.css",
+      "sha256": "08d4057372bb28a3da781e8df1a01f4f187d1bff6a3ad33ce948bda2b3e88f91"
+    },
+    {
+      "path": "assets/css/projects.css",
+      "sha256": "f7d59887f7f6581d7d9907668cee6f1592373c20e0be4fab022cc94790b1dda9"
+    },
+    {
+      "path": "assets/css/public-performance.css",
+      "sha256": "0c666f6166680c6756878d16b05db88e99a685be48a80933475470b266c610fa"
+    },
+    {
+      "path": "assets/css/public.css",
+      "sha256": "f073d5f08a1292bd00a1667dfcd3249dd87ed0d2d23a46e80614a3e420186546"
+    },
+    {
+      "path": "assets/css/sales-catalog.css",
+      "sha256": "e2c0d57e4ddb7f4bf30569aee6929d4ee9a318854466a27a8b024df8da8f1069"
+    },
+    {
+      "path": "assets/css/support-console.css",
+      "sha256": "35d4d6972ef4e4ce106a33e1d620b4cf63c43ad24a8623b0c6a5b56f00a2abac"
+    },
+    {
+      "path": "assets/fonts/patra-vazirmatn-OFL.txt",
+      "sha256": "17e355067c8284f47743a1ee3b1ef7ff684ff0601eda357f9353b10b3016ab31"
+    },
+    {
+      "path": "assets/fonts/patra-vazirmatn.woff2",
+      "sha256": "4e3fa217d38fdafc1fea4414ceb58ca5e662cf0ab5fa735a8c8c20e8b42cad92"
+    },
+    {
+      "path": "assets/js/admin.js",
+      "sha256": "c369eb2580dccc6b996adbbe57882a9bda4f02d6fe1298849e36fee6893e8d8a"
+    },
+    {
+      "path": "assets/js/campaign-tracking.js",
+      "sha256": "3c6415b83c531e90ad681a9a5b26a5a5499a3419cd4324b1173422f2bb03db0a"
+    },
+    {
+      "path": "assets/js/customer-portal.js",
+      "sha256": "3c5342fe68f430db1b59655482eea9b2c50541b1bf151931fdbed9312111b24b"
+    },
+    {
+      "path": "assets/js/hr-invoice-reissue.js",
+      "sha256": "72457535ef370ea1d3395dad9188ce5625186ae31f0c4ff72de672780a090b98"
+    },
+    {
+      "path": "assets/js/hr-transfer.js",
+      "sha256": "4c7fb2d55a6b0e23a04b76e8208e97d347012973ecd815b985de4a5d38cc4d37"
+    },
+    {
+      "path": "assets/js/hr-workforce-filters.js",
+      "sha256": "b5ec3bf40eb19e778d8e0caea2ccb5301a086293b47740942f3bd74ace7a885b"
+    },
+    {
+      "path": "assets/js/invoice-review.js",
+      "sha256": "179201350d01510575cdf01acdd04689b3026d1f20e8a34b15043b9be0f1793c"
+    },
+    {
+      "path": "assets/js/mis-classic.js",
+      "sha256": "8544f8595e13d89c4a225b8596111601824c093aa4c3ca24f3c0a1f0cc438247"
+    },
+    {
+      "path": "assets/js/mis-portal.js",
+      "sha256": "95cf67e5ed268a9ac8184fd939f72c048c6bc2e24c315d15bb5286bbb37b4fcd"
+    },
+    {
+      "path": "assets/js/operations-flow.js",
+      "sha256": "3ea334141201a3e3f586271115748c21191a4390c230704abc45fa882f6a621d"
+    },
+    {
+      "path": "assets/js/patra-console.js",
+      "sha256": "cb9081140db748cc763149d825fc7758a41e5130bc65c8430382f46a053dbc1e"
+    },
+    {
+      "path": "assets/js/payment-batch.js",
+      "sha256": "88671cca108d0d987050778edf6148f7b83c33fe0fb0cd8811850802a0804227"
+    },
+    {
+      "path": "assets/js/payment-transactions.js",
+      "sha256": "921c92b6cccfbc449aca58fcbfc547b26bf498b37940f3caa3eb289ebafb48c2"
+    },
+    {
+      "path": "assets/js/plus-invoice-editor.js",
+      "sha256": "5957c08ea50c53b12bbb0184a5635b725b03eeedfe37140934cddaad1fb18306"
+    },
+    {
+      "path": "assets/js/product-card-sync.js",
+      "sha256": "88a24b62d7dcf9c500c95ad79e5965566f42cbcc2e69d9b60632e7eccdff0c8b"
+    },
+    {
+      "path": "assets/js/product-invoice-sms.js",
+      "sha256": "54dce8a63175ad899c2f287a18dae9fc0ed7a8b59142a57a0e3cb384fb652242"
+    },
+    {
+      "path": "assets/js/public-auth.js",
+      "sha256": "7653dbd6ffd77bb3964c578c88ecb4b67436d4287bbf7dfc9a60b09c880ca2bd"
+    },
+    {
+      "path": "assets/js/public-converter.js",
+      "sha256": "43ebbef64bc5d1bb5cab89b051da7311215823a4b592e56e5c951a050026c3fb"
+    },
+    {
+      "path": "assets/js/public-dot-marketing.js",
+      "sha256": "c55766b1f2b2ac882c9d4a93504eb099f5c8c9c514bc6d384fc2b949fb1618d0"
+    },
+    {
+      "path": "assets/js/public-dot-test-sms-1.0.160.js",
+      "sha256": "00902dc0df0ac0a55bd3a9ff2f0ef3dee8aa7ff825223301b0020b6c424f2fbf"
+    },
+    {
+      "path": "assets/js/public-dot.js",
+      "sha256": "f9598d0ca923f758e7f53482adddcdac8889b6bdfc7a825f31a362e7af3df9c7"
+    },
+    {
+      "path": "assets/js/public-invoice.js",
+      "sha256": "085494ab7c5011865d78474a7946d90f41d6d883c3507c3279432612b3d92763"
+    },
+    {
+      "path": "assets/js/public-manager.js",
+      "sha256": "f90f447319dd7ff481d354e1f88a5c4327a7aaea2ef9d7e3cb002bddc4255b0e"
+    },
+    {
+      "path": "assets/js/public-projects.js",
+      "sha256": "c5ed21485846aa72476c2654acbbbfbe8f922302835a7d9e69f6579dd05b011e"
+    },
+    {
+      "path": "assets/js/public-seller.js",
+      "sha256": "bb7014a7ef0717c0c6db020b0c5becf2eae0d28696da83a21d3733e582a1b0da"
+    },
+    {
+      "path": "assets/js/public-shell.js",
+      "sha256": "acebd84e630e5a9cf16b9fd8814977c2f0a230a38cd556edb362c9ce410d1cdb"
+    },
+    {
+      "path": "assets/js/public-supervisor.js",
+      "sha256": "735e377469ae60037b44157ccc2f009d9d3fb2753aa9d5092a095772675d703f"
+    },
+    {
+      "path": "assets/js/public.js",
+      "sha256": "1e87bf0288326b65a5b16654d3f3fdd8f2693fc85c72ddefbeff750f1b4258a5"
+    },
+    {
+      "path": "assets/js/receipt-review.js",
+      "sha256": "02bf75aebb0978c30ebdaa2b5d4c37fb943f31b1d038ac30cb9cf693f3908135"
+    },
+    {
+      "path": "assets/js/sales-catalog-admin.js",
+      "sha256": "930335604b0d1caa05be815b01bf34f2ef9262738ee73d2d65d814647ac43dbc"
+    },
+    {
+      "path": "assets/js/sales-catalog-staff.js",
+      "sha256": "3c4136b820f0e9fcdf2aac2032a788e17e3187bb919c21273b03e39537f7f0d5"
+    },
+    {
+      "path": "assets/js/subscription-plus.js",
+      "sha256": "f51a4deb85651f64df3d7ec80eb12c9c33b1ac819488f91e52eba748a9421f38"
+    },
+    {
+      "path": "assets/js/support-console.js",
+      "sha256": "08a715c48a378dff4542dcfff2fd7c3b583d8ebbb4d5450132395ce416d8e5f3"
+    },
+    {
+      "path": "assets/js/unified-invoice-payments.js",
+      "sha256": "115349659cf45c2260c2862654ad47508490d9b7e0e09dfd5e4136c1f0dd7f03"
+    },
+    {
+      "path": "includes/class-sn-activator.php",
+      "sha256": "3045c5165df10d928c9cf1f838cd5d852f8874e4530b352b1b619a9e9ccc942e"
+    },
+    {
+      "path": "includes/class-sn-biavin-api.php",
+      "sha256": "e0e3561c46d5a8025b5e4e9b701bdddab06b63da87490356a04546225913d6ba"
+    },
+    {
+      "path": "includes/class-sn-bulk-order-export.php",
+      "sha256": "96543a47367106543c8a5516b4206878df5117522a15f7ef2535c0a0a94af1d8"
+    },
+    {
+      "path": "includes/class-sn-campaign-tracking.php",
+      "sha256": "85d23331ff35f1d36b7c2e30c6def3e6ec24b775e0925c4c5696cdee07e89b29"
+    },
+    {
+      "path": "includes/class-sn-conversion-cash-credit.php",
+      "sha256": "259edc0613f8726b03359cd71f0898a226137e66a0f068bbfd7d950f6132e32c"
+    },
+    {
+      "path": "includes/class-sn-customer-portal.php",
+      "sha256": "ffcd9136a5c47f79e35875de43c690cd12cadfa35dbe1e4cc3793811b75d0465"
+    },
+    {
+      "path": "includes/class-sn-dot-flow.php",
+      "sha256": "13b7562a05a8d9e991d0b2f54f1746cf5c1d4c8948717d7420760060c5359eea"
+    },
+    {
+      "path": "includes/class-sn-helpers.php",
+      "sha256": "417d1cd4a182c5010aa8bc0505b8c993810a55fd56920fcc51b8395039864ba3"
+    },
+    {
+      "path": "includes/class-sn-hierarchy-service.php",
+      "sha256": "8ade11e657b3ba160086df870002fa463a3070928da69d06040c9dd0681bf9df"
+    },
+    {
+      "path": "includes/class-sn-hr-front-panel.php",
+      "sha256": "d582359f022c3b631944a56f8b1f5e7484614e1e92aa89241203761a9b7d3ed9"
+    },
+    {
+      "path": "includes/class-sn-hr-invoice-reissue.php",
+      "sha256": "1ad645e71cfdaeb63fb9bb81d12646515d2ee626b947099930f88ba7dfb683d8"
+    },
+    {
+      "path": "includes/class-sn-hr-service.php",
+      "sha256": "f75c76c397ffb8a71e7d465fbdf9bc9a917545592315e3d47e555ceaf2df40dc"
+    },
+    {
+      "path": "includes/class-sn-hr-transfer.php",
+      "sha256": "121cf728041df2bfef9c3b9c176394008e62a6eba4bc43c367708c176fd6d2b1"
+    },
+    {
+      "path": "includes/class-sn-hr-workforce-filters.php",
+      "sha256": "97017936813ffa2a4521c591ebe17ccc84e4393f84190f5c7614b3196c38ee49"
+    },
+    {
+      "path": "includes/class-sn-invoice-edit-quote.php",
+      "sha256": "da0cedf04103d3b42360c8d2f8eef5b07ac873c277021e43f9ca55bc525459ec"
+    },
+    {
+      "path": "includes/class-sn-invoice-review.php",
+      "sha256": "50fa86deb0823c59a48931a19cb9cc66f604e3b8c18f58db8542c9e8bb046554"
+    },
+    {
+      "path": "includes/class-sn-invoice-sms-policy.php",
+      "sha256": "0e552470d00307bf26aca99152d5a782cab54928d7f62b72a6b791d85c83ac23"
+    },
+    {
+      "path": "includes/class-sn-invoice.php",
+      "sha256": "7029659ba2f1172433d5e373a56d6892af1a81d12ac08c7d29ee03380c4ec261"
+    },
+    {
+      "path": "includes/class-sn-migration-service.php",
+      "sha256": "4875fbcf2171303ea2a43371a108065b8a8cdf8182501e1036542ca05eef4953"
+    },
+    {
+      "path": "includes/class-sn-mis-feedback.php",
+      "sha256": "862e348d8e1dceccb243188d255bf80af0160f7bfa0f1d6b49e2d048bb251760"
+    },
+    {
+      "path": "includes/class-sn-mis-http.php",
+      "sha256": "9dd1b7abc11d0d9566abd7339c7dc4ecbfac794187fc5b7b3a3522418fa5c2cf"
+    },
+    {
+      "path": "includes/class-sn-mis-import-log.php",
+      "sha256": "d88fc8768856a58328d1dca47269a3a5264f2ab23499fe2b2f35b59e12f66eea"
+    },
+    {
+      "path": "includes/class-sn-mis-jobs.php",
+      "sha256": "cda948fd0f9d96ebb24e70877f143bb55c927263176b695d30f919af07244d6a"
+    },
+    {
+      "path": "includes/class-sn-mis-read-model.php",
+      "sha256": "2c717e3800a4cb68852c55fb65d1e7d6fc4acbe88abd717744ea582e62e4a6d5"
+    },
+    {
+      "path": "includes/class-sn-mis-service.php",
+      "sha256": "5f9829277aba7e97253a9bb8b112da4633337bc5ab61b2acf2038f208ca16f87"
+    },
+    {
+      "path": "includes/class-sn-mis-setup.php",
+      "sha256": "85e0275a9f679d9d939f77e91f7f81f79bcac8c94a4d7bdc6d626beb0afc79e1"
+    },
+    {
+      "path": "includes/class-sn-mis-xlsx.php",
+      "sha256": "f4d3c69f25e4ad879ad27033e2b1bc1505d2f3dc3e2bb46b53dd4ba55f690478"
+    },
+    {
+      "path": "includes/class-sn-operations-execution.php",
+      "sha256": "f5cf666e56a27706c084b2d8e7f83210759840fcab52347bfd3d4fb561db81bd"
+    },
+    {
+      "path": "includes/class-sn-operations-flow.php",
+      "sha256": "2869765a303ab50221691a47e50cdf80290b0ea7729641bf603714897203fed7"
+    },
+    {
+      "path": "includes/class-sn-patra-plus-api.php",
+      "sha256": "618b60e923902d253bdaf9b5d2c490c29c4c13f6f11056ac017163102b511e8a"
+    },
+    {
+      "path": "includes/class-sn-patra-plus-records.php",
+      "sha256": "cf406df15af2abd35c6cd12e0bb78fdc8b3148633f4c31ad33832495b9acc362"
+    },
+    {
+      "path": "includes/class-sn-payment-batch.php",
+      "sha256": "b34029ada69c0940c15eeebf2bfd4b5a3f20e8159f186b428090ea28176c131a"
+    },
+    {
+      "path": "includes/class-sn-payment-gateway-guard.php",
+      "sha256": "a7f3bda3b2b10f03e80e499450113280a31c18719300a4e981f40efd96cf2ae4"
+    },
+    {
+      "path": "includes/class-sn-payment-management-state.php",
+      "sha256": "548b70c1168b685b43be102a494f69059977d3c8734c1e10d5cb2258e3f66ae8"
+    },
+    {
+      "path": "includes/class-sn-payment-tracking.php",
+      "sha256": "a61e68f1141297a01a01d2eaba4fe1ed26ecbaad5428a96d40c9b9f668b72908"
+    },
+    {
+      "path": "includes/class-sn-payment-transactions.php",
+      "sha256": "6a793e92e96f570d646868f7ad8c3124b3c5539ae4b8a40813ce2ba1f7fa7e8b"
+    },
+    {
+      "path": "includes/class-sn-plugin.php",
+      "sha256": "700132a7f96012e06e618e9888703f5bf50631dbf4fad389aa76d403bf28f059"
+    },
+    {
+      "path": "includes/class-sn-plus-api-contract.php",
+      "sha256": "4524af729d9a9292330c76134e7c2243eb1dde511858946160bb92fb073155f3"
+    },
+    {
+      "path": "includes/class-sn-plus-api.php",
+      "sha256": "35adafb720142bdf2e5fd0b88a09e7a8083cef61c1cca5981097a1636ebd4613"
+    },
+    {
+      "path": "includes/class-sn-plus-invoice-editor.php",
+      "sha256": "16896e845c913ffa4d67ae251d4e448abf48c9f117fb7ce4a1d6ba46d116d3d6"
+    },
+    {
+      "path": "includes/class-sn-product-card-sync.php",
+      "sha256": "fd34e77193f2455fca3b4f0341c07f63aeb71ef98f64a6187e76ca197170a6a5"
+    },
+    {
+      "path": "includes/class-sn-product-flow.php",
+      "sha256": "2d7def827b4ffd14105ee6fd74b90b7f7953f13144ca0516072be37fe5cd54f7"
+    },
+    {
+      "path": "includes/class-sn-projects.php",
+      "sha256": "c267e78e4c7b6fa12bfb60a6385d7068e24be879933d6296d7dc061971fc0321"
+    },
+    {
+      "path": "includes/class-sn-purpose-commission.php",
+      "sha256": "b01f64d9b63b54de9e3e934e347fef5f24b81ed402a2bb752655541c6d6e807e"
+    },
+    {
+      "path": "includes/class-sn-receipt-review.php",
+      "sha256": "5794ea02ec107f876f79bc49d308ebc2b6aff27286d7191d40ead5ec6c01ffbe"
+    },
+    {
+      "path": "includes/class-sn-sales-catalog.php",
+      "sha256": "a724bcf9f3f6d8a381838b4e7fa32c75ff24666fb8eef1270f8a627304ede2d7"
+    },
+    {
+      "path": "includes/class-sn-scope-service.php",
+      "sha256": "f5ae819b264a279d953eaaac5cc0dd84ae5fae666219af529244d3298cb4ca97"
+    },
+    {
+      "path": "includes/class-sn-seller-flow.php",
+      "sha256": "a96fa05e6886f2142dc2bb5a089c6466870c3580fd46ad4055291a1625eab981"
+    },
+    {
+      "path": "includes/class-sn-sms.php",
+      "sha256": "352ed558860492e4002fcb1297723997de92d7e9e2e406456b4eede7d9474923"
+    },
+    {
+      "path": "includes/class-sn-subscription-form.php",
+      "sha256": "1099229b08d83b3d8329cdc1205a7b7694fa6da51df4e2e871612dd7f0d3e037"
+    },
+    {
+      "path": "includes/class-sn-subscription-plus.php",
+      "sha256": "8c99bf5d7eb908f2dfe7d46504aea1da281019ff5e87b20afa2ef054b9859b23"
+    },
+    {
+      "path": "includes/class-sn-support-console.php",
+      "sha256": "c9a1868d7ff961b4ba0b24a35c9dd02be24aec5e54f318917b5f7300f8862439"
+    },
+    {
+      "path": "includes/class-sn-upgrade-importer.php",
+      "sha256": "220fc9a2a594fb23297150dd8a792b7543c4a9e206c8edfa9ae05497980069c4"
+    },
+    {
+      "path": "includes/reports/class-sn-invoice-financial-report.php",
+      "sha256": "bb5c188a5541a277e185ee590da6235c60eca23ac941c73c651731bc43ff2085"
+    },
+    {
+      "path": "includes/reports/class-sn-report-executive.php",
+      "sha256": "785898ad8f2f51fa2b8d97a24710e58265467fbd5491d1ce1951449269f221e1"
+    },
+    {
+      "path": "includes/reports/class-sn-report-service.php",
+      "sha256": "dbb7383dbcef82701348e85747861d6fabf6a53533944c7b95e76a77e20fbdbd"
+    },
+    {
+      "path": "includes/trait-sn-dot-invoice-ledger.php",
+      "sha256": "d333b7162e444730f58a10372c09e5d35d224cf1792d0438e1cc38d39c745c3e"
+    },
+    {
+      "path": "includes/trait-sn-mis-classic.php",
+      "sha256": "afe04517029431b379bac46da84c685609205090594ebe44c773cd065c230f40"
+    },
+    {
+      "path": "includes/trait-sn-mis-experience.php",
+      "sha256": "54a9f2033a616b942bcd10c1bbf2c71bf1b578c11cd374173018e472c10dfa6d"
+    },
+    {
+      "path": "includes/trait-sn-mis-extras.php",
+      "sha256": "bad91d2e52b7a147ba4b443c7c545125af6a11962d02dddc9d7146c7b47328b7"
+    },
+    {
+      "path": "includes/trait-sn-mis-management.php",
+      "sha256": "3ed6ec841f9ae30b13807534b9d69cf40ba90b7a5959891339f63e3a477e77a0"
+    },
+    {
+      "path": "includes/trait-sn-mis-portal.php",
+      "sha256": "b7c041de8db2208c9a6876b1b75fcdcca6cde7d09356e319648bb40407071c81"
+    },
+    {
+      "path": "includes/trait-sn-mis-transport.php",
+      "sha256": "488e6158ebc00c3f849f247bfbbabdc23efc6463b78e9dbe77642b89b008faeb"
+    },
+    {
+      "path": "includes/trait-sn-mis-user-tools.php",
+      "sha256": "89c6561ea37b485e90764d6bfed893961646b5c2bd6b75cb851577f9e46d94d1"
+    },
+    {
+      "path": "includes/trait-sn-sales-branches.php",
+      "sha256": "27c8139b8035b6140fc5aa40376eff0ebfdf4f74795d22bb5fa1fdcea3361bab"
+    },
+    {
+      "path": "templates/admin-patra-console.php",
+      "sha256": "19a2bf0d837f547d26f0618a9fd96be0603698372f6becab9f7bc1c811be819a"
+    },
+    {
+      "path": "templates/mis-portal.php",
+      "sha256": "50d0c28e4a9fe9517d140aac38436bd66080505c7df35c8b72754b0924e7e23a"
+    }
+  ],
+  "runtime_changes": {
+    "sales-network.php": "8728c957287536cc80db0209fca9bab54f64ec952e2311216dcbc642405c1ad0",
+    "assets/js/receipt-review.js": "02bf75aebb0978c30ebdaa2b5d4c37fb943f31b1d038ac30cb9cf693f3908135",
+    "includes/class-sn-plugin.php": "700132a7f96012e06e618e9888703f5bf50631dbf4fad389aa76d403bf28f059",
+    "includes/class-sn-receipt-review.php": "5794ea02ec107f876f79bc49d308ebc2b6aff27286d7191d40ead5ec6c01ffbe",
+    "includes/class-sn-sales-catalog.php": "a724bcf9f3f6d8a381838b4e7fa32c75ff24666fb8eef1270f8a627304ede2d7"
+  },
+  "changed_paths": [
+    "assets/js/receipt-review.js",
+    "docs/modules/PAYMENTS_FINANCE.md",
+    "docs/tasks/FINANCE_REVIEW_HOTFIX.md",
+    "includes/class-sn-plugin.php",
+    "includes/class-sn-receipt-review.php",
+    "includes/class-sn-sales-catalog.php",
+    "sales-network.php",
+    "scripts/fast_track_ci.py",
+    "scripts/finance_review_ci.py",
+    "scripts/finance_review_profile.json",
+    "scripts/payment_tracking_ci.py",
+    "scripts/test-hr-integration.sh",
+    "scripts/test-invoice-reporting.sh",
+    "scripts/test-payment-tracking.sh",
+    "scripts/test-prepayment-edit.sh",
+    "scripts/traceability_ci.py",
+    "tests/fast_track/test_finance_review_ci.py",
+    "tests/fast_track/test_payment_tracking_ci.py",
+    "tests/hr/browser.cjs",
+    "tests/hr/ci-code-state.php",
+    "tests/hr/ci-mis-bootstrap.php",
+    "tests/hr/native-support.php",
+    "tests/payments/catalog-capacity-native.php",
+    "tests/payments/finance-capacity-ci-browser.cjs",
+    "tests/payments/finance-capacity-native.php",
+    "tests/payments/finance-capacity-ui.cjs",
+    "tests/payments/finance-query-native.php",
+    "tests/payments/gateway-manual-browser.cjs",
+    "tests/payments/gateway-manual-native.php",
+    "tests/payments/gateway-manual-race.php",
+    "tests/payments/gateway-manual-races.py",
+    "tests/payments/integration/verify.php",
+    "tests/payments/staged-gateway-races.py",
+    "tests/payments/staged-gateway-ui.cjs",
+    "tests/payments/traceability-ci-browser.cjs",
+    "tests/payments/traceability-lifecycle.php",
+    "tests/payments/traceability-lifecycle.py",
+    "tests/payments/traceability-processes.py",
+    "tests/payments/traceability-public-security.php",
+    "tests/payments/traceability-security.php",
+    "tests/products/ci-browser.cjs",
+    "tests/products/native-product-settings.php",
+    "tests/products/product-settings-browser.cjs",
+    "tests/products/product-sms-race.php",
+    "tests/products/product-sms-races.py"
+  ],
+  "validation_files": {
+    "docs/modules/PAYMENTS_FINANCE.md": "900a8211ae391a6627a2bd1e327d9da4fcdf524154bd3efcf85ac938c7247ed3",
+    "docs/tasks/FINANCE_REVIEW_HOTFIX.md": "a2297449bc8445d6fb5f58550e30f2db201aacdc4cb7d7e9ba62c6ec2f22315d",
+    "scripts/fast_track_ci.py": "acfd21179688ca6c387ea3e5257baab2e010935a8498184d79e97bb9fc87e18e",
+    "scripts/finance_review_ci.py": "17d0032655fe7ccbf978c86c835b8d4035cdf1501302e1db0e443294bc7a9bbb",
+    "scripts/payment_tracking_ci.py": "dadc3cc0b03e8091cc968a8d22b3227d974d8b968becf0e5e5a192115c835f13",
+    "scripts/test-hr-integration.sh": "328b7f1136a8744fc5db21408faf14f561252af9540cb874eb9ae82d07946e9a",
+    "scripts/test-invoice-reporting.sh": "3314455b0dc448268b8085481dc2542a47075ceb4c193f90e205657f49786370",
+    "scripts/test-payment-tracking.sh": "9cdf6c37d8d59246644cea1c5495531b70a8854ec2509f21ea70f83cd1a82d89",
+    "scripts/test-prepayment-edit.sh": "595465519563ff146c5fbd90653913f8cf5a50f841f5f6e1f945f93af63859fa",
+    "scripts/traceability_ci.py": "4622916e6a9d79012b46506ad6d7843bbfe92d48e9dd6562e08878493bf21b46",
+    "tests/fast_track/test_finance_review_ci.py": "62cdc8e85aa8a6576082cc87ebb725b9836d4dc6dea120d608ab00ae34bd943b",
+    "tests/fast_track/test_payment_tracking_ci.py": "a10f661af599e89ccdbf7ecf026fefc38af2f7a2633285e303af943c3321c7f0",
+    "tests/hr/browser.cjs": "03380f7122cf1f85920f277e6bc56260a88c161f33850e9c008c5a93178ea4f7",
+    "tests/hr/ci-code-state.php": "7887c2630f5ae88267136ea89ae3b57d233237bc3a2b30b724124127e2563846",
+    "tests/hr/ci-mis-bootstrap.php": "12b0f8d70e3ade6156f2ac34fbabfba16bf9d0858072879d9ed1244f4e866f22",
+    "tests/hr/native-support.php": "65797e40dfa465c0a51ba432a09f2dd7720d745a5aec60c8fff526d64e08a344",
+    "tests/payments/catalog-capacity-native.php": "be6939ff6730667051136becc786b387d5d688815d0badfe468a6128f0a3ad56",
+    "tests/payments/finance-capacity-ci-browser.cjs": "08e34f1a235179d423dde79b20d6b9ab71d8b5128ef5c4774030d9cc16e4f77d",
+    "tests/payments/finance-capacity-native.php": "f3c3991dcbcb6f2733ecd3559b0a67fde83a3adebbc5b9a32c8e286c18aaca1e",
+    "tests/payments/finance-capacity-ui.cjs": "35cefbf444e7df8a09ec1f4581cf63cbe0ed6340426202b7aeb2d9517f3b6d32",
+    "tests/payments/finance-query-native.php": "974865ffee224a4326cc5cd48f13816e27746009ae8cb4e97006ee72fe2777ab",
+    "tests/payments/gateway-manual-browser.cjs": "d6032143a36523f161bcfe0b87890b809f5586d66d4252c65aecac814c369092",
+    "tests/payments/gateway-manual-native.php": "6d1ef9e46096bbf289192975d26246f0326c69438ebc59bacbfa6a71763cbcb9",
+    "tests/payments/gateway-manual-race.php": "52eef312902ba384ea7903cf5e30d167d1dd24c3630f65a6f359aee1f3b3d9cb",
+    "tests/payments/gateway-manual-races.py": "7e4bd72ab7d2c0a8c3f98a8663b97fbb9e62ebb109b9a4ae65b47d0e9e0bbf8b",
+    "tests/payments/integration/verify.php": "f1ee989c0077dbc5b0440898022e876eec5fe3ab6f9642e3f4aff51e925479dc",
+    "tests/payments/staged-gateway-races.py": "dcf4b177fc99ed20ccc4c7e1ac92124bea8862840acfb6ba791cc5a42cb273f6",
+    "tests/payments/staged-gateway-ui.cjs": "2a6fb5584d29f6c55fbc4f63b1e2ad0d5803038b96e93fff30402607bb256ea6",
+    "tests/payments/traceability-ci-browser.cjs": "2664a5e77e0007e5f69f6e31d7d023aebaa3aec842dc3d801efa0514333e752f",
+    "tests/payments/traceability-lifecycle.php": "abdfbf7366a9524db8059f7708c6134132bf2ceb0190241704b2de56ff2a7ae1",
+    "tests/payments/traceability-lifecycle.py": "549577f258bf7a5080ed52276b767fcf1fa3952786c194dbc5a543ea8663ed95",
+    "tests/payments/traceability-processes.py": "2dffa980bb6b419b8d5af3f62b0dc01706e9f543d16134c55f6ece855f3def56",
+    "tests/payments/traceability-public-security.php": "a09d5bd8938f9a62d0e6c1f1a595456b8b888530ef2238cf98697ac88b302afa",
+    "tests/payments/traceability-security.php": "3d4afd883edd369510dd61f871c021de35b5a1df98529be239c55363be5396cd",
+    "tests/products/ci-browser.cjs": "8acf169b998ba004e881488276dc6c1079ed5cbffa8aaf2ff70dab299600a029",
+    "tests/products/native-product-settings.php": "fa457743a658012257010f1614cb1bb2def5fdfea678665bc3a34c8a8dab010e",
+    "tests/products/product-settings-browser.cjs": "2bd03a738878abceb289a1dc19fbe14f846d572445d1f4673e497f70d4aa56b6",
+    "tests/products/product-sms-race.php": "edf58797c1043ce494118c6ce1886d324b77cc97577e2a11af91ae424e9efde0",
+    "tests/products/product-sms-races.py": "c0874fe935074db9d392dd217e65dd3c841a2d10e3a4d5dadcfd8e55490d58d6"
+  }
+}
