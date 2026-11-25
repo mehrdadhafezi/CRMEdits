@@ -46,7 +46,7 @@ class FinanceReviewProofTests(unittest.TestCase):
             self.assertTrue(json.loads((root/'finance244-verified.json').read_text())['all_retained_gates'])
 
     def test_missing_failed_stale_or_partial_proof_is_rejected(self):
-        cases=[('capacity','audit_rollback',False),('capacity','core_sha256','bad'),('catalog','receipt_history_preserved',False),('query','read_only',False),('query','synthetic_invoices',29999),('query','after_queries',41),('browser','receipt_js_sha256','bad'),('browser','desktop_mobile',False),('capacity','version','2.0.243'),('catalog','passed',False)]
+        cases=[('capacity','audit_rollback',False),('capacity','core_sha256','bad'),('catalog','receipt_history_preserved',False),('query','read_only',False),('query','synthetic_invoices',29999),('query','after_queries',41),('browser','receipt_js_sha256','bad'),('browser','desktop_mobile',False),('browser','production_touched',None),('browser','production_touched',True),('capacity','version','2.0.243'),('catalog','passed',False)]
         for name,key,value in cases:
             with self.subTest(case=(name,key)),tempfile.TemporaryDirectory()as t:
                 root=pathlib.Path(t);self.fixtures(root);p=root/('finance244-'+name+'.json');row=json.loads(p.read_text());row[key]=value;p.write_text(json.dumps(row))
