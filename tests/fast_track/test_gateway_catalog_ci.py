@@ -1,10 +1,18 @@
 """Follow-up Finance/catalog gates must retain all earlier proof and fail closed."""
-import copy,hashlib,json,pathlib,sys,tempfile,unittest
+import copy,hashlib,json,pathlib,re,subprocess,sys,tempfile,unittest
 from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
 import gateway_catalog_ci as gate
 from package import committed_members
 class GatewayCatalogProofTests(unittest.TestCase):
+ def test_real_memory_evidence_writers_match_candidate_version(self):
+  shell=(ROOT/'scripts/test-hr-integration.sh').read_text();version=re.search(r'Version:\s*([0-9.]+)',(ROOT/'sales-network.php').read_text()).group(1)
+  for name,count in [('product241-unit.json',40),('trace242-unit.json',21)]:
+   start=shell.index('"$output/'+name+'"');code=shell[start:].split("<<'PY'\n",1)[1].split('\nPY',1)[0]
+   with self.subTest(writer=name),tempfile.TemporaryDirectory()as d:
+    p=pathlib.Path(d);log=p/'memory.txt';out=p/'evidence.json';log.write_text('PASS synthetic\n'*count+'TOTAL '+str(count)+'\n')
+    subprocess.run([sys.executable,'-B','-c',code,str(log),str(out)],cwd=ROOT,check=True,capture_output=True)
+    row=json.loads(out.read_text());self.assertEqual(row['version'],version);self.assertEqual(row['assertions'],count);self.assertIs(row['production_touched'],False)
  def test_payload_requires_every_exact_runtime_member(self):
   before=committed_members(ROOT,gate.BASE);after=dict(before)
   for n in gate.CHANGES:after['sales-network-v4/'+n]=(ROOT/n).read_bytes()
