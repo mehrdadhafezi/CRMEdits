@@ -7192,6 +7192,7 @@ class SN_Plugin
 		global $wpdb;
 		$invoice_table = $wpdb->prefix . 'sn_invoices';
 		$stage_table = $wpdb->prefix . 'sn_invoice_payment_stages';
+		$payments_table = $wpdb->prefix . 'sn_payments';
 		if (false === $wpdb->query('START TRANSACTION')) { return ['success'=>false,'message'=>'آغاز ثبت تأیید پرداخت انجام نشد']; }
 		$invoice = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$invoice_table} WHERE id=%d FOR UPDATE", $invoice_id));
 		if (! $invoice) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'فاکتور یافت نشد']; }
@@ -7250,14 +7251,32 @@ class SN_Plugin
 			}
 			return ['success'=>true,'already'=>true,'completed'=>$fresh_totals['remaining'] <= 0,'remaining'=>$fresh_totals['remaining'],'paid'=>$fresh_totals['paid'],'total'=>$fresh_totals['total'],'status'=>(string)($fresh->status ?? ($fresh_totals['remaining'] <= 0 ? 'paid' : 'partial_paid'))];
 		}
-		if($pay_method!=='online'){
+		$receipt_amounts=SN_Receipt_Review::stage_amounts($invoice_id,$stage_no);
+        $gateway_finance_review = $legacy_finance_review && $receipt_amounts['has_verified_gateway']
+            && !$receipt_amounts['has_pending'] && $receipt_amounts['approved'] < 0.005;
+        if ($gateway_finance_review) {
+            $requests = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM {$payments_table} WHERE invoice_id=%d AND COALESCE(authority,'')<>''
+                 AND ((payment_stage_no=%d AND status IN ('pending','verified','paid','approved')) OR status='reconcile_error')
+                 ORDER BY id FOR UPDATE", $invoice_id, $stage_no
+            ));
+            $request = is_array($requests) && count($requests) === 1 ? $requests[0] : null;
+            if ($wpdb->last_error || !$request || $request->status !== 'verified' || trim((string)$request->ref_id) === ''
+                || abs((float)$request->amount - (float)$stage->requested_amount) >= 0.005
+                || (string)$request->ref_id !== (string)$stage->payment_ref_id
+                || trim((string)$request->payment_source) === ''
+                || (string)$request->payment_source !== (string)$stage->payment_source) {
+                $wpdb->query('ROLLBACK');
+                return ['success'=>false,'message'=>'تراکنش تأییدشده درگاه با مبلغ، مرجع یا وضعیت همین مرحله تطبیق ندارد؛ ابتدا مغایرت را بررسی کنید.'];
+            }
+        }
+		if($pay_method!=='online' && !$gateway_finance_review){
             $gateway_error=SN_Payment_Gateway_Guard::manual_approval_error($invoice_id,$stage_no,(string)$invoice->invoice_code);
             if($gateway_error!==''){$wpdb->query('ROLLBACK');return ['success'=>false,'message'=>$gateway_error];}
         }
 		$due = max(0, (float) ($stage->requested_amount ?? $totals['due']));
-        $receipt_amounts=SN_Receipt_Review::stage_amounts($invoice_id,$stage_no);
         if ($legacy_finance_review) {
-            $gateway_review = $receipt_amounts['has_verified_gateway'] && !$receipt_amounts['has_pending'] && $receipt_amounts['approved'] < 0.005;
+            $gateway_review = $gateway_finance_review;
             if ($receipt_amounts['modern'] && !$gateway_review) {
                 $wpdb->query('ROLLBACK');
                 return ['success'=>false,'message'=>'برای حفظ استقلال رسیدها، از بررسی واریزهای مستقل استفاده کنید.'];
@@ -7269,7 +7288,7 @@ class SN_Plugin
             }
             $stage = $review['stage'];
             $pay_method = $gateway_review || $stage->pay_method === 'online' || $invoice->pay_method === 'online' ? 'online' : 'card';
-            $payment_source = (string)(($invoice->payment_source ?? '') ?: 'finance_approval');
+            $payment_source = $gateway_review ? (string)$request->payment_source : (string)(($invoice->payment_source ?? '') ?: 'finance_approval');
             $payment_ref_id = (string)($stage->payment_ref_id ?? '');
         }
         $paid_before_stage=max(0,(float)$totals['paid']-((!in_array((string)$stage->status,['approved','paid'],true))?$receipt_amounts['approved']:0));
@@ -7307,7 +7326,7 @@ class SN_Plugin
 			'updated_at'=>current_time('mysql'),
 		], ['id'=>(int)$stage->id]);
 		if (! $stage_ok) { $wpdb->query('ROLLBACK'); return ['success'=>false,'message'=>'ثبت مرحله پرداخت انجام نشد: '.($wpdb->last_error ?: 'خطای دیتابیس')]; }
-		if (($is_conversion_cash || (class_exists('SN_Dot_Flow') && SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id))) && $pay_method === 'online') {
+		if (($gateway_finance_review || $is_conversion_cash || (class_exists('SN_Dot_Flow') && SN_Dot_Flow::instance()->is_staged_conversion_invoice($invoice_id))) && $pay_method === 'online') {
 			$confirmed = $wpdb->query($wpdb->prepare(
 				"UPDATE {$wpdb->prefix}sn_payments SET status='paid',updated_at=%s
 				WHERE invoice_id=%d AND payment_stage_no=%d AND status='verified' AND COALESCE(authority,'')<>''
@@ -30966,6 +30985,9 @@ class SN_Plugin
 				if (! $inv) { return ['success'=>false,'message'=>'فاکتور یافت نشد']; }
 				$totals=$this->sn_invoice_payment_totals($inv);
 				$stage_no=(int)$totals['stage_no'];
+				if (isset($input['payment_stage_no']) && (int)$input['payment_stage_no'] !== $stage_no) {
+					return ['success'=>false,'message'=>'مرحله پرداخت تغییر کرده است؛ فهرست مالی را بازخوانی کنید.'];
+				}
 				if (!$guard && $totals['workflow_status']==='completed' && $totals['remaining']<=0) {
 					return ['success'=>true,'message'=>'پرداخت قبلاً به طور کامل تایید شده است','data'=>['status'=>(string)$inv->status,'status_label'=>SN_Helpers::status_label((string)$inv->status),'completed'=>true,'remaining_amount'=>0]];
 				}
@@ -31002,6 +31024,10 @@ class SN_Plugin
 				if (! $valid) { SN_Helpers::send_json(false,'نانس نامعتبر'); return; }
 				$id=absint($_POST['invoice_id'] ?? 0);
 				$input=[];
+				if (isset($_POST['payment_stage_no'])) {
+					if (!is_scalar($_POST['payment_stage_no']) || !preg_match('/^[1-9][0-9]*$/D',(string)$_POST['payment_stage_no'])) { SN_Helpers::send_json(false,'مرحله پرداخت نامعتبر است'); return; }
+					$input['payment_stage_no']=(int)$_POST['payment_stage_no'];
+				}
 				foreach (['finance_edit_note','customer_name','customer_phone','manual_card_from','manual_card_to','manual_paid_at_jalali'] as $field) {
 					if (isset($_POST[$field])) { $input[$field]=wp_unslash($_POST[$field]); }
 				}
@@ -37733,6 +37759,7 @@ class SN_Plugin
                             }
                         }
                         $r['has_independent_payments']=true;
+                        if ($verified_gateway && !$manual_under_review) { $r['review_gateway_stage']=true; }
                         if (!$verified_gateway || $manual_under_review) {
                             $r['can_approve_payment']=false;
                             $r['can_reject_payment']=false;

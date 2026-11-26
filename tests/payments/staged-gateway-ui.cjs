@@ -19,5 +19,5 @@ module.exports=async function({playwright,channel}){
   await context.close();
  }
  }finally{await browser.close();}
- return{passed:true,assertions:checks,version:'2.0.244',desktop_mobile:true,actual_runtime_js:true,external_network_blocked:true,real_provider_calls:0,production_touched:false};
+ return{passed:true,assertions:checks,version:'2.0.245',desktop_mobile:true,actual_runtime_js:true,external_network_blocked:true,real_provider_calls:0,production_touched:false};
 };

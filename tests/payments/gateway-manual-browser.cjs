@@ -58,7 +58,7 @@ module.exports=async function run({base,fixture,output,transport='native WordPre
    await page.close();await context.close();
   }
   ok(errors.length===0,'no uncaught payment dialog browser errors');
-  const summary={passed:true,synthetic:true,version:'2.0.244',assertions:checks,transport,actual_multipart_upload_tested:true,real_wordpress_auth_cookie:true,chromium:browser.version(),production_touched:false};
+  const summary={passed:true,synthetic:true,version:'2.0.245',assertions:checks,transport,actual_multipart_upload_tested:true,real_wordpress_auth_cookie:true,chromium:browser.version(),production_touched:false};
   fs.writeFileSync(path.join(output,'gateway-manual-browser.json'),JSON.stringify(summary,null,2)+'\n');console.log('TOTAL '+checks);return summary;
  }finally{for(const c of contexts)await c.close().catch(()=>{});await browser.close();}
 };

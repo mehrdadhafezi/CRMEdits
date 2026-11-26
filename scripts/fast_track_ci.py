@@ -16,6 +16,7 @@ import invoice_reporting_ci as invoice_report_ci
 import payment_tracking_ci as tracking_ci
 import prepayment_edit_ci as prepayment_ci
 import finance_review_ci as finance_review_ci
+import gateway_catalog_ci as gateway_catalog_ci
 
 
 JOBS = {
@@ -148,7 +149,7 @@ def make_plan(pr, merge_sha, selection):
     invoice_reporting = not unknown and not tooling_only and invoice_report_ci.scope(pr["base"], pr["head"], paths)
     payment_tracking = not unknown and not tooling_only and tracking_ci.scope(pr["base"], pr["head"], paths)
     prepayment_edit = not unknown and not tooling_only and prepayment_ci.scope(pr["base"], pr["head"], paths)
-    finance_review = not unknown and not tooling_only and finance_review_ci.scope(pr["base"], pr["head"], paths)
+    finance_review = not unknown and not tooling_only and (finance_review_ci.scope(pr["base"], pr["head"], paths) or gateway_catalog_ci.scope(pr["base"], pr["head"], paths))
     hr_native = not unknown and not tooling_only and (finance_review or prepayment_edit or payment_tracking or invoice_reporting or traceability or product_settings or gateway_manual or hr_ci.scope(pr["base"], pr["head"], paths))
     return {
         **pr, "merge": merge_sha, "risk": "UNKNOWN" if unknown else selection["risk"],
@@ -414,7 +415,9 @@ def main():
         verify_checkout(pr, os.environ["GITHUB_SHA"])
         selection = report(pr["base"], pr["head"], pr["target"])
         paths = {c["path"] for c in selection["changed_files"]}
-        if finance_review_ci.scope(pr["base"], pr["head"], paths):
+        if gateway_catalog_ci.scope(pr["base"], pr["head"], paths):
+            gateway_catalog_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
+        elif finance_review_ci.scope(pr["base"], pr["head"], paths):
             finance_review_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])
         elif tracking_ci.scope(pr["base"], pr["head"], paths):
             tracking_ci.verify_hr_output("test-results/hr", os.environ["GITHUB_SHA"])

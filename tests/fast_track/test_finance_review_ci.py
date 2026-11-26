@@ -4,11 +4,16 @@ from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
 import finance_review_ci as finance
 from package import committed_members
+from risk_report import git as historical_git
+from functools import lru_cache
+HISTORICAL='208837dd108b5d7aff7f7b4bcf059e06d15082df'
+@lru_cache(maxsize=None)
+def historical(path):return historical_git('show',HISTORICAL+':'+path)
 
 class FinanceReviewProofTests(unittest.TestCase):
     def test_exact_payload_rejects_missing_added_and_changed_members(self):
         before=committed_members(ROOT,finance.BASE);after=dict(before)
-        for name in finance.CHANGES:after['sales-network-v4/'+name]=(ROOT/name).read_bytes()
+        for name in finance.CHANGES:after['sales-network-v4/'+name]=historical(name)
         self.assertTrue(finance.bounded_payload(before,after))
         for name in after:
             self.assertFalse(finance.bounded_payload(before,{**after,name:after[name]+b'\n'}))
@@ -17,7 +22,7 @@ class FinanceReviewProofTests(unittest.TestCase):
 
     def test_scope_binds_every_reviewed_validation_file(self):
         paths=set(finance.PROFILE['changed_paths'])
-        reader=lambda _,spec:(ROOT/spec.split(':',1)[1]).read_bytes()
+        reader=lambda _,spec:historical(spec.split(':',1)[1])
         with patch.object(finance,'payload_matches_revision',return_value=True),patch.object(finance,'git',side_effect=reader):
             self.assertTrue(finance.scope(finance.BASE,'a'*40,paths))
             self.assertFalse(finance.scope('b'*40,'a'*40,paths))

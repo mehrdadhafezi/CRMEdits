@@ -1862,7 +1862,8 @@
     var all=$('.sn-fin-v2-select').length, checked=$('.sn-fin-v2-select:checked').length; $('#sn-fin-v2-check-all').prop('checked',all>0&&checked===all).prop('indeterminate',checked>0&&checked<all);
   }
   function approveOne(id, cb){
-    financePost(ajax,{action:'sn_financial_approve_payment',nonce:nonce,invoice_id:id},function(res){if(res&&res.success){notify('success',res.message||'تایید شد'); if(cb)cb(true,res); else loadFinance(state.page);}else{notify('error',(res&&res.message)||'تایید انجام نشد'); if(cb)cb(false,res);}}).fail(function(xhr){notify('error','خطای سرور: '+(xhr.status||''));if(cb)cb(false,null);});
+    var row=state.rows[String(id)]||{},stage=Number(row.current_payment_stage||row.latest_payment_stage_no||1);
+    financePost(ajax,{action:'sn_financial_approve_payment',nonce:nonce,invoice_id:id,payment_stage_no:stage},function(res){if(res&&res.success){notify('success',res.message||'تایید شد'); if(cb)cb(true,res); else loadFinance(state.page);}else{notify('error',(res&&res.message)||'تایید انجام نشد'); if(cb)cb(false,res);}}).fail(function(xhr){notify('error','خطای سرور: '+(xhr.status||''));if(cb)cb(false,null);});
   }
   function rejectOne(id, inlineReason){
     var reason=inlineReason===undefined?window.prompt('دلیل رد پرداخت را وارد کنید:',''):inlineReason; if(reason===null)return; reason=$.trim(reason); if(!reason){notify('error','دلیل رد الزامی است');return;}
@@ -1895,7 +1896,7 @@
   }
   function openReceipt(id){
     var i=state.rows[String(id)]; if(!i)return; ensureReceiptModal();$('#sn-fin-v2-receipt-body').scrollTop(0);
-    if(i.has_independent_payments && window.snReceiptReview){var host=document.createElement('div');$('#sn-fin-v2-receipt-body').empty().append(host);$('#sn-fin-v2-receipt-modal').show().attr('aria-hidden','false');window.snReceiptReview.mount(host,id,function(){loadFinance(state.page);},i.review_payment_id);return;}
+    if(i.has_independent_payments && !i.review_gateway_stage && window.snReceiptReview){var host=document.createElement('div');$('#sn-fin-v2-receipt-body').empty().append(host);$('#sn-fin-v2-receipt-modal').show().attr('aria-hidden','false');window.snReceiptReview.mount(host,id,function(){loadFinance(state.page);},i.review_payment_id);return;}
     var meta='<div class="sn-fin-v2-receipt-meta">'+
       '<div><small>کد فاکتور</small><strong>'+esc(i.display_invoice_code||i.invoice_code||'—')+'</strong>'+financeTag(i)+'</div><div><small>نام مشتری</small><strong>'+esc(i.customer_name||'—')+'</strong></div><div><small>شماره مشتری</small><strong dir="ltr">'+esc(i.customer_phone||'—')+'</strong></div>'+
 			'<div><small>مبلغ واریز فعلی</small><strong>'+esc(i.current_payment_amount_fmt||'۰ تومان')+'</strong></div><div><small>تاریخ واریز</small><strong>'+esc(i.deposit_date_label||'—')+'</strong></div><div><small>۴ رقم کارت مبدا</small><strong dir="ltr">'+esc(i.manual_card_from_display||'—')+'</strong></div><div><small>۴ رقم آخر کارت مقصد</small><strong dir="ltr">'+esc(i.manual_card_to_display||'—')+'</strong></div></div>';
@@ -1915,7 +1916,7 @@
       var prior=(res.stages||[]).filter(function(stage){return Number(stage.stage_no)!==Number(i.current_payment_stage||i.latest_payment_stage_no||1)&&window.snReceiptFiles.urls(stage).length;});
       if(prior.length){$('#sn-fin-v2-receipt-modal .sn-fin-v2-media').append('<details class="sn-receipt-stage-history"><summary>فیش‌های مراحل قبلی</summary>'+prior.map(function(stage){return '<h4>مرحله '+esc(stage.stage_no)+' — '+esc(stage.status_label||'')+'</h4>'+receiptGallery(stage);}).join('')+'</details>');}
       var summary=res.transaction_summary||{};
-      if(summary.independent&&!summary.ready){$('#sn-fin-v2-receipt-modal .sn-fin-v2-modal-approve').prop('disabled',true).attr('title','مجموع تراکنش‌ها هنوز با مبلغ مرحله برابر نیست');}
+      if(summary.independent&&!summary.ready&&!i.review_gateway_stage){$('#sn-fin-v2-receipt-modal .sn-fin-v2-modal-approve').prop('disabled',true).attr('title','مجموع تراکنش‌ها هنوز با مبلغ مرحله برابر نیست');}
       var acts=(res.activities||[]).slice(0,8),html='<strong>سوابق بررسی</strong>';
       html+=acts.length?acts.map(function(a){return '<article><strong>'+esc(a.label||a.action)+'</strong><small>'+esc(a.actor_name||'')+' · '+esc(a.created_at_jalali||'')+'</small><p>'+esc(a.note||a.description||'')+'</p></article>';}).join(''):'<p>هنوز سابقه‌ای ثبت نشده است.</p>';
       $('#sn-fin-v2-receipt-modal .sn-fin-v2-inline-history').html(html);

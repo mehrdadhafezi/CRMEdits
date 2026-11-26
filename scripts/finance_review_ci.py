@@ -24,12 +24,14 @@ def scope(base,head,paths):
     return (base==BASE and set(paths)==set(PROFILE['changed_paths']) and payload_matches_revision(head)
             and all(hashlib.sha256(git('show',head+':'+n)).hexdigest()==h for n,h in PROFILE['validation_files'].items()))
 
-def verify_hr_output(output,merge):
+def verify_hr_output(output,merge,*,runtime=None,payload_verifier=None,version=VERSION):
+    RUNTIME=runtime or globals()['RUNTIME'];VERSION=version
+    payload_verifier=payload_verifier or payload_matches_revision
     # Parameterize only exact revision/runtime identity; no retained gate is skipped.
-    trace.verify_hr_output(output,merge,runtime=RUNTIME,payload_verifier=payload_matches_revision,version=VERSION)
-    reports.verify_report_output(Path(output)/'invoice-report',merge,runtime={n:RUNTIME[n]for n in reports.CHANGES},payload_verifier=payload_matches_revision)
-    editor.verify_editor_output(Path(output)/'prepayment-edit',merge,runtime={n:RUNTIME[n]for n in editor.CHANGES},payload_verifier=payload_matches_revision)
-    tracking.verify_tracking_output(Path(output)/'tracking-number',merge,runtime={n:RUNTIME[n]for n in tracking.TRACKING_RUNTIME},payload_verifier=payload_matches_revision)
+    trace.verify_hr_output(output,merge,runtime=RUNTIME,payload_verifier=payload_verifier,version=VERSION)
+    reports.verify_report_output(Path(output)/'invoice-report',merge,runtime={n:RUNTIME[n]for n in reports.CHANGES},payload_verifier=payload_verifier)
+    editor.verify_editor_output(Path(output)/'prepayment-edit',merge,runtime={n:RUNTIME[n]for n in editor.CHANGES},payload_verifier=payload_verifier)
+    tracking.verify_tracking_output(Path(output)/'tracking-number',merge,runtime={n:RUNTIME[n]for n in tracking.TRACKING_RUNTIME},payload_verifier=payload_verifier)
     root=Path(output)
     for name,minimum in [('capacity',44),('catalog',20),('query',54)]:
         row=completed(root,'finance244-'+name+'.json',minimum)
@@ -47,7 +49,7 @@ def verify_hr_output(output,merge):
     browser=completed(root,'finance244-browser.json',12)
     if (browser.get('version')!=VERSION or browser.get('desktop_mobile')is not True or browser.get('external_network_blocked')is not True
             or browser.get('receipt_js_sha256')!=RUNTIME['assets/js/receipt-review.js']):raise ValueError('Incomplete Finance browser proof')
-    if git('rev-parse','HEAD').decode().strip()!=merge or not payload_matches_revision(merge):raise ValueError('Finance candidate changed after testing')
+    if git('rev-parse','HEAD').decode().strip()!=merge or not payload_verifier(merge):raise ValueError('Finance candidate changed after testing')
     (root/'finance244-verified.json').write_text(json.dumps({'merge':merge,'runtime':RUNTIME,'version':VERSION,'synthetic':True,'all_retained_gates':True},indent=2)+'\n')
 
 if __name__=='__main__':

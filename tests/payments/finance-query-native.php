@@ -18,8 +18,12 @@ $run=static function(bool $before,array $input)use($old,$new,$plugin,$wpdb):arra
  hr239_ok(!$wpdb->last_error,'Finance SQL executes without errors');$out=$GLOBALS['finance244_response'];hr239_ok(!empty($out['success']),'authorized Finance API succeeds');
  return ['data'=>$out,'ms'=>round((microtime(true)-$time)*1000,3),'queries'=>count($queries),'aggregate_queries'=>count(array_filter($queries,static fn($q)=>str_contains($q,'FROM '.$wpdb->prefix.'sn_invoices i')&&str_contains($q,'SUM(')))];
 };
+$prior_contract=static function(array $data):array{
+ $valid=true;foreach($data['items']??[] as $i=>$row){if(array_key_exists('review_gateway_stage',$row)){$valid=$valid&&$row['review_gateway_stage']===true;unset($data['items'][$i]['review_gateway_stage']);}}
+ hr239_ok($valid,'only the declared affirmative gateway UI hint extends the prior response');return$data;
+};
 foreach([['tab'=>'all'],['tab'=>'needs_review'],['tab'=>'approved'],['tab'=>'rejected'],['tab'=>'online_paid'],['tab'=>'manual_deposit'],['tab'=>'receipt_uploaded'],['q'=>'F244','sort'=>'payment_desc'],['sort'=>'seller_asc','page'=>2]]as$filter){
- $before=$run(true,$filter);$after=$run(false,$filter);hr239_ok($before['data']===$after['data'],'identical list, bucket counts, sums, permissions and ordering '.json_encode($filter));
+ $before=$run(true,$filter);$after=$run(false,$filter);hr239_ok($before['data']===$prior_contract($after['data']),'identical prior fields, bucket counts, sums, permissions and ordering '.json_encode($filter));
 }
 $_POST=['nonce'=>'invalid'];$_REQUEST=$_POST;try{$new();}catch(Finance244_End $e){}hr239_ok(empty($GLOBALS['finance244_response']['success']),'invalid nonce remains denied');
 $marker=$GLOBALS['hr239_root'].'/finance244-volume.json';
@@ -33,6 +37,6 @@ if(!is_file($marker)){
  file_put_contents($marker,wp_json_encode(['tag'=>$tag,'invoices'=>30000]));
 }
 $first=$run(true,['tab'=>'all']);$second=$run(false,['tab'=>'all']);hr239_ok($second['queries']<$first['queries'],'Finance uses fewer real SQL queries');
-hr239_ok($first['data']===$second['data'],'large synthetic ledger preserves exact Finance output');
+hr239_ok($first['data']===$prior_contract($second['data']),'large synthetic ledger preserves every prior Finance field');
 echo 'BENCHMARK '.wp_json_encode(['before_ms'=>$first['ms'],'after_ms'=>$second['ms'],'before_queries'=>$first['queries'],'after_queries'=>$second['queries'],'synthetic_invoices'=>(int)$wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}sn_invoices")]).PHP_EOL;
 finance244_evidence('query',['before_ms'=>$first['ms'],'after_ms'=>$second['ms'],'before_queries'=>$first['queries'],'after_queries'=>$second['queries'],'synthetic_invoices'=>(int)$wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->prefix}sn_invoices"),'identical_outputs'=>true,'read_only'=>true]);echo 'TOTAL '.$GLOBALS['hr239_checks'].PHP_EOL;ob_end_flush();

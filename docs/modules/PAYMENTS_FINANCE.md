@@ -4,6 +4,14 @@ Status: OBSERVED static source, baseline 2.0.235 / 2026-11-12. Human specialist:
 
 ## 1. Purpose & Scope
 
+2.0.245 follow-up: Finance approval of an already verified online stage uses its
+existing bank receipt, not the manual receipt guard. Under the invoice/stage
+transaction, require exactly one active verified gateway request with matching
+amount, reference and source; conflicting requests or live manual receipts block
+approval. Mark that same receipt paid atomically with the stage and invoice.
+Optional `payment_stage_no` on the existing approval request rejects a stale
+displayed stage. `review_gateway_stage` is a list UI hint only; it grants no access.
+
 Local 2.0.244 Finance hotfix preserves gross first-stage capacity after a partial
 receipt approval. A full first stage reduced exactly to its remaining balance can
 be reconciled only within an authorized, locked receipt approve/reject operation,
