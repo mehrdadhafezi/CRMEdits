@@ -1612,7 +1612,7 @@
         }
         var amounts=inv.payment_summary||{};
         var amountCell='<div class="sn-stage-amounts"><span>کل: '+esc(money(amounts.total||0))+'</span><span>پرداخت‌شده: '+esc(money(amounts.paid||0))+'</span><strong>مانده: '+esc(money(amounts.remaining||0))+'</strong><small>مرحله '+esc(amounts.stage_no||1)+' · قابل پرداخت فعلی: '+esc(money(amounts.due||0))+'</small></div>';
-        html+='<tr'+rowClass+'><td><code>'+esc(inv.invoice_code)+'</code></td><td>'+esc(inv.customer_name)+'</td><td>'+esc(inv.customer_phone)+'</td><td>'+esc(inv.product_name||inv.product_id)+'</td><td>'+amountCell+'</td><td><span class="sn-status sn-status-'+esc(inv.status)+'">'+esc(inv.status_label||inv.status)+'</span>'+issuedTag+'</td><td>'+conversionCell+'</td><td>'+ops+'</td></tr>';
+        html+='<tr'+rowClass+'><td><code dir="ltr">'+esc(inv.invoice_code)+'</code><br><small>کد فاکتور اصلی</small>'+window.snPaymentTransactions.renderStages(inv.stage_history,amounts)+'</td><td>'+esc(inv.customer_name)+'</td><td>'+esc(inv.customer_phone)+'</td><td>'+esc(inv.product_name||inv.product_id)+'</td><td>'+amountCell+'</td><td><span class="sn-status sn-status-'+esc(inv.status)+'">'+esc(inv.status_label||inv.status)+'</span>'+issuedTag+'</td><td>'+conversionCell+'</td><td>'+ops+'</td></tr>';
       });
       html+='</tbody></table></div>'; $('#sn-invoices-list').html(meta+html);
     }).always(function(){ sellerInvoiceXhr = null; sellerInvoiceRequestKey = ''; });

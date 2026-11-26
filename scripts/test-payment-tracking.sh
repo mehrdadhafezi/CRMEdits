@@ -6,7 +6,7 @@ test "${RUNNER_ENVIRONMENT:-}" = github-hosted
 test -n "${GITHUB_SHA:-}"
 repo=$(pwd -P)
 test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA"
+python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"
 runtime_tracking=$(mktemp -d /tmp/sn-tracking-XXXXXXXX)
 suffix=${runtime_tracking##*/}
 network="$suffix-net"; web="$suffix-web"; database="$suffix-db"; volume="$suffix-wp"

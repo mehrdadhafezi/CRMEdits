@@ -4,6 +4,10 @@ from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
 import gateway_catalog_ci as gate
 from package import committed_members
+from risk_report import git as historical_git
+from functools import lru_cache
+@lru_cache(maxsize=None)
+def historical(path):return historical_git("show","6787ebee21511e4f6fc02cd55bbf1c3693866b7d:"+path)
 class GatewayCatalogProofTests(unittest.TestCase):
  def test_real_memory_evidence_writers_match_candidate_version(self):
   shell=(ROOT/'scripts/test-hr-integration.sh').read_text();version=re.search(r'Version:\s*([0-9.]+)',(ROOT/'sales-network.php').read_text()).group(1)
@@ -15,13 +19,13 @@ class GatewayCatalogProofTests(unittest.TestCase):
     row=json.loads(out.read_text());self.assertEqual(row['version'],version);self.assertEqual(row['assertions'],count);self.assertIs(row['production_touched'],False)
  def test_payload_requires_every_exact_runtime_member(self):
   before=committed_members(ROOT,gate.BASE);after=dict(before)
-  for n in gate.CHANGES:after['sales-network-v4/'+n]=(ROOT/n).read_bytes()
+  for n in gate.CHANGES:after['sales-network-v4/'+n]=historical(n)
   self.assertTrue(gate.bounded_payload(before,after))
   for n in after:
    self.assertFalse(gate.bounded_payload(before,{**after,n:after[n]+b'\n'}));missing=dict(after);missing.pop(n);self.assertFalse(gate.bounded_payload(before,missing))
   self.assertFalse(gate.bounded_payload(before,{**after,'sales-network-v4/extra.php':b'<?php'}))
  def test_scope_binds_base_paths_and_all_validation_sources(self):
-  paths=set(gate.PROFILE['changed_paths']);reader=lambda _,spec:(ROOT/spec.split(':',1)[1]).read_bytes()
+  paths=set(gate.PROFILE['changed_paths']);reader=lambda _,spec:historical(spec.split(':',1)[1])
   with patch.object(gate,'payload_matches_revision',return_value=True),patch.object(gate,'git',side_effect=reader):
    self.assertTrue(gate.scope(gate.BASE,'a'*40,paths));self.assertFalse(gate.scope('b'*40,'a'*40,paths));self.assertFalse(gate.scope(gate.BASE,'a'*40,paths|{'unrelated.php'}))
   with patch.object(gate,'payload_matches_revision',return_value=True),patch.object(gate,'git',return_value=b'wrong'):

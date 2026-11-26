@@ -19,8 +19,16 @@ $run=static function(bool $before,array $input)use($old,$new,$plugin,$wpdb):arra
  return ['data'=>$out,'ms'=>round((microtime(true)-$time)*1000,3),'queries'=>count($queries),'aggregate_queries'=>count(array_filter($queries,static fn($q)=>str_contains($q,'FROM '.$wpdb->prefix.'sn_invoices i')&&str_contains($q,'SUM(')))];
 };
 $prior_contract=static function(array $data):array{
- $valid=true;foreach($data['items']??[] as $i=>$row){if(array_key_exists('review_gateway_stage',$row)){$valid=$valid&&$row['review_gateway_stage']===true;unset($data['items'][$i]['review_gateway_stage']);}}
- hr239_ok($valid,'only the declared affirmative gateway UI hint extends the prior response');return$data;
+ global $wpdb;
+ $valid=true;foreach($data['items']??[] as $i=>$row){
+  if(array_key_exists('stage_history',$row)){
+   $history=$row['stage_history'];$expected=[];
+   $stages=$wpdb->get_results($wpdb->prepare("SELECT id,stage_no,requested_amount,status FROM {$wpdb->prefix}sn_invoice_payment_stages WHERE invoice_id=%d ORDER BY stage_no,id",(int)$row['id']),ARRAY_A);
+   foreach($stages as $stage)$expected[]=['stage_no'=>(int)$stage['stage_no'],'stage_reference'=>'STG-'.(int)$stage['id'],'stage_invoice_code'=>$row['invoice_code'].'/'.(int)$stage['stage_no'],'amount'=>(float)$stage['requested_amount'],'status'=>(string)$stage['status']];
+   $valid=$valid&&$history===['available'=>true,'stages'=>$expected];unset($data['items'][$i]['stage_history']);
+  }
+if(array_key_exists('review_gateway_stage',$row)){$valid=$valid&&$row['review_gateway_stage']===true;unset($data['items'][$i]['review_gateway_stage']);}}
+ hr239_ok($valid,'only declared gateway hint and independently matched issued stage history extend prior response');return$data;
 };
 foreach([['tab'=>'all'],['tab'=>'needs_review'],['tab'=>'approved'],['tab'=>'rejected'],['tab'=>'online_paid'],['tab'=>'manual_deposit'],['tab'=>'receipt_uploaded'],['q'=>'F244','sort'=>'payment_desc'],['sort'=>'seller_asc','page'=>2]]as$filter){
  $before=$run(true,$filter);$after=$run(false,$filter);hr239_ok($before['data']===$prior_contract($after['data']),'identical prior fields, bucket counts, sums, permissions and ordering '.json_encode($filter));

@@ -46,6 +46,13 @@ flowchart LR
 
 ## 5. Component & Interface Contracts
 
+Local follow-up from 2.0.245: scoped seller, team and Finance invoice lists add
+`stage_history` with availability and issued stage aliases, amounts and states.
+Aliases are read projections of existing invoice/stage rows, never new invoices.
+The four core list searches accept an exact issued `invoice_code/stage_no`
+inside their existing authorization, status and date filters. No stage is inferred
+for an unissued number. See [the local visibility task](../tasks/STAGE_INVOICE_VISIBILITY.md).
+
 Local 2026-11-21 invoice reporting keeps stored follow-up/document/payment states
 separate from ledger-confirmed receipts and settlement. The admin page and all
 four CSV/XLS views use the same filters. Invoice IDs and original invoice codes

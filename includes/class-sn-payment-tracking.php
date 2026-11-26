@@ -7,6 +7,19 @@ final class SN_Payment_Tracking
     public const FIELD = 'manual_tracking_number';
     public const ERROR = 'شماره پیگیری باید حداکثر ۶۴ کاراکتر و شامل حروف انگلیسی، عدد، خط تیره، زیرخط، نقطه یا / باشد.';
 
+    /** Exact stage alias, correlated to the caller's already scoped invoice. */
+    public static function stage_condition(string $invoice_id, string $invoices, string $stages, string $query): array
+    {
+        if (!preg_match('/^[A-Za-z0-9_]+\.id$/D', $invoice_id)
+            || !preg_match('/^[A-Za-z0-9_]+$/D', $invoices)
+            || !preg_match('/^[A-Za-z0-9_]+$/D', $stages)) {
+            throw new InvalidArgumentException('Invalid stage search identifier');
+        }
+        $query = self::normalize($query);
+        if ($query === null || !preg_match('~^([A-Z0-9][A-Z0-9._/-]*)/([1-9][0-9]{0,8})$~D', $query, $match)) { return ['0=1', []]; }
+        return ["EXISTS (SELECT 1 FROM {$invoices} si INNER JOIN {$stages} ss ON ss.invoice_id=si.id WHERE si.id={$invoice_id} AND si.invoice_code=%s AND ss.stage_no=%d)", [$match[1], (int)$match[2]]];
+    }
+
     /** Null means invalid; empty string is a valid omitted optional reference. */
     public static function normalize($value): ?string
     {
