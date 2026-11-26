@@ -3491,7 +3491,9 @@ class SN_Plugin
 	{
 		global $wpdb;
 		$table = $wpdb->prefix . 'sn_payments';
-		return SN_Payment_Tracking::condition($invoice_id, $table, $query, $this->sn_table_columns($table));
+		[$tracking, $args] = SN_Payment_Tracking::condition($invoice_id, $table, $query, $this->sn_table_columns($table));
+		[$stage, $stage_args] = SN_Payment_Tracking::stage_condition($invoice_id, $wpdb->prefix . 'sn_invoices', $wpdb->prefix . 'sn_invoice_payment_stages', $query);
+		return ['(' . $tracking . ' OR ' . $stage . ')', array_merge($args, $stage_args)];
 	}
 
 	private function build_invoices_where(array $f): array
@@ -27796,7 +27798,9 @@ class SN_Plugin
 					$dot_results = SN_Dot_Flow::instance()->completed_results_for_seller_invoices(array_column($rows, 'id'), $seller_id);
 				}
 				$project_results = ($rows && class_exists('SN_Projects')) ? SN_Projects::instance()->project_summaries_for_invoices(array_column($rows, 'id'), (int) $user->ID) : [];
+				$stage_histories = SN_Payment_Transactions::stage_history($rows ?: []);
 				foreach ($rows as &$row) {
+					$row['stage_history'] = $stage_histories[(int)$row['id']] ?? ['available'=>false,'stages'=>[]];
 					$row['product_name'] = $this->sn_invoice_items_label((int)$row['id'], (int)$row['product_id']);
 					$row['amount_fmt'] = SN_Helpers::format_price((float)$row['product_price']);
 					$row['payment_summary'] = $this->sn_invoice_payment_totals((object) $row);
@@ -34443,7 +34447,9 @@ class SN_Plugin
 					}
 				}
 
+				$stage_histories = SN_Payment_Transactions::stage_history($rows ?: []);
 				foreach ($rows as &$r) {
+					$r['stage_history'] = $stage_histories[(int)$r['id']] ?? ['available'=>false,'stages'=>[]];
 					$effective_status = (string) (($r['payment_status'] ?? '') ?: (($r['invoice_status'] ?? '') ?: ($r['status'] ?? '')));
 					// Keep database values untouched and expose presentation-only dates.
 					// Invoice rows are shared by the supervisor and sales-manager panels;
@@ -37674,7 +37680,9 @@ class SN_Plugin
                     foreach ($raw_transactions as $transaction) { $finance_transactions[(int)$transaction['invoice_id']][] = $transaction; }
                 }
 				$references = class_exists('SN_Dot_Flow') ? SN_Dot_Flow::instance()->conversion_invoice_references($finance_invoice_ids) : [];
+				$stage_histories = SN_Payment_Transactions::stage_history($rows ?: []);
 				foreach ($rows as &$r) {
+					$r['stage_history'] = $stage_histories[(int)$r['id']] ?? ['available'=>false,'stages'=>[]];
 					$reference = $references[(int)$r['id']] ?? [];
 					$r['display_invoice_code'] = (string)($reference['invoice_code'] ?? $r['invoice_code']);
 					$r['display_stage_no'] = (int)($reference['stage_no'] ?? 0);

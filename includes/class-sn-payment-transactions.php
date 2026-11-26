@@ -5,6 +5,31 @@ require_once __DIR__.'/class-sn-payment-gateway-guard.php';
 /** Independent bank transactions; invoice fields are only a compatibility projection. */
 class SN_Payment_Transactions
 {
+    /** Read-only stage cards for an already scoped, paginated invoice list. */
+    public static function stage_history(array $invoices): array
+    {
+        global $wpdb;
+        $result = []; $codes = [];
+        foreach ($invoices as $invoice) {
+            $id = (int)($invoice['id'] ?? 0);
+            if ($id > 0) { $codes[$id] = (string)($invoice['invoice_code'] ?? ''); $result[$id] = ['available'=>false,'stages'=>[]]; }
+        }
+        foreach (array_chunk(array_keys($codes), 500) as $ids) {
+            $marks = implode(',', array_fill(0, count($ids), '%d'));
+            $rows = $wpdb->get_results($wpdb->prepare("SELECT id,invoice_id,stage_no,requested_amount,status FROM {$wpdb->prefix}sn_invoice_payment_stages WHERE invoice_id IN ({$marks}) ORDER BY invoice_id,stage_no,id", ...$ids), ARRAY_A);
+            if ($wpdb->last_error !== '' || !is_array($rows)) { continue; }
+            foreach ($ids as $id) { $result[$id]['available'] = true; }
+            foreach ($rows as $row) {
+                $id = (int)$row['invoice_id']; $no = (int)$row['stage_no'];
+                if (!isset($codes[$id]) || $no < 1) { continue; }
+                $result[$id]['stages'][] = ['stage_no'=>$no,'stage_reference'=>'STG-'.(int)$row['id'],
+                    'stage_invoice_code'=>$codes[$id].'/'.$no,'amount'=>(float)$row['requested_amount'],
+                    'status'=>(string)$row['status']];
+            }
+        }
+        return $result;
+    }
+
     /** Read-only identifiers. A stage/legacy summary is never a bank transaction. */
     public static function trace_reference(array $row, array $context = []): array
     {

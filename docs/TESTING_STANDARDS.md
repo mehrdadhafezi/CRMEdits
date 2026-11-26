@@ -12,6 +12,15 @@ Review یا حل conflict، تست‌های مرتبط دوباره اجرا ش�
 
 ## Scope و انتخاب تست ضروری
 
+The bounded 2.0.246 stage-visibility profile retains all 2.0.245 gateway/catalog,
+Finance, reporting, editor, tracking, security, lifecycle and HR/MIS suites.
+`stage_visibility_ci.py` additionally requires actual scoped stage-search proof
+and desktop/mobile stage rendering from the exact candidate sources. Runtime,
+base, changed paths and validation sources are hash-bound. The Finance prior-field
+comparison independently validates the additive stage projection against issued
+database rows before removing only that field for the prior contract comparison.
+No existing amount, status, permission, count or ordering field is excluded.
+
 فایل‌های تغییرکرده را با تسک، مسیر مجاز و Branch مبنا مقایسه کنید؛ Diff کامل
 commitها، staged/unstaged و فایل‌های جدید را بخوانید. نمونه با base=`origin/main`:
 
