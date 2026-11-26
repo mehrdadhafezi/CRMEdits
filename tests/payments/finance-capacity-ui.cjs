@@ -26,5 +26,5 @@ module.exports=async function({playwright,channel}){
   ok(await page.evaluate(()=>window.__data.totals.paid===5000000&&window.__data.totals.remaining===970000),'rejection preserves prior approved money at '+width);
   await context.close();
  }}finally{await browser.close();}
- console.log('TOTAL '+checks);return{passed:true,assertions:checks,version:'2.0.244',desktop_mobile:true,external_network_blocked:true,synthetic:true,production_touched:false};
+ console.log('TOTAL '+checks);return{passed:true,assertions:checks,version:'2.0.245',desktop_mobile:true,external_network_blocked:true,synthetic:true,production_touched:false};
 };

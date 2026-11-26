@@ -1,6 +1,6 @@
 <?php
 /** Native tests only: a guarded disposable CI DB or private synthetic HR namespace. */
-function hr239_bootstrap(bool $full = true, string $expected_version = '2.0.244'): void {
+function hr239_bootstrap(bool $full = true, string $expected_version = '2.0.245'): void {
     if (PHP_SAPI !== 'cli') { throw new RuntimeException('Synthetic CLI required'); }
     if ($full && !defined('DOING_AJAX')) { define('DOING_AJAX', true); }
     if (getenv('SN_APPROVAL_ALLOW_SYNTHETIC') === 'YES') {
@@ -24,7 +24,7 @@ function hr239_bootstrap(bool $full = true, string $expected_version = '2.0.244'
             || $wpdb->get_var('SELECT DATABASE()')!==DB_NAME) { throw new RuntimeException('Private runtime identity rejected'); }
         $GLOBALS['hr239_root']=$root;$GLOBALS['hr239_output']=$root.'/evidence';
     }
-    if (!in_array($expected_version,['2.0.235','2.0.241','2.0.242','2.0.243','2.0.244'],true) || !defined('SN_VERSION') || SN_VERSION!==$expected_version) { throw new RuntimeException('Intended candidate version required'); }
+    if (!in_array($expected_version,['2.0.235','2.0.241','2.0.242','2.0.243','2.0.244','2.0.245'],true) || !defined('SN_VERSION') || SN_VERSION!==$expected_version) { throw new RuntimeException('Intended candidate version required'); }
     $GLOBALS['hr239_automatic_policy_hook']=has_action('wp_ajax_sn_hr_invoice_reissue')!==false;
     sn_bootstrap_load_core();sn_bootstrap_plugin_instance($full);
     global $wpdb;$wpdb->hide_errors();

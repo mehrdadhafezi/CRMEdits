@@ -63,6 +63,6 @@ elif mode=='public-security':
   ok(all(hashlib.sha256(x.encode()).hexdigest()!=meta['token_hash'] for x in strings(reply)),'public response never echoes its invoice token '+case)
  summary={'passed':True,'synthetic':True,'assertions':checks,'cases':6,'real_php_controller_requests':True,'production_touched':False};name='trace242-public-security.json'
 else:raise RuntimeError('Explicit synthetic process mode required')
-native=json.loads((output/'trace242-native.json').read_text());require(native['version']=='2.0.244' and native['passed'] is True,'Matching native candidate evidence required')
+native=json.loads((output/'trace242-native.json').read_text());require(native['version']=='2.0.245' and native['passed'] is True,'Matching native candidate evidence required')
 summary.update(version=native['version'],core_sha256=native['core_sha256'],commission_sha256=native['commission_sha256'])
 (output/name).write_text(json.dumps(summary,indent=2)+'\n');print('SUMMARY '+json.dumps(summary));print('TOTAL '+str(checks))

@@ -4,6 +4,12 @@ Status: OBSERVED static source, baseline 2.0.235 / 2026-11-12. Human specialist:
 
 ## 1. Purpose & Scope
 
+2.0.245 follow-up: the staff form reconciles its product options with the fresh
+authorized `sn_sales_catalog_staff` response, including options present in stale
+or unfiltered initial HTML. Unavailable policy data blocks selection with an
+explicit retry action. Server authorization and fixed/custom discount validation
+remain authoritative and unchanged; no saved manager policy is rewritten.
+
 محصول، همگام‌سازی کارت و تخفیف مجاز سمت سرور. قیمت و تخفیف دریافتی مرورگر قابل اعتماد نیست. snapshot تخفیف فاکتور حفظ شود. ensure_schema کاتالوگ می‌تواند اصلاح داده قبلی انجام دهد و اجرای آن مجوز جدا می‌خواهد. این قرارداد برای توسعه ماژول موجود است؛ بازطراحی فرآیند تجاری خارج از محدوده است.
 
 ## 2. File Structure

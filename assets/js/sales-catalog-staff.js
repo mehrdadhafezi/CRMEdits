@@ -1,6 +1,6 @@
 (function ($) {
   'use strict';
-  var products = {}, loaded = false, loading = false;
+  var products = {}, loaded = false, loading = false, generation = 0;
   var rowSelector = '#sn-products-multi .sn-product-row,#sn-converter-products-multi .sn-product-row';
   function selectIn($row) { return $row.find('.sn-product-select,.sn-converter-product-select').first(); }
   function amountKey(raw) {
@@ -32,10 +32,19 @@
     return values;
   };
   function updateRow($row) {
+    var $select = selectIn($row);
+    if (!loaded) {
+      if (!$select.prop('disabled')) $select.attr('data-sn-catalog-loading', '1').prop('disabled', true);
+    } else {
+      var selected = String($select.val() || '');
+      $select.find('option').filter(function () { return this.value && !products[String(this.value)]; }).remove();
+      if ($select.attr('data-sn-catalog-loading') === '1') $select.removeAttr('data-sn-catalog-loading').prop('disabled', false);
+      if (selected && !products[selected]) { $select.val(''); $select.trigger('change'); }
+    }
     var $product = selectIn($row), id = String($product.val() || ''), product = products[id];
     var $label = $row.find('.sn-catalog-discount-field');
     if (!$label.length) $label = $('<label class="sn-catalog-discount-field"><span>تخفیف هر واحد</span><select class="sn-catalog-discount-select" aria-label="تخفیف ثابت هر واحد محصول"></select></label>').appendTo($row);
-    var $discount = $label.find('select'), key = id + ':' + loaded, previous = String($discount.val() || '');
+    var $discount = $label.find('select'), key = id + ':' + loaded + ':' + generation, previous = String($discount.val() || '');
     if ($discount.attr('data-catalog-key') === key) return;
     if ($discount.attr('data-product-id') !== id) { previous = ''; customInput($label).val(''); }
     $discount.attr({'data-product-id': id, 'data-catalog-key': key}).empty().append($('<option value="">').text(loaded ? 'بدون تخفیف' : 'در حال دریافت تخفیف‌ها…'));
@@ -65,18 +74,27 @@
   }
   function refresh() { $(rowSelector).each(function () { updateRow($(this)); }); $('.sn-catalog-case-discount[data-discounts]').each(function () { updateCase($(this)); }); }
   window.snCatalogRefresh = refresh;
-  function load() {
-    if (loading || loaded || !$(rowSelector).length) return;
+  function load(force) {
+    if (loading || loaded && !force || !$(rowSelector).length) return;
     loading = true;
+    $(rowSelector).each(function () { var $select = selectIn($(this)); if (!$select.prop('disabled')) $select.attr('data-sn-catalog-loading', '1').prop('disabled', true); });
     $.post(snSalesCatalog.ajaxUrl, {action: 'sn_sales_catalog_staff', nonce: snSalesCatalog.nonce}, null, 'json').done(function (res) {
-      if (!res || !res.success) return;
-      (res.data.products || []).forEach(function (p) { products[String(p.id)] = p; }); loaded = true; refresh();
-    }).always(function () {
+      if (!res || !res.success || !res.data || !Array.isArray(res.data.products) || res.data.products.some(function (p) { return !p || !Number.isInteger(Number(p.id)) || Number(p.id) < 1 || !Array.isArray(p.discounts); })) { loaded = false; return; }
+      products = {}; (res.data.products || []).forEach(function (p) { products[String(p.id)] = p; }); loaded = true; generation++; refresh();
+      $(rowSelector).find('.sn-catalog-retry').remove();
+    }).fail(function () { loaded = false; }).always(function () {
       loading = false;
-      if (!loaded) $(rowSelector).find('.sn-catalog-discount-select option:first').text('دریافت تخفیف ناموفق؛ برای تلاش دوباره محصول را انتخاب کنید');
+      if (!loaded) refresh();
+      if (!loaded) $(rowSelector).each(function () {
+        var $row = $(this);
+        $row.find('.sn-catalog-discount-select option:first').text('فهرست محصولات و تخفیف‌های مجاز دریافت نشد');
+        if (!$row.find('.sn-catalog-retry').length) $('<button type="button" class="sn-btn sn-btn-secondary sn-catalog-retry">دریافت دوباره محصولات و تخفیف‌ها</button>').appendTo($row);
+      });
     });
   }
   $(document).on('change.snCatalog', '.sn-product-select,.sn-converter-product-select', function () { updateRow($(this).closest('.sn-product-row')); load(); });
+  $(document).on('click.snCatalog', '.sn-catalog-retry', function () { load(); });
+  $(document).on('click.snCatalog', '.sn-tab[data-tab="new-invoice"]', function () { load(true); });
   $(document).on('change.snCatalog', '.sn-catalog-discount-select,.sn-catalog-case-discount select', function () { syncCustom($(this).closest('.sn-catalog-discount-field,.sn-catalog-case-discount')); });
   $(document).on('input.snCatalog', '.sn-catalog-custom-amount', function () {
     var $label = $(this).closest('.sn-catalog-discount-field,.sn-catalog-case-discount'); syncCustom($label); $label.find('select').trigger('change');

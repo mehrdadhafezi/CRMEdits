@@ -36,7 +36,7 @@ def main():
     assert run('callback','r3')['pay_result']=='success' and not run('switch','r3')['success']
     three=run('verify','r3');assert three['passed'];print('PASS completed bank stage rejects stale manual choice')
     assert not run('switch-fail','f0')['success'];four=run('verify','f0');assert four['passed'];print('PASS native SQL failure rolls back all selected requests and audit')
-    summary={'passed':True,'synthetic':True,'version':'2.0.244','assertions':sum(v['assertions'] for v in [one,two,three,four]),'real_parallel_php_processes':True,'cases':4,'actual_mysql_advisory_and_row_locks':True,'production_touched':False}
+    summary={'passed':True,'synthetic':True,'version':'2.0.245','assertions':sum(v['assertions'] for v in [one,two,three,four]),'real_parallel_php_processes':True,'cases':4,'actual_mysql_advisory_and_row_locks':True,'production_touched':False}
     output=pathlib.Path(os.environ['SN_APPROVAL_OUTPUT']).resolve();assert output.is_dir()
     (output/'gateway-manual-races.json').write_text(json.dumps(summary,indent=2)+'\n')
     print('TOTAL '+str(summary['assertions']))
