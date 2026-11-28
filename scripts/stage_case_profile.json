@@ -557,7 +557,8 @@
     "tests/products/native-product-settings.php",
     "tests/products/product-settings-browser.cjs",
     "tests/products/product-sms-race.php",
-    "tests/products/product-sms-races.py"
+    "tests/products/product-sms-races.py",
+    "tests/reporting/invoice-financial-browser.cjs"
   ],
   "validation_files": {
     ".github/workflows/ci.yml": "751dc9ecfed5e84cee101fe80ec1a272940576979635e6d6b6e6477a1d729c1f",
@@ -596,6 +597,7 @@
     "tests/products/native-product-settings.php": "fd7439697f9b099a8121a0551f95a97d65ee748fed19f7ee5e4b8650d1414c13",
     "tests/products/product-settings-browser.cjs": "a7a2661233dc8af2e2dfd28af25c739225004af67e41d00bde3e8e4fc9cfa6d5",
     "tests/products/product-sms-race.php": "a584be5d55a16ef96d8d376566d3b2eac2bdeac71c94022aaa134cf8bc988c47",
-    "tests/products/product-sms-races.py": "a26bd0b11fa6a4da16aa4c457b48da816ce1dd1b0304771aa22c4169d67c1d80"
+    "tests/products/product-sms-races.py": "a26bd0b11fa6a4da16aa4c457b48da816ce1dd1b0304771aa22c4169d67c1d80",
+    "tests/reporting/invoice-financial-browser.cjs": "3959eb7a060178873b722495ebc9b7e2d6e10725d515bba31d13abd8c20de6b9"
   }
 }

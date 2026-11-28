@@ -47,7 +47,7 @@ Historical release profiles remain pinned; their unit tests read historical byte
 | Secret Scan | PASS (local) | Gitleaks 8.24.3, full source and all 76 available commits before publication; repository policy unchanged |
 | Security | PASS (local, scoped) | actual WordPress administrator renderer and seller denial; complete financial fingerprint unchanged; browser escaping and action/selector isolation |
 | Functional | PASS (local) | PHP presentation 32; actual WordPress/MySQL administrator 30; actual seller/team/Finance renderers 102 desktop/mobile checks |
-| Regression | PASS (local tooling); full CI pending | 147 tooling tests; all previous gateway, tracking, editor, reporting, HR, MIS, lifecycle and four Finance matrix entries retained |
+| Regression | PASS (local tooling); full CI pending | 147 tooling tests; 89 actual report browser/HTTP/CSV/XLS checks with canonical and stage rows counted separately; all previous gateway, tracking, editor, reporting, HR, MIS, lifecycle and four Finance matrix entries retained |
 | Scope / Diff | PASS (local) | six reviewed runtime members; exact final payload and validation pins; 21 retained fixture changes are version identity only |
 | API / DB / Role compatibility | PASS (local, scoped) | no wire/schema/role changes; no mutation to financial rows, invoice counts or bulk actions |
 | GitHub CI | NOT_RUN at authoring | must certify this exact 247 revision; earlier 246 CI is not sufficient |
@@ -75,6 +75,6 @@ financial decisions or accounting. No data migration needs reversal.
 The owner installs personally. No Production access, installation or main merge
 is performed by this task. A ZIP is delivered only from exact successful CI.
 
-Stage: local implementation, review and source/history scan passed; publishing a Draft for fresh exact-revision CI. No main merge or site installation authorized.
+Stage: local implementation, review and source/history scan passed. First CI correctly rejected a historical browser assertion that counted every HTML row as an invoice. The report now independently checks six canonical invoices, five stage rows and no duplicate bulk selection, retains every export assertion, blocks external browser requests, and verifies real login cookies. Its actual HTTP suite passed 89 checks locally. Full CI for this validation update is required. Runtime bytes are unchanged. No main merge or site installation authorized.
 
 BLOCKED — MISSING REQUIRED TEST
