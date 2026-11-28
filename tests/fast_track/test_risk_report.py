@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 
 SELECTOR = Path(__file__).resolve().parents[2] / "scripts" / "risk_report.py"
@@ -72,6 +73,17 @@ class RiskReportTest(unittest.TestCase):
         script.chmod(0o755)
         self.git("add", "scripts/staging-audit.sh")
         self.git("update-index", "--chmod=+x", "scripts/staging-audit.sh")
+
+    def test_active_supervisor_renderer_requires_shared_native_coverage(self):
+        self.write("assets/js/public-supervisor.js", "function render(rows) { return rows; }\n")
+        selected = self.report(self.snapshot("active supervisor presentation"))
+        self.assertEqual(selected["risk"], "HIGH")
+        self.assertIn("shared", selected["affected_domains"])
+        with patch("fast_track_ci.stage_case_ci.scope", return_value=True):
+            plan, _ = self.orchestration(selected)
+        self.assertTrue(plan["finance"] and plan["finance_review"] and plan["hr_native"])
+        for suite in ("finance", "ui", "access", "ledger", "schema", "mis"):
+            self.assertEqual(plan["suites"][suite], "REQUIRED")
 
     def test_reviewed_audit_scope_stays_high_and_needs_actual_safety_proof(self):
         self.audit_fixture()

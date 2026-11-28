@@ -48,7 +48,7 @@ Historical release profiles remain pinned; their unit tests read historical byte
 | Secret Scan | PASS (local) | Gitleaks 8.24.3, full source and available history before publication; repository policy unchanged |
 | Security | PASS (local, scoped) | actual WordPress administrator renderer and seller denial; complete financial fingerprint unchanged; browser escaping and action/selector isolation |
 | Functional | PASS (local) | PHP presentation 32; actual WordPress/MySQL administrator 30; actual seller/manager/supervisor/Finance renderers 128 desktop/mobile checks |
-| Regression | PASS (local tooling); full CI pending | 147 tooling tests; 89 actual report browser/HTTP/CSV/XLS checks with canonical and stage rows counted separately; all previous gateway, tracking, editor, reporting, HR, MIS, lifecycle and four Finance matrix entries retained |
+| Regression | PASS (local tooling); fresh full CI required | 148 tooling tests; 89 actual report browser/HTTP/CSV/XLS checks with canonical and stage rows counted separately; all previous gateway, tracking, editor, reporting, HR, MIS, lifecycle and four Finance matrix entries retained |
 | Scope / Diff | PASS (local) | seven reviewed runtime members; exact final payload and validation pins; 21 retained fixture changes are version identity only |
 | API / DB / Role compatibility | PASS (local, scoped) | no wire/schema/role changes; no mutation to financial rows, invoice counts or bulk actions |
 | GitHub CI | Prior revision PASS; fresh CI required | must certify the supervisor extension too; earlier CI cannot certify changed bytes |
@@ -76,6 +76,6 @@ financial decisions or accounting. No data migration needs reversal.
 The owner installs personally. No Production access, installation or main merge
 is performed by this task. A ZIP is delivered only from exact successful CI.
 
-Stage: PR #34 remains Draft. CI for `4b6c0ab` passed all required gates, including the corrected report assertion: six canonical invoices, five stage rows and no duplicate bulk selection. Actual asset-enqueue review subsequently identified the standalone active supervisor renderer; this revision adds it to the same shared presentation and requires its own source hash, browser assertions and fresh full CI. Existing export assertions and HTTP/login tests remain mandatory. No main merge or site installation authorized.
+Stage: PR #34 remains Draft. CI for `4b6c0ab` passed all required gates, including the corrected report assertion: six canonical invoices, five stage rows and no duplicate bulk selection. Actual asset-enqueue review subsequently identified the standalone active supervisor renderer; this revision adds it to the same shared presentation and requires its own source hash and 128 browser assertions. Run `46142910803` correctly classified the previously unmapped supervisor file as UNKNOWN and did not select the native suite. The reviewed supervisor caller is now explicitly HIGH/shared like the manager renderer; a regression requires all shared suites and native selection for the exact case profile. Unknown files remain blocked. Fresh full CI is required; existing export assertions and HTTP/login tests remain mandatory. No main merge or site installation authorized.
 
 BLOCKED — MISSING REQUIRED TEST
