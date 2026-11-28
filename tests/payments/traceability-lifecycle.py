@@ -14,7 +14,7 @@ need(source.is_absolute() and source.resolve()==source and not source.is_symlink
 if ci:need(os.environ.get('GITHUB_ACTIONS')=='true' and os.environ.get('RUNNER_ENVIRONMENT')=='github-hosted' and re.fullmatch('/tmp/sn-approval-[A-Za-z0-9]{8}',str(source)),'Hosted sandbox only')
 else:need(os.geteuid()==1073 and re.fullmatch('/home/crmstg1/private/hr239-[a-z0-9_]{8}',str(source)) and not pathlib.Path('/home/payasetareh').exists(),'Private synthetic account only')
 need(len(sys.argv)==2,'Pinned lifecycle input required');input_path=pathlib.Path(sys.argv[1]).resolve();profiles=json.loads(input_path.read_text())['profiles']
-need(set(profiles)=={'main','experimental','candidate'} and profiles['main']['commit']==BASE and profiles['experimental']['commit']==EXPERIMENTAL and profiles['candidate']['version']=='2.0.246','Verified tracks only')
+need(set(profiles)=={'main','experimental','candidate'} and profiles['main']['commit']==BASE and profiles['experimental']['commit']==EXPERIMENTAL and profiles['candidate']['version']=='2.0.247','Verified tracks only')
 if ci:need(profiles['candidate']['commit']==os.environ.get('GITHUB_SHA') and profiles['candidate'].get('uncommitted') is not True,'Exact CI merge candidate only')
 cfg=(source/'wordpress/wp-config.php').read_text()
 need('CUSTOM_USER_TABLE' not in cfg and 'CUSTOM_USER_META_TABLE' not in cfg,'No shared WordPress identity tables')
@@ -130,7 +130,7 @@ try:
   swap(site,profiles['candidate']);phase(site,'reupgrade');ok(True,track+' repeated upgrade after full restore is idempotent')
   profiles_done.append({'track':track,'baseline':baseline['commit'],'passed':True,'fresh_namespace':True,'full_restore':True})
  current=source;ok(fingerprint(before_names)==before,'every preexisting table outside both generated namespaces is preserved')
- summary={'passed':True,'synthetic':True,'assertions':checks,'version':'2.0.246','baseline_shas':{'main':BASE,'experimental':EXPERIMENTAL},'profiles':profiles_done,'fresh_namespaces':True,'legacy_identities_preserved':True,'new_financial_state_preserved_on_code_swap':True,'full_backup_restore_verified':True,'outside_tables_preserved':True,'code_only_business_rollback_supported':False,'production_touched':False}
+ summary={'passed':True,'synthetic':True,'assertions':checks,'version':'2.0.247','baseline_shas':{'main':BASE,'experimental':EXPERIMENTAL},'profiles':profiles_done,'fresh_namespaces':True,'legacy_identities_preserved':True,'new_financial_state_preserved_on_code_swap':True,'full_backup_restore_verified':True,'outside_tables_preserved':True,'code_only_business_rollback_supported':False,'production_touched':False}
  summary.update(candidate_commit=profiles['candidate']['commit'],core_sha256=profiles['candidate']['members']['includes/class-sn-plugin.php'],commission_sha256=profiles['candidate']['members']['includes/class-sn-purpose-commission.php'],post_restore_bootstrap_schema_verified=True)
  public_summary=output/'trace242-lifecycle.json';public_summary.write_text(json.dumps(summary,indent=2)+'\n');os.chmod(str(public_summary),0o644)
  print('SUMMARY '+json.dumps(summary));print('TOTAL '+str(checks))

@@ -46,7 +46,7 @@ def main():
         reset('reader');a=start('stale-reader','stale');wait('reader',a);assert run('send','stale')['sent'];release('reader')
         second=finish(a,'stale-reader');assert not second['sent'] and second['state']=='skipped'
         two=run('verify','stale');assert two['passed'];print('PASS stale WordPress option cache cannot duplicate accepted SMS')
-        summary={'passed':True,'synthetic':True,'version':'2.0.246','assertions':one['assertions']+two['assertions']+2,'cases':2,
+        summary={'passed':True,'synthetic':True,'version':'2.0.247','assertions':one['assertions']+two['assertions']+2,'cases':2,
                  'real_parallel_php_processes':True,'actual_mysql_advisory_locks':True,'stale_cache_control':True,'production_touched':False,'real_sms_sent':False}
         (output/'product241-races.json').write_text(json.dumps(summary,indent=2)+'\n');print('SUMMARY '+json.dumps(summary));print('TOTAL '+str(summary['assertions']))
     finally:

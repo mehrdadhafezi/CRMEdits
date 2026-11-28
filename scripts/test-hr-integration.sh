@@ -92,7 +92,7 @@ import json,pathlib,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace')
 count=sum(line.startswith('PASS ') for line in text.splitlines())
 assert count==40 and 'TOTAL 40' in text.splitlines()
-pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.246','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.247','assertions':count,'production_touched':False,'real_sms_sent':False},indent=2)+'\n')
 PY
 phase product-settings-native run_php tests/products/native-product-settings.php
 phase product-sms-races run_test python3 -B tests/products/product-sms-races.py
@@ -145,7 +145,7 @@ python3 - "$runtime/hr-traceability-memory.private.log" "$output/trace242-unit.j
 import hashlib,json,pathlib,sys
 text=pathlib.Path(sys.argv[1]).read_text(errors='replace');count=sum(x.startswith('PASS ')for x in text.splitlines())
 assert count==21 and 'TOTAL 21' in text.splitlines()
-pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'assertions':count,'version':'2.0.246','payment_model_sha256':hashlib.sha256(pathlib.Path('includes/class-sn-payment-transactions.php').read_bytes()).hexdigest(),'production_touched':False},indent=2)+'\n')
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'assertions':count,'version':'2.0.247','payment_model_sha256':hashlib.sha256(pathlib.Path('includes/class-sn-payment-transactions.php').read_bytes()).hexdigest(),'production_touched':False},indent=2)+'\n')
 PY
 phase staged-gateway-native run_php tests/payments/staged-gateway-native.php
 phase staged-gateway-races run_test python3 -B tests/payments/staged-gateway-races.py
@@ -182,12 +182,21 @@ phase gateway-finance-review run_php tests/payments/gateway-finance-native.php
 phase catalog-manager-scope run_php tests/products/catalog-scope-native.php
 phase gateway-catalog-browser run_test node tests/products/gateway-catalog-ci-browser.cjs
 phase stage-visibility-native run_php tests/payments/stage-visibility-native.php
+phase stage-case-native run_php tests/payments/stage-case-native.php
+phase stage-case-memory run_php tests/payments/stage-case.php
+python3 - "$runtime/hr-stage-case-memory.private.log" "$output/stage247-memory.json" <<'PYCASE'
+import json,pathlib,sys
+text=pathlib.Path(sys.argv[1]).read_text();assert 'STAGE_CASE_TOTAL 32' in text.splitlines()
+pathlib.Path(sys.argv[2]).write_text(json.dumps({'passed':True,'synthetic':True,'version':'2.0.247','assertions':32,'production_touched':False},indent=2)+'\n')
+PYCASE
 phase stage-visibility-browser run_test node tests/payments/stage-visibility-ci-browser.cjs
-if python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"; then
+if python3 -B scripts/stage_case_ci.py authorize --revision "$GITHUB_SHA"; then
+  python3 -B scripts/stage_case_ci.py lifecycle-inputs --output "$runtime/trace242-inputs"
+elif python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"; then
   python3 -B scripts/stage_visibility_ci.py lifecycle-inputs --output "$runtime/trace242-inputs"
-elif python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"; then
+elif python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_case_ci.py authorize --revision "$GITHUB_SHA"; then
   python3 -B scripts/gateway_catalog_ci.py lifecycle-inputs --output "$runtime/trace242-inputs"
-elif python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"; then
+elif python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_case_ci.py authorize --revision "$GITHUB_SHA"; then
   python3 -B scripts/finance_review_ci.py lifecycle-inputs --output "$runtime/trace242-inputs"
 else
   python3 -B scripts/traceability_ci.py lifecycle-inputs --output "$runtime/trace242-inputs"
@@ -197,16 +206,16 @@ phase traceability-upgrade-restore run_test python3 -B tests/payments/traceabili
 printf 'TRACEABILITY_REGRESSION_COMPLETE\n'
 
 # Add this exact reporting payload's independent WordPress/MySQL/browser suite.
-if python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA" || python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"; then
+if python3 -B scripts/invoice_reporting_ci.py "$GITHUB_SHA" || python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_case_ci.py authorize --revision "$GITHUB_SHA"; then
   phase invoice-financial-reports bash scripts/test-invoice-reporting.sh
 fi
 
 # Add bank-reference HTTP, database, upload, browser and classic-route proof.
-if python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"; then
+if python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_case_ci.py authorize --revision "$GITHUB_SHA"; then
   phase payment-tracking bash scripts/test-payment-tracking.sh
 fi
 
 # Preserve the prior editor correction in the same installation candidate.
-if python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA" || python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA"; then
+if python3 -B scripts/prepayment_edit_ci.py "$GITHUB_SHA" || python3 -B scripts/payment_tracking_ci.py "$GITHUB_SHA" || python3 -B scripts/finance_review_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/gateway_catalog_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_visibility_ci.py authorize --revision "$GITHUB_SHA" || python3 -B scripts/stage_case_ci.py authorize --revision "$GITHUB_SHA"; then
   phase prepayment-editor bash scripts/test-prepayment-edit.sh
 fi

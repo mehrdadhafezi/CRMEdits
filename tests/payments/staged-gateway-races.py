@@ -15,10 +15,10 @@ def finish(p,label):
  (root/('staged243-'+label+'.stdout.private')).write_bytes(out);(root/('staged243-'+label+'.stderr.private')).write_bytes(err)
  assert p.returncode==0,'Synthetic callback worker failed';return out.decode()
 one=start('callback');two=start('callback');results=[json.loads(finish(one,'one')),json.loads(finish(two,'two'))]
-assert all(x['result']=='partial_success'and x['version']=='2.0.246'for x in results)
+assert all(x['result']=='partial_success'and x['version']=='2.0.247'for x in results)
 print('PASS both concurrent verified public callbacks completed',flush=True)
 lines=finish(start('verify'),'verify').splitlines();labels=[x for x in lines if x.startswith('PASS ')];assert len(labels)==5 and'TOTAL 5'in lines
 for line in labels:print(line,flush=True)
 out=pathlib.Path(os.environ.get('SN_APPROVAL_OUTPUT',str(root/'evidence')))
-summary={'passed':True,'synthetic':True,'version':'2.0.246','assertions':6,'real_parallel_php_processes':True,'actual_public_callbacks':True,'real_provider_calls':0,'production_touched':False}
+summary={'passed':True,'synthetic':True,'version':'2.0.247','assertions':6,'real_parallel_php_processes':True,'actual_public_callbacks':True,'real_provider_calls':0,'production_touched':False}
 (out/'staged243-races.json').write_text(json.dumps(summary,indent=2)+'\n');print('SUMMARY '+json.dumps(summary));print('TOTAL 6')

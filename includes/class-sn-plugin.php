@@ -27254,6 +27254,7 @@ class SN_Plugin
 			$invs = $wpdb->get_results($wpdb->prepare($list,...array_merge($args,[$per,($page-1)*$per])),ARRAY_A);
 			if ($wpdb->last_error !== '' || !is_array($invs)) { throw new RuntimeException('Invoice read failed'); }
 			$financial = $report->for_ids(array_column($invs,'id'));
+			$stage_histories = SN_Payment_Transactions::stage_history($invs);
 			$item_labels = $report->item_labels(array_column($invs,'id'));
 			$group_stats = $this->sn_admin_invoice_group_stats($filters);
 			$review_filters = array_replace($filters,['status'=>'needs_review']);
@@ -27323,10 +27324,10 @@ class SN_Plugin
 			</div>
 			<div style="overflow:auto" tabindex="0" role="region" aria-label="جدول فاکتورها؛ برای دیدن ستون‌ها پیمایش افقی کنید"><table class="wp-list-table widefat striped sn-invoice-report-table" style="min-width:2400px">
 				<thead><tr><th>انتخاب</th><th>کد فاکتور / شناسه یکتا</th><th>مشتری</th><th>پیگیری / فرآیند</th><th>وضعیت سند ثبت‌شده</th><th>وضعیت مالی دفتر</th><th>تسویه / دریافتی / مانده</th><th>مغایرت با دفتر</th><th>مبلغ فاکتور</th><th>موبایل</th><th>روش ثبت‌شده فاکتور</th><th>محصول</th><th>فروشنده</th><th>سرپرست</th><th>ارشد</th><th>مدیر فروش</th><th>شعبه فعلی</th><th>معاونت</th><th>تاریخ</th><th>عملیات</th></tr></thead><tbody>
-				<?php foreach ($invs as $inv) : $seller_id=$this->sn_invoice_effective_seller_id_for_admin($inv); $chain=$chain_map[$seller_id] ?? []; $f=$financial[(int)$inv['id']]; $is_receipt=(bool)$f['review_required']; ?>
-				<tr>
+				<?php foreach ($invs as $inv) : $seller_id=$this->sn_invoice_effective_seller_id_for_admin($inv); $chain=$chain_map[$seller_id] ?? []; $f=$financial[(int)$inv['id']]; $is_receipt=(bool)$f['review_required']; $history=$stage_histories[(int)$inv['id']] ?? ['available'=>false,'stages'=>[]]; $stage_summary=['remaining'=>$f['remaining_amount']]; ?>
+				<tr data-sn-invoice-main="true">
 					<td><input type="checkbox" form="sn-bulk-invoice-filters" name="sn_bulk_ids[]" value="<?php echo esc_attr((string)$inv['id']); ?>" aria-label="<?php echo esc_attr('انتخاب فاکتور ' . $inv['invoice_code']); ?>"></td>
-					<td><code><?php echo esc_html($inv['invoice_code']); ?></code><br><small>شناسه <?php echo esc_html((string)$inv['id']); ?></small><?php if (isset($references[(int)$inv['id']])) : ?><br><small>خرید مرجع: <?php echo esc_html($references[(int)$inv['id']]['invoice_code']); ?>؛ مرحله <?php echo esc_html((string)$references[(int)$inv['id']]['stage_no']); ?></small><?php endif; ?></td>
+					<td><code dir="ltr"><?php echo esc_html($inv['invoice_code']); ?></code><?php echo SN_Payment_Transactions::render_stage_history($history,$stage_summary); ?><br><small>شناسه <?php echo esc_html((string)$inv['id']); ?></small><?php if (isset($references[(int)$inv['id']])) : ?><br><small>خرید مرجع: <?php echo esc_html($references[(int)$inv['id']]['invoice_code']); ?>؛ مرحله <?php echo esc_html((string)$references[(int)$inv['id']]['stage_no']); ?></small><?php endif; ?></td>
 					<td><?php echo esc_html((string)$inv['customer_name']); ?></td>
 					<td><?php echo esc_html(SN_Invoice_Financial_Report::status_label((string)$inv['status'])); ?></td><td><?php echo esc_html(SN_Invoice_Financial_Report::status_label((string)$inv['invoice_status'])); ?></td>
 					<td><?php echo esc_html(SN_Invoice_Financial_Report::finance_label($f)); ?><br><small>ثبت‌شده فاکتور: <?php echo esc_html(SN_Invoice_Financial_Report::status_label((string)$inv['payment_status'])); ?></small></td>
@@ -27340,6 +27341,7 @@ class SN_Plugin
 					<td><?php echo esc_html(SN_Helpers::gregorian_to_jalali_date((string)$inv['created_at'])); ?></td>
 					<td><?php $as_url = $this->sn_after_sales_context_url((string) ($inv['invoice_code'] ?? '')); if ($as_url) : ?><a href="<?php echo esc_url($as_url); ?>" class="button button-small sn-internal-context-link">پرونده خدمات پس از فروش</a><?php endif; ?><?php echo SN_Helpers::receipt_links($inv); ?><?php if ($is_receipt) : ?><button class="button button-primary sn-confirm-payment" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="display:block;width:100%;margin:4px 0">✅ تایید مالی</button><button class="button sn-cancel-payment" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="display:block;width:100%;margin-bottom:6px">❌ رد فیش</button><?php endif; ?><select class="sn-admin-status-sel" data-id="<?php echo esc_attr((string) ($inv['id'] ?? '')); ?>" style="width:100%;margin-top:4px;font-size:11px"><option value="">✏ تغییر وضعیت...</option><option value="pre_invoice">📋 پیش‌فاکتور</option><option value="paid">✅ تبدیل به فاکتور</option><option value="cancelled">❌ لغو کردن</option></select></td>
 				</tr>
+				<?php echo SN_Payment_Transactions::render_stage_rows($history,$stage_summary,20); ?>
 				<?php endforeach; ?>
 				<?php if (!$invs) : ?><tr><td colspan="20">فاکتوری مطابق فیلتر فعلی یافت نشد.</td></tr><?php endif; ?>
 				</tbody></table></div>

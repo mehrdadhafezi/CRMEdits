@@ -4,16 +4,17 @@ from unittest.mock import patch
 ROOT=pathlib.Path(__file__).resolve().parents[2];sys.path.insert(0,str(ROOT/'scripts'))
 import stage_visibility_ci as gate
 from package import committed_members
+from risk_report import git as source_git
 class StageVisibilityProofTests(unittest.TestCase):
  def test_every_runtime_member_is_exact(self):
   before=committed_members(ROOT,gate.BASE);after=dict(before)
-  for n in gate.CHANGES:after['sales-network-v4/'+n]=(ROOT/n).read_bytes()
+  for n in gate.CHANGES:after['sales-network-v4/'+n]=source_git('show','68565e9ae52a16731d68d994b437b12600b9392c:'+n)
   self.assertTrue(gate.bounded_payload(before,after))
   for n in after:
    self.assertFalse(gate.bounded_payload(before,{**after,n:after[n]+b'x'}));missing=dict(after);missing.pop(n);self.assertFalse(gate.bounded_payload(before,missing))
   self.assertFalse(gate.bounded_payload(before,{**after,'sales-network-v4/unknown.php':b'<?php'}))
  def test_scope_binds_base_paths_and_validation_files(self):
-  paths=set(gate.PROFILE['changed_paths']);reader=lambda _,spec:(ROOT/spec.split(':',1)[1]).read_bytes()
+  paths=set(gate.PROFILE['changed_paths']);reader=lambda _,spec:source_git('show','68565e9ae52a16731d68d994b437b12600b9392c:'+spec.split(':',1)[1])
   with patch.object(gate,'payload_matches_revision',return_value=True),patch.object(gate,'git',side_effect=reader):
    self.assertTrue(gate.scope(gate.BASE,'a'*40,paths));self.assertFalse(gate.scope('b'*40,'a'*40,paths));self.assertFalse(gate.scope(gate.BASE,'a'*40,paths|{'unrelated.php'}))
   with patch.object(gate,'payload_matches_revision',return_value=True),patch.object(gate,'git',return_value=b'changed'):self.assertFalse(gate.scope(gate.BASE,'a'*40,paths))

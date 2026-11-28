@@ -30,6 +30,45 @@ class SN_Payment_Transactions
         return $result;
     }
 
+    /** Presentation only. Missing/invalid balances never imply settlement. */
+    public static function stages_settled(array $summary): bool
+    {
+        $value = $summary['remaining'] ?? null;
+        return (is_int($value) || is_float($value) || is_string($value))
+            && is_numeric($value) && is_finite((float)$value) && (float)$value <= 0.5;
+    }
+
+    private static function stage_content(array $stage): string
+    {
+        $labels = ['pending'=>'در انتظار پرداخت','pending_payment'=>'در انتظار پرداخت','pre_invoice'=>'در انتظار پرداخت',
+            'pending_financial_approval'=>'واریز ثبت شده؛ در انتظار تأیید مالی','receipt_uploaded'=>'رسید در انتظار بررسی مالی',
+            'paid'=>'پرداخت مرحله تأیید شده','approved'=>'پرداخت مرحله تأیید شده','rejected'=>'رد شده','cancelled'=>'لغو شده'];
+        return '<bdi dir="ltr">'.esc_html((string)($stage['stage_invoice_code'] ?? '')).'</bdi> — مبلغ مرحله: '
+            .esc_html(SN_Helpers::format_price((float)($stage['amount'] ?? 0))).'<br><small>'
+            .esc_html($labels[$stage['status'] ?? ''] ?? 'وضعیت مرحله نیازمند بررسی').' · <bdi dir="ltr">'
+            .esc_html((string)($stage['stage_reference'] ?? '')).'</bdi></small>';
+    }
+
+    public static function render_stage_history(array $history, array $summary): string
+    {
+        if (empty($history['available'])) { return '<small role="status">دریافت مراحل کامل نشد؛ صفحه را بازخوانی کنید.</small>'; }
+        if (empty($history['stages']) || !self::stages_settled($summary)) { return ''; }
+        $html = '<details class="sn-invoice-stage-history"><summary>مراحل پرداخت ('.count($history['stages']).')</summary>';
+        foreach ($history['stages'] as $stage) { $html .= '<p>'.self::stage_content($stage).'</p>'; }
+        return $html.'</details>';
+    }
+
+    public static function render_stage_rows(array $history, array $summary, int $columns): string
+    {
+        if (empty($history['available']) || self::stages_settled($summary) || $columns < 1 || $columns > 30) { return ''; }
+        $html = '';
+        foreach ($history['stages'] ?? [] as $stage) {
+            $html .= '<tr class="sn-invoice-stage-row" data-sn-stage-row="true"><td colspan="'.$columns.'">'
+                .'<div class="sn-stage-amounts"><small>مرحله پرداخت</small><div>'.self::stage_content($stage).'</div></div></td></tr>';
+        }
+        return $html;
+    }
+
     /** Read-only identifiers. A stage/legacy summary is never a bank transaction. */
     public static function trace_reference(array $row, array $context = []): array
     {

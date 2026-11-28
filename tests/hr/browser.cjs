@@ -97,7 +97,7 @@ module.exports=async function({base,output}){
   const final=await post(hr,selection);const current=final.data.rows.find(x=>x.id===users.manager_a.id);
   if(current.mode!=='inherit'){ok((await post(hr,{...selection,operation:'save',user_id:id('manager_a'),mode:'inherit',version:current.version})).success,'synthetic policy restored to default through authenticated handler');}
   ok(errors.length===0,'browser has no uncaught JavaScript errors');
-  const summary={version:'2.0.246',passed:true,assertions:checks,real_wordpress_auth_cookie:true,real_wordpress_ajax_handler:true,transport:native?'native WordPress HTTP login, shortcode and admin-ajax':'private CLI via loopback proxy; public web transport not exercised',synthetic:true,production_touched:false};
+  const summary={version:'2.0.247',passed:true,assertions:checks,real_wordpress_auth_cookie:true,real_wordpress_ajax_handler:true,transport:native?'native WordPress HTTP login, shortcode and admin-ajax':'private CLI via loopback proxy; public web transport not exercised',synthetic:true,production_touched:false};
   fs.writeFileSync(path.join(output,'summary.json'),JSON.stringify(summary,null,2)+'\n');console.log('TOTAL '+checks);
  }finally{for(const context of contexts)await context.close();await browser.close();}
 };

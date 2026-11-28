@@ -1386,7 +1386,8 @@
 			var date=i.approved_at_jalali||i.paid_at_jalali||i.created_at_jalali||i.updated_at_jalali||i.date_jalali||'—';
       var projectHtml = i.project && i.project.membership_id ? '<button type="button" class="sn-btn sn-btn-primary sn-btn-mini sn-project-chat-btn" data-membership="'+esc(i.project.membership_id)+'" data-item="'+esc((i.project.items&&i.project.items[0]&&i.project.items[0].id)||'')+'">چت با بیاوین</button>' : '—';
       var invoiceActions=esc(i.repeat_action_label||i.next_action_label||'—')+window.snInvoicePaymentButtons(i);
-      html+='<tr><td><code dir="ltr">'+esc(i.invoice_code||('#'+(i.id||'')))+'</code><br><small>کد فاکتور اصلی</small>'+window.snPaymentTransactions.renderStages(i.stage_history,i.payment_summary)+'</td><td>'+esc(i.seller_name||'')+'</td><td>'+esc(i.customer_name||'')+'<br><small>'+esc(i.customer_phone||'')+'</small></td><td>'+esc(i.amount_fmt||money(amountOf(i)))+'</td><td>'+esc(i.pay_method_label||'—')+'<br><small>'+esc(i.payment_source_label||'—')+'</small></td><td><span class="sn-status">'+esc(i.status_label||i.status||'—')+'</span></td><td>'+invoiceActions+'</td><td>'+projectHtml+'</td><td>'+esc(date)+'</td></tr>';
+      html+='<tr data-sn-invoice-main="true"><td><code dir="ltr">'+esc(i.invoice_code||('#'+(i.id||'')))+'</code><br><small>کد فاکتور اصلی</small>'+window.snPaymentTransactions.renderStages(i.stage_history,i.payment_summary)+'</td><td>'+esc(i.seller_name||'')+'</td><td>'+esc(i.customer_name||'')+'<br><small>'+esc(i.customer_phone||'')+'</small></td><td>'+esc(i.amount_fmt||money(amountOf(i)))+'</td><td>'+esc(i.pay_method_label||'—')+'<br><small>'+esc(i.payment_source_label||'—')+'</small></td><td><span class="sn-status">'+esc(i.status_label||i.status||'—')+'</span></td><td>'+invoiceActions+'</td><td>'+projectHtml+'</td><td>'+esc(date)+'</td></tr>';
+      html+=window.snPaymentTransactions.renderStageRows(i.stage_history,i.payment_summary,9);
     });
     html+='</tbody></table></div>';
     $('#sn-supervisor-invoices-list').html(html);
@@ -1815,7 +1816,7 @@
     rows.forEach(function(i){
       var check=i.can_approve_payment?'<input type="checkbox" class="sn-fin-v2-select" value="'+esc(i.id)+'">':'<span class="sn-fin-v2-no-check">—</span>';
       var paymentInfo=i.has_receipt?'<button type="button" class="sn-fin-v2-receipt-link sn-fin-v2-receipt" data-sn-fin-act="receipt" data-id="'+esc(i.id)+'">'+esc(i.receipt_count||1)+' فیش بارگذاری‌شده</button>'+(i.manual_card_to_display?'<small class="sn-fin-v2-card-destination">۴ رقم مقصد: <span dir="ltr">'+esc(i.manual_card_to_display)+'</span></small>':''):('<span class="sn-fin-v2-manual">'+esc(i.payment_info_text||'—')+'</span>');
-      h+='<tr data-id="'+esc(i.id)+'"><td class="sn-fin-v2-check">'+check+'</td>'+
+      h+='<tr data-sn-invoice-main="true" data-id="'+esc(i.id)+'"><td class="sn-fin-v2-check">'+check+'</td>'+
         '<td><code dir="ltr">'+esc(i.display_invoice_code||i.invoice_code||'')+'</code>'+financeTag(i)+'<small>#'+esc(i.id)+'</small>'+window.snPaymentTransactions.renderStages(i.stage_history,{remaining:i.remaining_amount_value,stage_no:i.current_payment_stage||i.latest_payment_stage_no})+'</td>'+
         '<td><strong>'+esc(i.customer_name||'—')+'</strong><small dir="ltr">'+esc(i.customer_phone||'—')+'</small></td>'+
         '<td>'+esc(i.seller_name||i.seller_id||'—')+'</td>'+
@@ -1826,6 +1827,7 @@
         '<td>'+paymentInfo+'</td>'+
         '<td><span class="sn-fin-v2-status '+statusClass(i)+'">'+esc(i.status_label||i.status||'—')+'</span>'+(i.financial_return_label?'<small>'+esc(i.financial_return_label)+'</small>':'')+'</td>'+
         '<td>'+rowActions(i)+'</td></tr>';
+      h+=window.snPaymentTransactions.renderStageRows(i.stage_history,{remaining:i.remaining_amount_value},11);
     });
     h+='</tbody></table></div><div id="sn-fin-v2-pager"></div>';
     $('#sn-financial-list').html(h); renderPager(); updateBulk();

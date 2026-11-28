@@ -7,16 +7,29 @@
  function number(v){return Number(String(v||'').replace(/[۰-۹]/g,function(c){return '۰۱۲۳۴۵۶۷۸۹'.indexOf(c);}).replace(/[٠-٩]/g,function(c){return '٠١٢٣٤٥٦٧٨٩'.indexOf(c);}).replace(/[,٬\s]/g,''));}
  function money(v){return Number(v||0).toLocaleString('fa-IR')+' تومان';}
  function token(){return w.crypto&&w.crypto.randomUUID?w.crypto.randomUUID():Date.now().toString(36)+'_'+Math.random().toString(36).slice(2)+'_'+Math.random().toString(36).slice(2);}
+ function settled(summary){
+  var value=(summary||{}).remaining;
+  return (typeof value==='number'||typeof value==='string'&&value.trim()!=='')&&Number.isFinite(Number(value))&&Number(value)<=0.5;
+ }
+ function stageContent(s){
+  var labels={pending:'در انتظار پرداخت',pending_payment:'در انتظار پرداخت',pre_invoice:'در انتظار پرداخت',pending_financial_approval:'واریز ثبت شده؛ در انتظار تأیید مالی',receipt_uploaded:'رسید در انتظار بررسی مالی',paid:'پرداخت مرحله تأیید شده',approved:'پرداخت مرحله تأیید شده',rejected:'رد شده',cancelled:'لغو شده'};
+  return '<bdi dir="ltr">'+esc(s.stage_invoice_code)+'</bdi> — مبلغ مرحله: '+esc(money(s.amount))+'<br><small>'+esc(labels[s.status]||'وضعیت مرحله نیازمند بررسی')+' · <bdi dir="ltr">'+esc(s.stage_reference)+'</bdi></small>';
+ }
+ function renderStageRows(history,summary,columns){
+  if(!history||!history.available||settled(summary))return '';
+  var span=Number(columns);if(!Number.isInteger(span)||span<1||span>30)return '';
+  return (history.stages||[]).map(function(s){return '<tr class="sn-invoice-stage-row" data-sn-stage-row="true"><td colspan="'+span+'"><div class="sn-stage-amounts"><small>مرحله پرداخت</small><div>'+stageContent(s)+'</div></div></td></tr>';}).join('');
+ }
  function renderStages(history,summary){
   if(!history)return '';
   if(!history.available)return '<small role="status">دریافت مراحل کامل نشد؛ صفحه را بازخوانی کنید.</small>';
   var rows=history.stages||[];if(!rows.length)return '';
-  var labels={pending:'در انتظار پرداخت',pending_payment:'در انتظار پرداخت',pre_invoice:'در انتظار پرداخت',pending_financial_approval:'واریز ثبت شده؛ در انتظار تأیید مالی',receipt_uploaded:'رسید در انتظار بررسی مالی',paid:'پرداخت مرحله تأیید شده',approved:'پرداخت مرحله تأیید شده',rejected:'رد شده',cancelled:'لغو شده'};
+  if(!settled(summary))return '';
   var remaining=(summary||{}).remaining;
   var title=remaining==null?'وضعیت تسویه را از مانده کل فاکتور بررسی کنید':(Number(remaining)>0.5?'فاکتور هنوز تسویه کامل نشده':'مانده ثبت‌شده فاکتور صفر است');
   var active=rows.filter(function(s){return Number(s.stage_no)===Number((summary||{}).stage_no);})[0];
   var h='<details class="sn-invoice-stage-history"><summary>مراحل پرداخت ('+esc(rows.length)+')'+(active?' · <bdi dir="ltr">'+esc(active.stage_invoice_code)+'</bdi>':'')+'</summary><p>'+esc(title)+'</p>';
-  rows.forEach(function(s){h+='<p><bdi dir="ltr">'+esc(s.stage_invoice_code)+'</bdi> — مبلغ مرحله: '+esc(money(s.amount))+'<br><small>'+esc(labels[s.status]||'وضعیت مرحله نیازمند بررسی')+' · <bdi dir="ltr">'+esc(s.stage_reference)+'</bdi></small></p>';});
+  rows.forEach(function(s){h+='<p>'+stageContent(s)+'</p>';});
   return h+'</details>';
  }
  function render(rows,summary){
@@ -50,7 +63,7 @@
    if(input){if($(input).val()===initialAmount)$(input).val(available>0?String(available):'');$(input).attr('data-available',available).prop('readonly',false);}
   }).fail(function(){if(ticket===contextRequest)$target.text('دریافت تراکنش‌ها انجام نشد؛ اتصال را بررسی کنید.');});
  }
- w.snPaymentTransactions={render:render,renderStages:renderStages,load:load,number:number};
+ w.snPaymentTransactions={render:render,renderStages:renderStages,renderStageRows:renderStageRows,load:load,number:number};
  // Keep one request key across network retries, but start a new one after success.
  $.ajaxPrefilter(function(options,original,jqXHR){
   var fd=options.data;if(!(fd instanceof FormData))return;
