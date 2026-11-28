@@ -1190,8 +1190,8 @@
       var projectHtml = i.project && i.project.membership_id ? '<button type="button" class="sn-btn sn-btn-primary sn-btn-mini sn-project-chat-btn" data-membership="'+esc(i.project.membership_id)+'" data-item="'+esc((i.project.items&&i.project.items[0]&&i.project.items[0].id)||'')+'">چت با بیاوین</button>' : '—';
       var amounts=i.payment_summary||{};
       var amountCell='<div class="sn-stage-amounts"><span>کل: '+esc(money(amounts.total||0))+'</span><span>پرداخت‌شده: '+esc(money(amounts.paid||0))+'</span><strong>مانده: '+esc(money(amounts.remaining||0))+'</strong><small>مرحله '+esc(amounts.stage_no||1)+' · قابل پرداخت فعلی: '+esc(money(amounts.due||0))+'</small></div>';
-      html+='<tr data-invoice-id="'+esc(i.id||'')+'">'+
-        '<td><code>'+esc(i.invoice_code || ('#'+(i.id||'')))+'</code></td>'+
+      html+='<tr data-sn-invoice-main="true" data-invoice-id="'+esc(i.id||'')+'">'+
+        '<td><code dir="ltr">'+esc(i.invoice_code || ('#'+(i.id||'')))+'</code>'+window.snPaymentTransactions.renderStages(i.stage_history,amounts)+'</td>'+
         '<td>'+esc(i.seller_name||i.seller_id||'—')+'</td>'+
         '<td>'+esc(i.customer_name||'')+'<br><small>'+esc(i.customer_phone||'')+'</small></td>'+
         '<td>'+amountCell+'</td>'+
@@ -1202,6 +1202,7 @@
 		'<td>'+projectHtml+'</td>'+
         '<td>'+esc(date)+'</td>'+
       '</tr>';
+      html+=window.snPaymentTransactions.renderStageRows(i.stage_history,amounts,10);
     });
     html+='</tbody></table></div>';
     $('#sn-supervisor-invoices-list').html(html);

@@ -115,7 +115,7 @@ restrictions. No schema, role or public token changes. See the
 
 Version 2.0.247 keeps each purchase as the canonical counted/actionable row.
 Unsettled invoices show issued stages as separate presentation rows; settled
-invoices retain expandable details. All four list surfaces and compatibility
+invoices retain expandable details. All role list surfaces and compatibility
 limits are described in [the stage case contract](../tasks/INVOICE_STAGE_CASE_247.md).
 
 Prepayment edit regressions and disposable native/browser instructions are in

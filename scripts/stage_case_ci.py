@@ -22,7 +22,7 @@ def scope(base,head,paths):
 
 def verify_hr_output(output,merge):
  prior.verify_hr_output(output,merge,runtime=RUNTIME,payload_verifier=payload_matches_revision,version=VERSION)
- root=Path(output);native=completed(root,'finance244-stage-case.json',30);memory=completed(root,'stage247-memory.json',32);browser=completed(root,'stage246-browser.json',102)
+ root=Path(output);native=completed(root,'finance244-stage-case.json',30);memory=completed(root,'stage247-memory.json',32);browser=completed(root,'stage246-browser.json',128)
  for row in[native,memory,browser]:
   if row.get('version')!=VERSION or row.get('production_touched')is not False:raise ValueError('Case evidence revision/isolation mismatch')
  for flag in['actual_admin_renderer','owner_scope','read_only']:
@@ -30,8 +30,9 @@ def verify_hr_output(output,merge):
  for key,value in[('canonical_rows',2),('unsettled_stage_rows',3),('settled_details',1)]:
   if native.get(key)!=value:raise ValueError('Incomplete admin presentation proof: '+key)
  if native.get('stage_model_sha256')!=RUNTIME['includes/class-sn-payment-transactions.php']or native.get('core_sha256')!=RUNTIME['includes/class-sn-plugin.php']:raise ValueError('Wrong admin renderer tested')
- for flag in['unsettled_rows','settled_details','canonical_counts','finance_renderer']:
+ for flag in['unsettled_rows','settled_details','canonical_counts','finance_renderer','supervisor_renderer']:
   if browser.get(flag)is not True:raise ValueError('Missing actual case browser proof: '+flag)
+ if browser.get('supervisor_js_sha256')!=RUNTIME['assets/js/public-supervisor.js']:raise ValueError('Wrong active supervisor renderer tested')
  for name in['stage-case-desktop.png','stage-case-mobile.png']:
   if not(root/'browser'/name).is_file()or(root/'browser'/name).stat().st_size<1000:raise ValueError('Case viewport screenshot missing')
  if git('rev-parse','HEAD').decode().strip()!=merge or not payload_matches_revision(merge):raise ValueError('Case candidate changed after testing')

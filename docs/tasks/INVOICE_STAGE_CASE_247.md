@@ -19,7 +19,7 @@ For a known balance at or below the existing 0.5 tolerance, retain one canonical
 row with expandable stage details. Missing, blank, boolean or invalid balances
 cannot imply settlement. A confirmed stage never settles a purchase with a balance.
 
-Seller, team, Finance and administrator lists follow this presentation. Stage
+Seller, team manager, active supervisor, Finance and administrator lists follow this presentation. Stage
 rows show their own issued amount/status/reference. Purchase totals, invoice
 counts, KPI inputs, pagination, bulk checkboxes and financial actions remain on
 the canonical invoice only. No stage row duplicates customer/payment actions.
@@ -35,7 +35,8 @@ Previously approved invoice editing, tracking, reporting and Finance fixes remai
 
 Runtime scope: `sales-network.php`, `includes/class-sn-plugin.php`,
 `includes/class-sn-payment-transactions.php`, `assets/js/payment-transactions.js`,
-`assets/js/public-seller.js`, `assets/js/public-manager.js`. Version entry,
+`assets/js/public-seller.js`, `assets/js/public-manager.js`,
+`assets/js/public-supervisor.js`. Version entry,
 `SN_VERSION`, build identity and active test evidence advance to 2.0.247.
 Historical release profiles remain pinned; their unit tests read historical bytes.
 
@@ -44,13 +45,13 @@ Historical release profiles remain pinned; their unit tests read historical byte
 | Test | Status | Evidence |
 |---|---|---|
 | Syntax / documentation / hygiene | PASS (local) | check.py all; PHP/Node syntax and repository checks |
-| Secret Scan | PASS (local) | Gitleaks 8.24.3, full source and all 76 available commits before publication; repository policy unchanged |
+| Secret Scan | PASS (local) | Gitleaks 8.24.3, full source and available history before publication; repository policy unchanged |
 | Security | PASS (local, scoped) | actual WordPress administrator renderer and seller denial; complete financial fingerprint unchanged; browser escaping and action/selector isolation |
-| Functional | PASS (local) | PHP presentation 32; actual WordPress/MySQL administrator 30; actual seller/team/Finance renderers 102 desktop/mobile checks |
+| Functional | PASS (local) | PHP presentation 32; actual WordPress/MySQL administrator 30; actual seller/manager/supervisor/Finance renderers 128 desktop/mobile checks |
 | Regression | PASS (local tooling); full CI pending | 147 tooling tests; 89 actual report browser/HTTP/CSV/XLS checks with canonical and stage rows counted separately; all previous gateway, tracking, editor, reporting, HR, MIS, lifecycle and four Finance matrix entries retained |
-| Scope / Diff | PASS (local) | six reviewed runtime members; exact final payload and validation pins; 21 retained fixture changes are version identity only |
+| Scope / Diff | PASS (local) | seven reviewed runtime members; exact final payload and validation pins; 21 retained fixture changes are version identity only |
 | API / DB / Role compatibility | PASS (local, scoped) | no wire/schema/role changes; no mutation to financial rows, invoice counts or bulk actions |
-| GitHub CI | NOT_RUN at authoring | must certify this exact 247 revision; earlier 246 CI is not sufficient |
+| GitHub CI | Prior revision PASS; fresh CI required | must certify the supervisor extension too; earlier CI cannot certify changed bytes |
 
 Local actual admin proof uses new internal-network Docker containers, no
 published ports, a fresh WordPress volume and temporary MySQL, read-only source,
@@ -75,6 +76,6 @@ financial decisions or accounting. No data migration needs reversal.
 The owner installs personally. No Production access, installation or main merge
 is performed by this task. A ZIP is delivered only from exact successful CI.
 
-Stage: local implementation, review and source/history scan passed. First CI correctly rejected a historical browser assertion that counted every HTML row as an invoice. The report now independently checks six canonical invoices, five stage rows and no duplicate bulk selection, retains every export assertion, blocks external browser requests, and verifies real login cookies. Its actual HTTP suite passed 89 checks locally. Full CI for this validation update is required. Runtime bytes are unchanged. No main merge or site installation authorized.
+Stage: PR #34 remains Draft. CI for `4b6c0ab` passed all required gates, including the corrected report assertion: six canonical invoices, five stage rows and no duplicate bulk selection. Actual asset-enqueue review subsequently identified the standalone active supervisor renderer; this revision adds it to the same shared presentation and requires its own source hash, browser assertions and fresh full CI. Existing export assertions and HTTP/login tests remain mandatory. No main merge or site installation authorized.
 
 BLOCKED — MISSING REQUIRED TEST

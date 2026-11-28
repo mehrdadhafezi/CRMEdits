@@ -200,7 +200,7 @@
     },
     {
       "path": "assets/js/public-supervisor.js",
-      "sha256": "735e377469ae60037b44157ccc2f009d9d3fb2753aa9d5092a095772675d703f"
+      "sha256": "50862466fead94567a7e0ec2a436dd9e0293957c2d40c987d9d3e0f67d4a627e"
     },
     {
       "path": "assets/js/public.js",
@@ -508,6 +508,7 @@
     "assets/js/payment-transactions.js": "7bea26d6644b4d38db6d719e3dad9cd4a0be0ce47bcc5e51390aedf85e945ca4",
     "assets/js/public-seller.js": "5914847bf939077040cca83187909b4f079d65e74c500851fc21168313e9984e",
     "assets/js/public-manager.js": "0c132d8ffbb9f7c0f6b642780f9ff11ee68d46ea74e17d6115a32adda8066469",
+    "assets/js/public-supervisor.js": "50862466fead94567a7e0ec2a436dd9e0293957c2d40c987d9d3e0f67d4a627e",
     "includes/class-sn-plugin.php": "37f417f66ea13308761a3ab608d8651f8804b45748d107377e0c02898dda5be9",
     "includes/class-sn-payment-transactions.php": "a73ce83b5a5e0a7ee246b724fb1180d2245a84170bd7d18e3f0b98433f1f4452"
   },
@@ -516,6 +517,7 @@
     "assets/js/payment-transactions.js",
     "assets/js/public-manager.js",
     "assets/js/public-seller.js",
+    "assets/js/public-supervisor.js",
     "docs/modules/INVOICES.md",
     "docs/tasks/INVOICE_STAGE_CASE_247.md",
     "includes/class-sn-payment-transactions.php",
@@ -563,13 +565,13 @@
   "validation_files": {
     ".github/workflows/ci.yml": "751dc9ecfed5e84cee101fe80ec1a272940576979635e6d6b6e6477a1d729c1f",
     "scripts/fast_track_ci.py": "035ea0e6ad14a3c60b4aa48d22f526b2e15b71537816c9538a8027054313e3d2",
-    "scripts/stage_case_ci.py": "a204903b272ac6d062702f4fc9b9cd19ddc3fd01c847f12fd218b5316944e352",
+    "scripts/stage_case_ci.py": "0e1fb6818742c92c784e93ed4a11f258cd097d5f82af6f68aac59b21e3f0d124",
     "scripts/stage_visibility_ci.py": "31814505c344ad6bdbbe36ad94cbea490ec60337f24f0f94269aa5ec999c48ff",
     "scripts/test-hr-integration.sh": "55214438dda8b8e6a530c9320098c5f8e4978e04dedad46b4135248e6f1e72ab",
     "scripts/test-invoice-reporting.sh": "634d4e893a444e6b1aa94ed15e55cbfa3f8157b076a5f5c6b088fc211a6e73be",
     "scripts/test-payment-tracking.sh": "8b6402d86b131c9aa0a8309d69c4c186f4b4dc303113f290ef498f739c8c7802",
     "scripts/test-prepayment-edit.sh": "607508eedf62bf80dacf3e8365486b13b01eae976750460991d65c6e4ff050ad",
-    "tests/fast_track/test_stage_case_ci.py": "bac70d272b75f99d9d6142fa2842230815c5cf862fee11051c40124265c58d67",
+    "tests/fast_track/test_stage_case_ci.py": "652e466ec5bcc3d38bef90554e30475165cf842c498cabaf8cf575ebc3258a61",
     "tests/fast_track/test_stage_visibility_ci.py": "625df7b502e2c442afadecb3d2e41afdea3dbc26be7eeac02c573adaf21283f1",
     "tests/hr/browser.cjs": "34862f89fa182fc757e0146314e99e43ee001999db49d307c312fe9b55dbe5e0",
     "tests/hr/ci-code-state.php": "72fdc8b0ba75beca3913dd0a8b931c4ef7d9df1f473350f152058cc72ddd19f8",
@@ -581,11 +583,11 @@
     "tests/payments/gateway-manual-race.php": "d32fe732be709b060d951f849250848e9541ee0e817f91f81a357d2a10177e99",
     "tests/payments/gateway-manual-races.py": "da9126dd6418e08502e6472a5a5628c275c087b956f129492a94aa675e8cfe3d",
     "tests/payments/integration/verify.php": "d08b1106e0c9ce9e98dbdb05120c9c661f1a243113cc23842b1167ea1dac865c",
-    "tests/payments/stage-case-browser.cjs": "307b7f8584ff3461d3b691dbaaa8b4aff36b64f4d3f5db6d7c2759a2839f1205",
+    "tests/payments/stage-case-browser.cjs": "d9c017243a114be58c01d92f69de93853a3f992d5db394217998dca40b01ccb2",
     "tests/payments/stage-case-native.php": "4d560287fc21d5269a72c5bc11e407e1f590ea21b51727eb655b13b430e34175",
     "tests/payments/stage-case.php": "15c9972b1e3858f211a2ee18a2447158848b4231ca1384b03330c5d753f1f08e",
     "tests/payments/stage-visibility-browser.cjs": "088c8ad056edad3743330bab1c6a08128c7c9dd339567f9da0123e7416d56115",
-    "tests/payments/stage-visibility-ci-browser.cjs": "795e3ba1f37ffd737028c9a54aa6795cbeb59a966eacb31bc49e4c3f234e58b3",
+    "tests/payments/stage-visibility-ci-browser.cjs": "b517b43260c32fedd3dc6edae26551de11b6d4277636d149518b5360778dc915",
     "tests/payments/staged-gateway-races.py": "e23e4610137d31b387cd97d223371ee3786c3b33370111b6375849c524eba63a",
     "tests/payments/staged-gateway-ui.cjs": "a890d9949b9a5b4cc2d7397827b199ad3e3ebcdd2e7aed45e3333568a5787bcb",
     "tests/payments/traceability-ci-browser.cjs": "6786490e692f68beffa4450968e2995e7ce4684b20ca6a22db4874048a387762",

@@ -19,7 +19,7 @@ class StageCaseProofTests(unittest.TestCase):
   with patch.object(gate,'payload_matches_revision',return_value=True),patch.object(gate,'git',return_value=b'changed'):self.assertFalse(gate.scope(gate.BASE,'a'*40,paths))
  def fixtures(self,p):
   common={'passed':True,'synthetic':True,'production_touched':False,'version':gate.VERSION}
-  rows={'finance244-stage-case':{**common,'assertions':30,'actual_admin_renderer':True,'owner_scope':True,'read_only':True,'canonical_rows':2,'unsettled_stage_rows':3,'settled_details':1,'core_sha256':gate.RUNTIME['includes/class-sn-plugin.php'],'stage_model_sha256':gate.RUNTIME['includes/class-sn-payment-transactions.php']},'stage247-memory':{**common,'assertions':32},'stage246-browser':{**common,'assertions':102,'unsettled_rows':True,'settled_details':True,'canonical_counts':True,'finance_renderer':True}}
+  rows={'finance244-stage-case':{**common,'assertions':30,'actual_admin_renderer':True,'owner_scope':True,'read_only':True,'canonical_rows':2,'unsettled_stage_rows':3,'settled_details':1,'core_sha256':gate.RUNTIME['includes/class-sn-plugin.php'],'stage_model_sha256':gate.RUNTIME['includes/class-sn-payment-transactions.php']},'stage247-memory':{**common,'assertions':32},'stage246-browser':{**common,'assertions':128,'unsettled_rows':True,'settled_details':True,'canonical_counts':True,'finance_renderer':True,'supervisor_renderer':True,'supervisor_js_sha256':gate.RUNTIME['assets/js/public-supervisor.js']}}
   for n,r in rows.items():(p/(n+'.json')).write_text(json.dumps(r))
   (p/'browser').mkdir(exist_ok=True)
   for n in['stage-case-desktop.png','stage-case-mobile.png']:(p/'browser'/n).write_bytes(b'\x89PNG'+b'x'*1200)
@@ -34,7 +34,7 @@ class StageCaseProofTests(unittest.TestCase):
    with self.assertRaisesRegex(RuntimeError,'captured'):gate.prior.verify_hr_output('unused','a'*40,runtime=gate.RUNTIME,payload_verifier=verify,version=gate.VERSION)
    self.assertIs(retained.call_args.kwargs['payload_verifier'],verify)
  def test_missing_failed_stale_or_partial_proof_rejected(self):
-  for name,key,value in[('finance244-stage-case','owner_scope',False),('finance244-stage-case','canonical_rows',3),('finance244-stage-case','core_sha256','wrong'),('finance244-stage-case','read_only',False),('stage247-memory','version','2.0.246'),('stage247-memory','assertions',31),('stage246-browser','assertions',101),('stage246-browser','canonical_counts',False),('stage246-browser','finance_renderer',False)]:
+  for name,key,value in[('finance244-stage-case','owner_scope',False),('finance244-stage-case','canonical_rows',3),('finance244-stage-case','core_sha256','wrong'),('finance244-stage-case','read_only',False),('stage247-memory','version','2.0.246'),('stage247-memory','assertions',31),('stage246-browser','assertions',127),('stage246-browser','canonical_counts',False),('stage246-browser','finance_renderer',False),('stage246-browser','supervisor_renderer',False),('stage246-browser','supervisor_js_sha256','wrong')]:
    with self.subTest(case=(name,key)),tempfile.TemporaryDirectory()as d:
     p=pathlib.Path(d);self.fixtures(p);f=p/(name+'.json');r=json.loads(f.read_text());r[key]=value;f.write_text(json.dumps(r))
     with self.assertRaises(ValueError):self.verify(p)

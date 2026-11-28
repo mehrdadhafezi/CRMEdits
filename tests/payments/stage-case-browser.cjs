@@ -3,10 +3,12 @@ const fs=require('node:fs'),path=require('node:path'),assert=require('node:asser
 module.exports=async function({playwright,jquery,channel,screenshots}){
  const {chromium}=require(playwright),browser=await chromium.launch({headless:true,channel});let checks=0;
  const root=path.resolve(__dirname,'../..'),ok=(v,m)=>{assert(v,m);checks++;console.log('PASS '+m);};
- const seller=fs.readFileSync(path.join(root,'assets/js/public-seller.js'),'utf8'),manager=fs.readFileSync(path.join(root,'assets/js/public-manager.js'),'utf8');
+ const seller=fs.readFileSync(path.join(root,'assets/js/public-seller.js'),'utf8'),manager=fs.readFileSync(path.join(root,'assets/js/public-manager.js'),'utf8'),supervisor=fs.readFileSync(path.join(root,'assets/js/public-supervisor.js'),'utf8');
  const sellerBody=seller.slice(seller.indexOf('  function loadSellerInvoices(){'),seller.indexOf('  window.snLoadSellerInvoices ='));
  const a=manager.indexOf('\tfunction renderInvoices(rows, hasMore, summary){'),b=manager.indexOf('\n  function ',a+10);assert(a>0&&b>a);
  const c=manager.indexOf('  function renderRows(rows){'),d=manager.indexOf('  function renderPager(){',c);assert(c>0&&d>c);
+ const e=supervisor.indexOf('  function render(rows, hasMore, summary){'),f=supervisor.indexOf('  function activeStatus(){',e);assert(e>0&&f>e);
+ const targets=['#sn-invoices-list','#sn-manager-invoices-list','#sn-supervisor-invoices-list','#sn-financial-list'];
  const fixture={id:1,invoice_code:'SYN-100',status:'partial_paid',status_label:'پرداخت ناقص',customer_name:'Synthetic',can_approve_payment:true,remaining_amount_value:300,invoice_total_amount_fmt:'1000 تومان',current_payment_amount_fmt:'300 تومان',payment_summary:{total:1000,paid:700,remaining:300,due:300,stage_no:3},stage_history:{available:true,stages:[{stage_no:1,stage_invoice_code:'SYN-100/1',stage_reference:'STG-1',amount:400,status:'paid'},{stage_no:2,stage_invoice_code:'SYN-100/2',stage_reference:'STG-2',amount:300,status:'approved'},{stage_no:3,stage_invoice_code:'SYN-100/3',stage_reference:'STG-3',amount:300,status:'pending_financial_approval'}]}};
  try{for(const width of [1440,390]){
   const context=await browser.newContext({viewport:{width,height:1000}});await context.route('**/*',r=>r.abort());const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
@@ -14,10 +16,10 @@ module.exports=async function({playwright,jquery,channel,screenshots}){
   await page.addScriptTag({path:path.join(root,'assets/js/payment-transactions.js')});
   await page.evaluate(f=>{window.__fixture=f;window.snInvoicePaymentButtons=()=>'<button class="synthetic-action">مدیریت پرداخت</button>';jQuery.post=(url,payload,done)=>{window.__payload=payload;done({success:true,invoices:[window.__fixture],total:1});return {always(fn){fn();}};};},fixture);
   const env='var $=jQuery,ajax="https://synthetic.invalid/ajax",nonce="synthetic",activeInvoiceTab="all",sellerInvoiceXhr=null,sellerInvoiceRequestKey="",state={total:1};function esc(v){return jQuery("<span>").text(v==null?"":String(v)).html();}function money(v){return String(v)+" تومان";}function updateInvoiceKpis(rows){window.__kpiCount=rows.length;}function amountOf(){return 1000;}function fa(v){return String(v);}function financeTag(){return "";}function statusClass(){return "";}function rowActions(){return "<button class=synthetic-action>مدیریت پرداخت</button>";}function renderPager(){}function updateBulk(){}';
-  await page.addScriptTag({content:'(function(){'+env+sellerBody+'window.__loadSeller=loadSellerInvoices;'+manager.slice(a,b)+'window.__renderManager=renderInvoices;'+manager.slice(c,d)+'window.__renderFinance=renderRows;window.__renderAll=function(){__loadSeller();__renderManager([__fixture],false,{});__renderFinance([__fixture]);};})();'});
+  await page.addScriptTag({content:'(function(){'+env+'function updateKpis(rows){window.__supervisorKpiCount=rows.length;}function receiptUrlOf(){return "";}'+sellerBody+'window.__loadSeller=loadSellerInvoices;'+manager.slice(a,b)+'window.__renderManager=renderInvoices;'+supervisor.slice(e,f)+'window.__renderSupervisor=render;'+manager.slice(c,d)+'window.__renderFinance=renderRows;$("#sn-supervisor-invoices-list").before("<h2>مدیر تیم</h2><div id=sn-manager-invoices-list></div>");window.__renderAll=function(){__loadSeller();__renderManager([__fixture],false,{});$("#sn-manager-invoices-list").html($("#sn-supervisor-invoices-list").html());__renderSupervisor([__fixture],false,{});__renderFinance([__fixture]);};})();'});
   await page.evaluate(()=>{document.querySelector('#sn-seller-invoice-search').value='SYN-100/3';window.__renderAll();});
   ok(await page.evaluate(()=>window.__payload.q==='SYN-100/3'),'seller loader forwards exact stage alias '+width);
-  for(const target of ['#sn-invoices-list','#sn-supervisor-invoices-list','#sn-financial-list']){
+  for(const target of targets){
    ok(await page.locator(target+' [data-sn-invoice-main]').count()===1,'one canonical invoice retained '+target+' '+width);
    ok(await page.locator(target+' [data-sn-stage-row]').count()===3,'three unsettled stages are separate rows '+target+' '+width);
    ok(await page.locator(target+' tbody tr').count()===4,'main plus stages without duplicate parents '+target+' '+width);
@@ -32,10 +34,11 @@ module.exports=async function({playwright,jquery,channel,screenshots}){
   }
   ok(await page.locator('#sn-financial-list .sn-fin-v2-select').count()===1,'Finance bulk selection counts purchase once '+width);
   ok(await page.evaluate(()=>window.__kpiCount===1),'team KPI receives one canonical record '+width);
+  ok(await page.evaluate(()=>window.__supervisorKpiCount===1),'active supervisor KPI receives one canonical record '+width);
   ok((await page.locator('.sn-invoice-list-meta').innerText()).includes('1 از 1'),'seller pagination remains invoice-based '+width);
   if(screenshots){fs.mkdirSync(screenshots,{recursive:true});await page.screenshot({path:path.join(screenshots,'stage-case-'+(width===1440?'desktop':'mobile')+'.png'),fullPage:true});}
   await page.evaluate(()=>{__fixture.payment_summary.remaining=0;__fixture.remaining_amount_value=0;__fixture.status='paid';__fixture.stage_history.stages.forEach(s=>s.status='paid');__renderAll();});
-  for(const target of ['#sn-invoices-list','#sn-supervisor-invoices-list','#sn-financial-list']){
+  for(const target of targets){
    ok(await page.locator(target+' tbody tr').count()===1,'settled purchase collapses to one row '+target+' '+width);
    ok(await page.locator(target+' details').count()===1,'settled purchase retains expandable stages '+target+' '+width);
    await page.locator(target+' summary').click();ok((await page.locator(target+' details').innerText()).includes('SYN-100/3'),'settled stage detail remains accessible '+target+' '+width);
@@ -46,7 +49,7 @@ module.exports=async function({playwright,jquery,channel,screenshots}){
   await page.evaluate(()=>{document.querySelector('#sn-invoices-list').innerHTML=snPaymentTransactions.renderStages({available:false,stages:[]},{});});
   ok((await page.locator('#sn-invoices-list').innerText()).includes('دریافت مراحل کامل نشد'),'failed history is explicit '+width);
   ok(await page.evaluate(()=>snPaymentTransactions.renderStageRows({available:true,stages:[]},{remaining:0},8)===''),'no stage invented for empty history '+width);
-  ok(errors.length===0,'no runtime errors across seller/team/Finance renderers '+width);await context.close();
+  ok(errors.length===0,'no runtime errors across seller/manager/supervisor/Finance renderers '+width);await context.close();
  }}finally{await browser.close();}
- const result={passed:true,assertions:checks,synthetic:true,desktop_mobile:true,external_network_blocked:true,unsettled_rows:true,settled_details:true,canonical_counts:true,finance_renderer:true};console.log('TOTAL '+checks);return result;
+ const result={passed:true,assertions:checks,synthetic:true,desktop_mobile:true,external_network_blocked:true,unsettled_rows:true,settled_details:true,canonical_counts:true,finance_renderer:true,supervisor_renderer:true};console.log('TOTAL '+checks);return result;
 };
