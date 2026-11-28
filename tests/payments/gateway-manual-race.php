@@ -8,7 +8,7 @@ if(getenv('SN_APPROVAL_ALLOW_SYNTHETIC')==='YES'){
     if(!defined('SN_GATEWAY240_PRIVATE_TEST')||SN_GATEWAY240_PRIVATE_TEST!==true)throw new RuntimeException('Gateway synthetic namespace required');$root=$GLOBALS['hr239_root'];
 }
 if(!defined('DOING_AJAX'))define('DOING_AJAX',true);
-if(SN_VERSION!=='2.0.246')throw new RuntimeException('Exact Gateway240 candidate required');
+if(SN_VERSION!=='2.0.247')throw new RuntimeException('Exact Gateway240 candidate required');
 global $wpdb;$f=json_decode(file_get_contents($root.'/gateway240-fixture.json'),true,512,JSON_THROW_ON_ERROR);
 $mode=$argv[1]??'';$key=$argv[2]??'';$cases=['r1','r2','r3','f0'];$plugin=sn_bootstrap_plugin_instance();
 function gr_out(array $value):void{ob_end_clean();echo wp_json_encode($value,JSON_THROW_ON_ERROR);exit;}

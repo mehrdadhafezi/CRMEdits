@@ -21,10 +21,12 @@ function csv(text) {
   return result;
 }
 async function login(context,username,password) {
+  await context.route('**/*',route=>new URL(route.request().url()).origin===origin ? route.continue() : route.abort());
   const page=await context.newPage();
   await page.goto(origin+'/wp-login.php');
   await page.locator('#user_login').fill(username); await page.locator('#user_pass').fill(password);
-  await Promise.all([page.waitForNavigation(),page.locator('#wp-submit').click()]);
+  await Promise.all([page.waitForNavigation({waitUntil:'domcontentloaded'}),page.locator('#wp-submit').click()]);
+  ok((await context.cookies(origin)).some(cookie=>cookie.name.startsWith('wordpress_logged_in_')),'actual WordPress login establishes an authenticated session');
   return page;
 }
 (async()=>{
@@ -35,7 +37,9 @@ async function login(context,username,password) {
     const errors=[]; page.on('pageerror',e=>errors.push(e.message));
     await page.goto(origin+'/wp-admin/admin.php?page=sn-invoices');
     await page.getByRole('heading',{name:'پیش‌فاکتورها، پرداخت‌ها و گزارش مالی',exact:true}).waitFor();
-    ok(await page.locator('.wp-list-table tbody tr').count()===6,'native admin page renders all six synthetic invoices');
+    ok(await page.locator('.wp-list-table tbody tr[data-sn-invoice-main]').count()===6,'native admin page renders all six canonical synthetic invoices');
+    ok(await page.locator('.wp-list-table tbody tr[data-sn-stage-row]').count()===5,'five unsettled synthetic invoices retain their issued stage rows');
+    ok(await page.locator('.wp-list-table tbody tr[data-sn-stage-row] input[type=checkbox]').count()===0,'stage rows never add invoice bulk selections');
     ok(!await page.evaluate(()=>Boolean(window.report_xss)),'customer markup cannot execute in admin report');
     ok((await page.locator('.wp-list-table').innerText()).includes('درخواست تماس مجدد'),'Persian follow-up label is visible');
     ok((await page.locator('.wp-list-table').innerText()).includes('تسویه ناقص'),'settlement is visible independently of follow-up');

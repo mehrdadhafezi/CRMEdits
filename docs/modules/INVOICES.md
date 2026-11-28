@@ -113,6 +113,11 @@ restrictions. No schema, role or public token changes. See the
 
 ## 8. Testing & Preview
 
+Version 2.0.247 keeps each purchase as the canonical counted/actionable row.
+Unsettled invoices show issued stages as separate presentation rows; settled
+invoices retain expandable details. All role list surfaces and compatibility
+limits are described in [the stage case contract](../tasks/INVOICE_STAGE_CASE_247.md).
+
 Prepayment edit regressions and disposable native/browser instructions are in
 [the invoice editor test guide](../../tests/invoices/README.md). They include
 pricing permissions, preview signatures, actual AJAX, stale requests, atomic

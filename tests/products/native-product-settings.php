@@ -1,7 +1,7 @@
 <?php
 /** Guarded, disposable synthetic WordPress/WooCommerce integration only. */
 ob_start(); require dirname(__DIR__).'/hr/native-support.php'; hr239_bootstrap(); $f=hr239_data(); global $wpdb;
-hr239_ok(SN_VERSION==='2.0.246'&&class_exists('WooCommerce')&&WC_VERSION==='10.4.3','real reviewed WordPress/WooCommerce candidate');
+hr239_ok(SN_VERSION==='2.0.247'&&class_exists('WooCommerce')&&WC_VERSION==='10.4.3','real reviewed WordPress/WooCommerce candidate');
 $admin=$f['admin_id'];$seller=$f['users']['seller_a']['id'];$manager=$f['users']['manager_a']['id'];$other=$f['users']['seller_b']['id'];
 $_SERVER['REQUEST_METHOD']='POST';
 function p241_request(int $actor,string $action,array $data=[],string $nonce_action='sn_admin'):array{

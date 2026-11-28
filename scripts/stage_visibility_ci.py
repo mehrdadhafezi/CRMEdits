@@ -20,8 +20,10 @@ def scope(base,head,paths):
  return(base==BASE and set(paths)==set(PROFILE['changed_paths'])and payload_matches_revision(head)
         and all(hashlib.sha256(git('show',head+':'+n)).hexdigest()==h for n,h in PROFILE['validation_files'].items()))
 
-def verify_hr_output(output,merge):
- gateway.verify_hr_output(output,merge,runtime=RUNTIME,payload_verifier=payload_matches_revision,version=VERSION)
+def verify_hr_output(output,merge,*,runtime=None,payload_verifier=None,version=VERSION):
+ RUNTIME=runtime or globals()['RUNTIME'];VERSION=version
+ payload_verifier=payload_verifier or payload_matches_revision
+ gateway.verify_hr_output(output,merge,runtime=RUNTIME,payload_verifier=payload_verifier,version=VERSION)
  root=Path(output);native=completed(root,'finance244-stage-visibility.json',34);browser=completed(root,'stage246-browser.json',28)
  for row in[native,browser]:
   if row.get('version')!=VERSION or row.get('production_touched')is not False:raise ValueError('Stage visibility evidence version/isolation mismatch')
@@ -33,7 +35,7 @@ def verify_hr_output(output,merge):
   if browser.get(flag)is not True:raise ValueError('Missing stage browser proof: '+flag)
  for field,name in[('stage_js_sha256','assets/js/payment-transactions.js'),('seller_js_sha256','assets/js/public-seller.js'),('manager_js_sha256','assets/js/public-manager.js')]:
   if browser.get(field)!=RUNTIME[name]:raise ValueError('Wrong stage browser source tested')
- if git('rev-parse','HEAD').decode().strip()!=merge or not payload_matches_revision(merge):raise ValueError('Stage candidate changed after testing')
+ if git('rev-parse','HEAD').decode().strip()!=merge or not payload_verifier(merge):raise ValueError('Stage candidate changed after testing')
  (root/'stage246-verified.json').write_text(json.dumps({'version':VERSION,'merge':merge,'all_retained_gates':True,'synthetic':True},indent=2)+'\n')
 
 if __name__=='__main__':

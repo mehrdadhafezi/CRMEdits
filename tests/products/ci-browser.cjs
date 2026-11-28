@@ -4,7 +4,7 @@ if(process.env.SN_HR_BROWSER_NATIVE!=='YES'||process.env.SN_APPROVAL_ALLOW_SYNTH
 const root=fs.realpathSync(process.env.SN_APPROVAL_ROOT);
 if(!/^\/tmp\/sn-approval-[A-Za-z0-9]{8}$/.test(root))throw Error('Generated native root required');
 const fixture=JSON.parse(fs.readFileSync(path.join(root,'product241-fixture.json')));
-if(fixture.synthetic!==true||fixture.version!=='2.0.246')throw Error('Synthetic product fixture required');
+if(fixture.synthetic!==true||fixture.version!=='2.0.247')throw Error('Synthetic product fixture required');
 run({base:'http://127.0.0.1:8877',fixture,output:process.env.SN_APPROVAL_OUTPUT+'/product-browser'}).catch(error=>{
  console.error('BROWSER_FAILURE_KIND '+String(error.name).replace(/[^A-Za-z]/g,''));
  const headline=String(error.message).split(/\r?\n/,1)[0].replace(/https?:\/\/\S+|[a-f0-9]{24,}/gi,'[redacted]');

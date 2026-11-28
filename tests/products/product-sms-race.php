@@ -2,7 +2,7 @@
 /** Two real PHP/MySQL workers; only the guarded synthetic namespace is accepted. */
 ob_start();
 require dirname(__DIR__).'/hr/native-support.php';hr239_bootstrap();
-if(SN_VERSION!=='2.0.246')throw new RuntimeException('Exact product candidate required');
+if(SN_VERSION!=='2.0.247')throw new RuntimeException('Exact product candidate required');
 global $wpdb;$root=$GLOBALS['hr239_root'];$mode=$argv[1]??'';$key=$argv[2]??'';
 function pr_out(array $data):void{ob_end_clean();echo wp_json_encode($data,JSON_THROW_ON_ERROR);exit;}
 function pr_pause(string $name):void{
